@@ -1,7 +1,7 @@
 'use client'
 
 import { Restaurant } from '@/lib/types'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 
 interface RestaurantCardProps {
   restaurant: Restaurant
@@ -17,6 +17,11 @@ export default function RestaurantCard({
   progress,
 }: RestaurantCardProps) {
   const [animatingClass, setAnimatingClass] = useState('')
+
+  // Reset animation when restaurant changes
+  useEffect(() => {
+    setAnimatingClass('')
+  }, [restaurant.id])
 
   const handleYes = useCallback(() => {
     setAnimatingClass('swipe-right')
@@ -73,9 +78,17 @@ export default function RestaurantCard({
     >
       {/* Card */}
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden h-[600px] flex flex-col md:h-[500px]">
-        {/* Image Placeholder */}
-        <div className="h-2/3 bg-gradient-to-br from-orange-300 to-red-400 flex items-center justify-center">
-          <div className="text-6xl">🍴</div>
+        {/* Image or Placeholder */}
+        <div className="h-2/3 bg-gradient-to-br from-orange-300 to-red-400 flex items-center justify-center relative overflow-hidden">
+          {restaurant.imageUrl ? (
+            <img
+              src={restaurant.imageUrl}
+              alt={restaurant.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="text-6xl">🍴</div>
+          )}
         </div>
 
         {/* Content */}

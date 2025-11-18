@@ -113,7 +113,9 @@ export async function fetchNearbyRestaurants(
     }
 
     const data = await response.json()
-    return data.restaurants || getRandomRestaurants(limit)
+    const restaurants = data.restaurants || getRandomRestaurants(limit)
+    console.log(`Fetched ${restaurants.length} restaurants (using mock data: ${data.usingMockData})`)
+    return restaurants
   } catch (error) {
     console.error('Error fetching restaurants:', error)
     return getRandomRestaurants(limit)
