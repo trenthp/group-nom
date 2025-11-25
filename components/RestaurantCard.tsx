@@ -77,9 +77,9 @@ export default function RestaurantCard({
       onTouchStart={handleSwipe}
     >
       {/* Card */}
-      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden h-[600px] flex flex-col md:h-[500px]">
+      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         {/* Image or Placeholder */}
-        <div className="h-2/3 bg-gradient-to-br from-orange-300 to-red-400 flex items-center justify-center relative overflow-hidden">
+        <div className="h-64 flex-shrink-0 bg-gradient-to-br from-orange-300 to-red-400 flex items-center justify-center relative overflow-hidden">
           {restaurant.imageUrl ? (
             <img
               src={restaurant.imageUrl}
@@ -92,12 +92,23 @@ export default function RestaurantCard({
         </div>
 
         {/* Content */}
-        <div className="h-1/3 p-6 flex flex-col justify-between">
+        <div className="px-6 pt-6 pb-6 flex-shrink-0">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
               {restaurant.name}
             </h2>
-            <p className="text-gray-600 text-sm mb-3">{restaurant.address}</p>
+
+            {/* Cuisines - More prominent */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {restaurant.cuisines.map((cuisine) => (
+                <span
+                  key={cuisine}
+                  className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-semibold"
+                >
+                  {cuisine}
+                </span>
+              ))}
+            </div>
 
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1">
@@ -112,15 +123,35 @@ export default function RestaurantCard({
               <span className="text-lg">{priceDisplay}</span>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {restaurant.cuisines.map((cuisine) => (
-                <span
-                  key={cuisine}
-                  className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-semibold"
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-gray-600 text-xs flex-1">{restaurant.address}</p>
+
+              {/* Subdued action buttons */}
+              <div className="flex gap-2 flex-shrink-0">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name + ' ' + restaurant.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-orange-600 hover:text-orange-700 font-semibold whitespace-nowrap"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {cuisine}
-                </span>
-              ))}
+                  View on Google
+                </a>
+                {restaurant.website && (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <a
+                      href={restaurant.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-orange-600 hover:text-orange-700 font-semibold whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Visit Website
+                    </a>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -135,13 +166,13 @@ export default function RestaurantCard({
       <div className="flex gap-4 mt-6 justify-center">
         <button
           onClick={handleNo}
-          className="w-16 h-16 rounded-full bg-red-500 text-white shadow-lg hover:shadow-xl transform hover:scale-110 transition flex items-center justify-center text-2xl font-bold"
+          className="w-16 h-16 rounded-full bg-red-500 text-white border-2 border-white shadow-lg hover:shadow-xl transform hover:scale-110 transition flex items-center justify-center text-2xl font-bold"
         >
           ✕
         </button>
         <button
           onClick={handleYes}
-          className="w-16 h-16 rounded-full bg-green-500 text-white shadow-lg hover:shadow-xl transform hover:scale-110 transition flex items-center justify-center text-2xl font-bold"
+          className="w-16 h-16 rounded-full bg-green-500 text-white border-2 border-white shadow-lg hover:shadow-xl transform hover:scale-110 transition flex items-center justify-center text-2xl font-bold"
         >
           ✓
         </button>

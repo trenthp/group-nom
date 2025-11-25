@@ -6,6 +6,7 @@ import { Restaurant } from '@/lib/types'
 import RestaurantCard from '@/components/RestaurantCard'
 import ResultsPage from '@/components/ResultsPage'
 import ShareCode from '@/components/ShareCode'
+import WaitingScreen from '@/components/WaitingScreen'
 
 export default function SessionPage() {
   const params = useParams()
@@ -18,6 +19,7 @@ export default function SessionPage() {
   const [loading, setLoading] = useState(true)
   const [showingResults, setShowingResults] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessionStatus, setSessionStatus] = useState<'pending' | 'active' | 'finished' | null>(null)
 
   // Initialize user and fetch session
   useEffect(() => {
@@ -52,8 +54,25 @@ export default function SessionPage() {
 
         const data = await response.json()
         console.log('Session data loaded:', data)
-        setRestaurants(data.session.restaurants)
-        setLoading(false)
+
+        // Check session status (default to 'active' for backward compatibility)
+        const status = data.session.status || 'active'
+        setSessionStatus(status)
+
+        if (status === 'active') {
+          setRestaurants(data.session.restaurants)
+          setLoading(false)
+        } else if (status === 'pending') {
+          // Session is pending, keep loading state until it becomes active
+          console.log('Session is pending, will poll for updates')
+          setLoading(false)
+        } else if (status === 'finished') {
+          // Session is finished, show results directly
+          console.log('Session is finished, showing results')
+          setRestaurants(data.session.restaurants)
+          setShowingResults(true)
+          setLoading(false)
+        }
       } catch (err) {
         console.error('Error initializing session:', err)
         setError('Failed to load session. Please try again.')
@@ -63,6 +82,63 @@ export default function SessionPage() {
 
     initSession()
   }, [sessionCode])
+
+  // Poll for session status when pending
+  useEffect(() => {
+    if (sessionStatus !== 'pending' || !userId) return
+
+    const pollSessionReady = async () => {
+      try {
+        const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Polling session status:', data.session.status)
+
+          if (data.session.status === 'active') {
+            // Session is now active, reload the page to show restaurants
+            console.log('Session is now active!')
+            setSessionStatus('active')
+            setRestaurants(data.session.restaurants)
+          }
+        }
+      } catch (err) {
+        console.error('Error polling session status:', err)
+      }
+    }
+
+    // Poll every 2 seconds
+    const interval = setInterval(pollSessionReady, 2000)
+
+    return () => clearInterval(interval)
+  }, [sessionStatus, sessionCode, userId])
+
+  // Poll for session status during active voting to detect if session becomes finished
+  useEffect(() => {
+    if (sessionStatus !== 'active' || !userId || showingResults) return
+
+    const pollForFinished = async () => {
+      try {
+        const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
+        if (response.ok) {
+          const data = await response.json()
+
+          // If session became finished, show results
+          if (data.session.status === 'finished') {
+            console.log('Session has finished, showing results')
+            setSessionStatus('finished')
+            setShowingResults(true)
+          }
+        }
+      } catch (err) {
+        console.error('Error polling for finished status:', err)
+      }
+    }
+
+    // Poll every 3 seconds
+    const interval = setInterval(pollForFinished, 3000)
+
+    return () => clearInterval(interval)
+  }, [sessionStatus, sessionCode, userId, showingResults])
 
   // Poll for session status when showing results
   useEffect(() => {
@@ -111,6 +187,11 @@ export default function SessionPage() {
           setCurrentIndex(currentIndex + 1)
         } else {
           // User finished voting
+          // If all users finished (e.g., single user or everyone done), mark session as finished
+          if (data.allFinished) {
+            console.log('All users finished! Marking session as finished.')
+            setSessionStatus('finished')
+          }
           setShowingResults(true)
         }
       } catch (err) {
@@ -154,6 +235,15 @@ export default function SessionPage() {
     )
   }
 
+  // Show waiting screen if session is pending
+  if (sessionStatus === 'pending') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+        <WaitingScreen code={sessionCode} />
+      </div>
+    )
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
@@ -185,10 +275,6 @@ export default function SessionPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md mb-4">
-        <ShareCode code={sessionCode} />
-      </div>
-
       {currentRestaurant ? (
         <div className="w-full max-w-md">
           <RestaurantCard
@@ -203,6 +289,10 @@ export default function SessionPage() {
           <p>No restaurants available</p>
         </div>
       )}
+
+      <div className="w-full max-w-md mt-6">
+        <ShareCode code={sessionCode} />
+      </div>
     </div>
   )
 }

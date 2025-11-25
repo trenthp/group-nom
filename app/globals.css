@@ -8,14 +8,26 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Alan Sans', sans-serif;
+  font-weight: 400;
+  /* Alan Sans Regular for body text */
+  letter-spacing: 0.5px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headers use Alan Sans Black */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 800;
 }
 
 #__next {
@@ -29,6 +41,7 @@ html, body {
     transform: translateX(0) rotate(0deg);
     opacity: 1;
   }
+
   to {
     transform: translateX(500px) rotate(20deg);
     opacity: 0;
@@ -40,6 +53,7 @@ html, body {
     transform: translateX(0) rotate(0deg);
     opacity: 1;
   }
+
   to {
     transform: translateX(-500px) rotate(-20deg);
     opacity: 0;
@@ -56,15 +70,23 @@ html, body {
 
 /* Winner bounce animation - bounces 3 times then stops */
 @keyframes bounceThrice {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0) scale(1);
   }
-  10%, 30%, 50% {
+
+  10%,
+  30%,
+  50% {
     transform: translateY(-25px) scale(1);
   }
-  20%, 40% {
+
+  20%,
+  40% {
     transform: translateY(0) scale(1);
   }
+
   60% {
     transform: translateY(0) scale(1);
   }

@@ -24,7 +24,7 @@ export default function Home() {
       <div className="w-full max-w-md">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-white mb-2">🍽️</h1>
-          <h2 className="text-4xl font-bold text-white mb-2">Feast Finder</h2>
+          <h2 className="text-4xl font-bold text-white mb-2">Group Nom</h2>
           <p className="text-orange-100">Find your next favorite restaurant (or at least for tonight)</p>
         </div>
 

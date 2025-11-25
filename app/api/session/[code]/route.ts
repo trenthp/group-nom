@@ -24,8 +24,9 @@ export async function GET(
 
     console.log('[API] Session found:', code, 'with', session.restaurants.length, 'restaurants')
 
-    // Add user to session if userId provided and not already in
-    if (userId) {
+    // Add user to session if userId provided and session is not finished
+    // If session is finished, user can only view results (read-only)
+    if (userId && session.status !== 'finished') {
       sessionStore.addUserToSession(code, userId)
     }
 
@@ -34,6 +35,7 @@ export async function GET(
       session: {
         code: session.code,
         createdAt: session.createdAt,
+        status: session.status,
         users: session.users,
         filters: session.filters,
         restaurants: session.restaurants,

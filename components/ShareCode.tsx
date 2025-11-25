@@ -7,29 +7,47 @@ interface ShareCodeProps {
 }
 
 export default function ShareCode({ code }: ShareCodeProps) {
-  const [copied, setCopied] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedUrl, setCopiedUrl] = useState(false)
 
-  const copyToClipboard = () => {
-    const text = `Join my Feast Finder session: ${window.location.origin}/session/${code}`
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+  const copyCode = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopiedCode(true)
+      setTimeout(() => setCopiedCode(false), 2000)
+    })
+  }
+
+  const copyUrl = () => {
+    const url = `${window.location.origin}/session/${code}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedUrl(true)
+      setTimeout(() => setCopiedUrl(false), 2000)
     })
   }
 
   return (
     <div className="bg-white bg-opacity-20 backdrop-blur rounded-xl p-4 text-white text-center">
       <p className="text-sm opacity-90 mb-2">Session Code</p>
-      <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center justify-center gap-3">
         <code className="text-3xl font-mono font-bold tracking-wider">{code}</code>
-        <button
-          onClick={copyToClipboard}
-          className="bg-white text-orange-600 px-3 py-2 rounded-lg font-semibold hover:bg-orange-50 transition text-sm"
-        >
-          {copied ? '✓ Copied!' : 'Copy'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={copyCode}
+            title="Copy code"
+            className="bg-white text-orange-600 w-10 h-10 rounded-lg font-semibold hover:bg-orange-50 transition flex items-center justify-center"
+          >
+            {copiedCode ? '✓' : '📋'}
+          </button>
+          <button
+            onClick={copyUrl}
+            title="Copy URL"
+            className="bg-white text-orange-600 w-10 h-10 rounded-lg font-semibold hover:bg-orange-50 transition flex items-center justify-center"
+          >
+            {copiedUrl ? '✓' : '🔗'}
+          </button>
+        </div>
       </div>
-      <p className="text-xs opacity-75 mt-2">Share this code with friends to join</p>
+      <p className="text-xs opacity-75 mt-2">Share the 📋code or 🔗link with friends to join</p>
     </div>
   )
 }

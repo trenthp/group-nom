@@ -19,8 +19,10 @@ export async function POST(request: NextRequest) {
 
     // Check if session already exists
     const existingSession = sessionStore.getSession(code)
-    if (existingSession) {
-      console.log('[API] Session already exists:', code)
+
+    // If session exists and is active, return error
+    if (existingSession && existingSession.status === 'active') {
+      console.log('[API] Session already active:', code)
       return NextResponse.json(
         { error: 'Session already exists' },
         { status: 409 }
@@ -57,16 +59,31 @@ export async function POST(request: NextRequest) {
     const restaurants = data.restaurants || []
     console.log('[API] Fetched', restaurants.length, 'restaurants')
 
-    // Create session with restaurants
-    console.log('[API] Creating session in store...')
-    const session = sessionStore.createSession(
-      code,
-      userId,
-      filters,
-      restaurants,
-      location
-    )
-    console.log('[API] Session created successfully:', code)
+    let session
+
+    // If pending session exists, complete it
+    if (existingSession && existingSession.status === 'pending') {
+      console.log('[API] Completing pending session...')
+      session = sessionStore.completeSession(code, filters, restaurants, location)
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Failed to complete session' },
+          { status: 500 }
+        )
+      }
+      console.log('[API] Pending session completed:', code)
+    } else {
+      // Create new session (fallback for backward compatibility)
+      console.log('[API] Creating new session in store...')
+      session = sessionStore.createSession(
+        code,
+        userId,
+        filters,
+        restaurants,
+        location
+      )
+      console.log('[API] Session created successfully:', code)
+    }
 
     return NextResponse.json({
       success: true,

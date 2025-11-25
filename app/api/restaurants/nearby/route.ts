@@ -25,29 +25,63 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Call Google Places API
-    const response = await client.placesNearby({
-      params: {
-        location: { lat, lng },
-        radius,
-        type: 'restaurant',
-        key: apiKey,
-        ...(openNow && { opennow: true }),
-      },
-    })
-
-    if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
-      console.error('Google Places API error:', response.data.status, response.data.error_message)
-      const restaurants = getRandomRestaurants(limit)
-      return NextResponse.json({
-        success: true,
-        restaurants,
-        usingMockData: true,
-      })
+    // Fisher-Yates shuffle algorithm for true randomization
+    const fisherYatesShuffle = <T,>(array: T[]): T[] => {
+      const shuffled = [...array]
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+      }
+      return shuffled
     }
 
+    // Fetch multiple pages of results for better variety
+    let allResults: any[] = []
+    let pageToken: string | undefined = undefined
+    const maxPages = 3 // Fetch up to 3 pages (60 restaurants max) for best variety
+
+    for (let page = 0; page < maxPages; page++) {
+      const response = await client.placesNearby({
+        params: {
+          location: { lat, lng },
+          radius,
+          type: 'restaurant',
+          key: apiKey,
+          ...(openNow && { opennow: true }),
+          ...(pageToken && { pagetoken: pageToken }),
+        },
+      })
+
+      if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
+        if (page === 0) {
+          // Only error if first page fails
+          console.error('Google Places API error:', response.data.status, response.data.error_message)
+          const restaurants = getRandomRestaurants(limit)
+          return NextResponse.json({
+            success: true,
+            restaurants,
+            usingMockData: true,
+          })
+        }
+        break // Stop pagination on error
+      }
+
+      allResults = [...allResults, ...(response.data.results || [])]
+      pageToken = response.data.next_page_token
+
+      // Break if no more pages
+      if (!pageToken) break
+
+      // Google requires a short delay between pagination requests
+      if (page < maxPages - 1 && pageToken) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
+    }
+
+    console.log(`Fetched ${allResults.length} total restaurants before filtering`)
+
     // Transform Google Places results to our Restaurant type
-    let results = response.data.results
+    let results = allResults
 
     // Apply filters
     if (minRating > 0) {
@@ -69,8 +103,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Shuffle results for variety in each session
-    const shuffled = results.sort(() => Math.random() - 0.5)
+    console.log(`${results.length} restaurants after filtering`)
+
+    // Use Fisher-Yates shuffle for true randomization
+    const shuffled = fisherYatesShuffle(results)
 
     const restaurants: Restaurant[] = shuffled
       .slice(0, limit)

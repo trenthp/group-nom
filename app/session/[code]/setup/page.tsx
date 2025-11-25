@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import RestaurantFilters from '@/components/RestaurantFilters'
+import ShareCode from '@/components/ShareCode'
 import { getUserLocation } from '@/lib/googleMaps'
 
 export default function SessionSetupPage() {
@@ -27,9 +28,76 @@ export default function SessionSetupPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [initialized, setInitialized] = useState(false)
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationAddress, setLocationAddress] = useState<string>('')
+
+  // Initialize pending session when component mounts
+  useEffect(() => {
+    const initSession = async () => {
+      try {
+        // Get or create user ID
+        const storedUserId = localStorage.getItem(`user-${sessionCode}`)
+        const userId = storedUserId || `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        if (!storedUserId) {
+          localStorage.setItem(`user-${sessionCode}`, userId)
+        }
+
+        // Initialize pending session
+        const response = await fetch('/api/session/init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: sessionCode, userId }),
+        })
+
+        if (response.status === 409) {
+          // Session already exists - that's okay, host might have refreshed
+          console.log('Session already exists')
+          setInitialized(true)
+          return
+        }
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to initialize session')
+        }
+
+        console.log('Pending session initialized')
+        setInitialized(true)
+      } catch (err) {
+        console.error('Error initializing session:', err)
+        setError(err instanceof Error ? err.message : 'Failed to initialize session')
+      }
+    }
+
+    initSession()
+  }, [sessionCode])
+
+  // Auto-fetch current location on mount
+  useEffect(() => {
+    const fetchCurrentLocation = async () => {
+      const loc = await getUserLocation()
+      if (loc) {
+        setLocation(loc)
+        setLocationAddress('Using your current location')
+      } else {
+        // Fallback to NYC
+        setLocation({ lat: 40.7128, lng: -74.006 })
+        setLocationAddress('New York, NY (default location)')
+      }
+    }
+    fetchCurrentLocation()
+  }, [])
 
   const handleStartSession = async () => {
     console.log('🔥 START SESSION BUTTON CLICKED!')
+
+    // Validate location
+    if (!location) {
+      setError('Please select a location to search for restaurants')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -41,12 +109,8 @@ export default function SessionSetupPage() {
         localStorage.setItem(`user-${sessionCode}`, userId)
       }
 
-      // Get location
-      const location = await getUserLocation()
-      const defaultLocation = location || { lat: 40.7128, lng: -74.006 } // Default to NYC
-
       // Create session via API
-      console.log('Creating session:', { code: sessionCode, userId, filters, location: defaultLocation })
+      console.log('Creating session:', { code: sessionCode, userId, filters, location })
 
       const response = await fetch('/api/session/create', {
         method: 'POST',
@@ -55,7 +119,7 @@ export default function SessionSetupPage() {
           code: sessionCode,
           userId,
           filters,
-          location: defaultLocation,
+          location,
         }),
       })
 
@@ -79,16 +143,50 @@ export default function SessionSetupPage() {
     }
   }
 
+  // Show loading screen while creating session
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
+        <div className="bg-white bg-opacity-20 backdrop-blur rounded-3xl p-8 max-w-md w-full text-center">
+          <div className="mb-6">
+            <div className="text-6xl mb-4 animate-spin">🍽️</div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Starting Your Session
+            </h1>
+            <p className="text-white text-opacity-90 mb-4">
+              Finding the best restaurants for you...
+            </p>
+          </div>
+
+          <div className="space-y-3 text-sm text-white text-opacity-80">
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <p>Searching nearby restaurants</p>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse delay-150"></div>
+              <p>Applying your filters</p>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse delay-300"></div>
+              <p>Creating session code: <span className="font-bold">{sessionCode}</span></p>
+            </div>
+          </div>
+
+          <p className="text-xs text-white text-opacity-60 mt-6">
+            This may take a few seconds...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Configure Session</h1>
           <p className="text-orange-100 mb-4">Set your restaurant preferences</p>
-          <div className="bg-white bg-opacity-20 backdrop-blur rounded-lg py-3 px-6 inline-block">
-            <p className="text-white text-sm font-semibold">Session Code</p>
-            <p className="text-white text-2xl font-bold tracking-widest">{sessionCode}</p>
-          </div>
         </div>
 
         <RestaurantFilters filters={filters} onFiltersChange={setFilters} />
@@ -110,6 +208,16 @@ export default function SessionSetupPage() {
         <div className="mt-6 text-center text-orange-100 text-sm">
           <p>These filters will apply to all participants in this session.</p>
         </div>
+
+        <div className="mt-8">
+          <ShareCode code={sessionCode} />
+        </div>
+
+        {locationAddress && (
+          <div className="mt-4 text-white text-sm text-center bg-white bg-opacity-20 py-3 px-4 rounded-lg">
+            📍 {locationAddress}
+          </div>
+        )}
       </div>
     </div>
   )

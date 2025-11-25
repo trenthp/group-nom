@@ -29,12 +29,13 @@ export interface Filters {
 export interface Session {
   code: string
   createdAt: number
+  status: 'pending' | 'active' | 'finished'
   users: string[]
   votes: Vote[]
   finished: boolean
-  filters: Filters
+  filters?: Filters
   restaurants: Restaurant[]
-  location: { lat: number; lng: number }
+  location?: { lat: number; lng: number }
 }
 
 export interface AggregatedVote {

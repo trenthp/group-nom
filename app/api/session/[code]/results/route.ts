@@ -11,21 +11,27 @@ export async function GET(
     const session = sessionStore.getSession(code)
 
     if (!session) {
+      console.log(`[RESULTS] Session not found: ${code}`)
       return NextResponse.json(
         { error: 'Session not found' },
         { status: 404 }
       )
     }
 
+    console.log(`[RESULTS] ${code}: users=${session.users.length}, votes=${session.votes.length}, status=${session.status}`)
+
     const results = sessionStore.calculateResults(code)
 
     if (!results) {
+      console.log(`[RESULTS] ${code}: No matches found`)
       return NextResponse.json({
         success: true,
         results: null,
         message: 'No matches found',
       })
     }
+
+    console.log(`[RESULTS] ${code}: Winner found - ${results.restaurant.name}`)
 
     return NextResponse.json({
       success: true,

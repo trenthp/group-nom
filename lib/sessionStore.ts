@@ -10,6 +10,37 @@ const sessions: Map<string, Session> = globalForSessions.sessions ?? new Map()
 globalForSessions.sessions = sessions
 
 export const sessionStore = {
+  initPendingSession: (code: string, hostUserId: string): Session => {
+    const session: Session = {
+      code,
+      createdAt: Date.now(),
+      status: 'pending',
+      users: [hostUserId],
+      votes: [],
+      finished: false,
+      restaurants: [],
+    }
+    sessions.set(code, session)
+    return session
+  },
+
+  completeSession: (
+    code: string,
+    filters: Filters,
+    restaurants: Restaurant[],
+    location: { lat: number; lng: number }
+  ): Session | null => {
+    const session = sessions.get(code)
+    if (!session) return null
+
+    session.status = 'active'
+    session.filters = filters
+    session.restaurants = restaurants
+    session.location = location
+
+    return session
+  },
+
   createSession: (
     code: string,
     userId: string,
@@ -20,6 +51,7 @@ export const sessionStore = {
     const session: Session = {
       code,
       createdAt: Date.now(),
+      status: 'active',
       users: [userId],
       votes: [],
       finished: false,
@@ -32,7 +64,17 @@ export const sessionStore = {
   },
 
   getSession: (code: string): Session | undefined => {
-    return sessions.get(code)
+    const session = sessions.get(code)
+    if (!session) return undefined
+
+    // Check if session is expired
+    if (sessionStore.isExpired(session)) {
+      sessions.delete(code)
+      console.log(`🧹 Removed expired session: ${code}`)
+      return undefined
+    }
+
+    return session
   },
 
   addUserToSession: (code: string, userId: string): boolean => {
@@ -82,6 +124,7 @@ export const sessionStore = {
     const session = sessions.get(code)
     if (session) {
       session.finished = true
+      session.status = 'finished'
     }
   },
 
@@ -150,4 +193,46 @@ export const sessionStore = {
 
     return null
   },
+
+  // Session expiration: 24 hours
+  SESSION_EXPIRY_MS: 24 * 60 * 60 * 1000,
+
+  isExpired: (session: Session): boolean => {
+    const age = Date.now() - session.createdAt
+    return age > sessionStore.SESSION_EXPIRY_MS
+  },
+
+  cleanupExpiredSessions: (): number => {
+    let cleaned = 0
+    for (const [code, session] of sessions.entries()) {
+      if (sessionStore.isExpired(session)) {
+        sessions.delete(code)
+        cleaned++
+      }
+    }
+    if (cleaned > 0) {
+      console.log(`🧹 Cleaned up ${cleaned} expired session(s)`)
+    }
+    return cleaned
+  },
+
+  getAllSessions: (): Session[] => {
+    return Array.from(sessions.values())
+  },
+
+  getSessionCount: (): number => {
+    return sessions.size
+  },
+}
+
+// Start periodic cleanup (every hour)
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    sessionStore.cleanupExpiredSessions()
+  }, 60 * 60 * 1000) // Run every hour
+
+  // Also run cleanup on startup
+  setTimeout(() => {
+    sessionStore.cleanupExpiredSessions()
+  }, 5000) // Wait 5 seconds after startup
 }
