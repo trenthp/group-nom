@@ -12,6 +12,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     lat: 40.7128,
     lng: -74.006,
     priceLevel: '$$',
+    imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop',
   },
   {
     id: '2',
@@ -23,6 +24,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     lat: 40.7260,
     lng: -73.9897,
     priceLevel: '$$$',
+    imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop',
   },
   {
     id: '3',
@@ -34,6 +36,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     lat: 40.7489,
     lng: -73.9680,
     priceLevel: '$$',
+    imageUrl: 'https://images.unsplash.com/photo-1595295333158-4742f28fbd85?w=400&h=300&fit=crop',
   },
   {
     id: '4',
@@ -45,6 +48,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     lat: 40.7580,
     lng: -73.9855,
     priceLevel: '$$',
+    imageUrl: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&h=300&fit=crop',
   },
   {
     id: '5',
@@ -56,6 +60,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     lat: 40.7245,
     lng: -74.0020,
     priceLevel: '$',
+    imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
   },
   {
     id: '6',
@@ -67,6 +72,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     lat: 40.7505,
     lng: -73.9934,
     priceLevel: '$$',
+    imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop',
   },
   {
     id: '7',
@@ -78,6 +84,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     lat: 40.7614,
     lng: -73.9776,
     priceLevel: '$$',
+    imageUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=400&h=300&fit=crop',
   },
   {
     id: '8',
@@ -89,6 +96,7 @@ const MOCK_RESTAURANTS: Restaurant[] = [
     lat: 40.7489,
     lng: -73.9680,
     priceLevel: '$',
+    imageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400&h=300&fit=crop',
   },
 ]
 

@@ -1,19 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import RestaurantFilters from '@/components/RestaurantFilters'
-import ShareCode from '@/components/ShareCode'
+import Header from '@/components/Header'
 import { getUserLocation } from '@/lib/googleMaps'
 
-export default function SessionSetupPage() {
-  console.log('🎯 SETUP PAGE IS RENDERING')
-
-  const params = useParams()
+export default function SetupPage() {
   const router = useRouter()
-  const sessionCode = params.code as string
-
-  console.log('📍 Session code:', sessionCode)
 
   const [filters, setFilters] = useState<{
     minRating: number
@@ -28,70 +23,90 @@ export default function SessionSetupPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [initialized, setInitialized] = useState(false)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationAddress, setLocationAddress] = useState<string>('')
+  const [locationLoading, setLocationLoading] = useState(false)
+  const [locationError, setLocationError] = useState<string>('')
 
-  // Initialize pending session when component mounts
-  useEffect(() => {
-    const initSession = async () => {
-      try {
-        // Get or create user ID
-        const storedUserId = localStorage.getItem(`user-${sessionCode}`)
-        const userId = storedUserId || `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-        if (!storedUserId) {
-          localStorage.setItem(`user-${sessionCode}`, userId)
-        }
-
-        // Initialize pending session
-        const response = await fetch('/api/session/init', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: sessionCode, userId }),
-        })
-
-        if (response.status === 409) {
-          // Session already exists - that's okay, host might have refreshed
-          console.log('Session already exists')
-          setInitialized(true)
-          return
-        }
-
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Failed to initialize session')
-        }
-
-        console.log('Pending session initialized')
-        setInitialized(true)
-      } catch (err) {
-        console.error('Error initializing session:', err)
-        setError(err instanceof Error ? err.message : 'Failed to initialize session')
-      }
-    }
-
-    initSession()
-  }, [sessionCode])
+  // Store the current location so we can switch back to it
+  const currentLocationRef = useRef<{ coords: { lat: number; lng: number } | null; name: string }>({
+    coords: null,
+    name: '',
+  })
 
   // Auto-fetch current location on mount
   useEffect(() => {
     const fetchCurrentLocation = async () => {
+      setLocationLoading(true)
       const loc = await getUserLocation()
       if (loc) {
         setLocation(loc)
-        setLocationAddress('Using your current location')
+        setLocationAddress('Current Location')
+        currentLocationRef.current = { coords: loc, name: 'Current Location' }
+
+        // Reverse geocode to get city/state
+        try {
+          const response = await fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat: loc.lat, lng: loc.lng }),
+          })
+          if (response.ok) {
+            const data = await response.json()
+            if (data.formattedAddress) {
+              setLocationAddress(data.formattedAddress)
+              currentLocationRef.current.name = data.formattedAddress
+            }
+          }
+        } catch (err) {
+          console.error('Error reverse geocoding:', err)
+        }
       } else {
         // Fallback to NYC
         setLocation({ lat: 40.7128, lng: -74.006 })
-        setLocationAddress('New York, NY (default location)')
+        setLocationAddress('New York, NY')
+        currentLocationRef.current = { coords: { lat: 40.7128, lng: -74.006 }, name: 'New York, NY' }
       }
+      setLocationLoading(false)
     }
     fetchCurrentLocation()
   }, [])
 
-  const handleStartSession = async () => {
-    console.log('🔥 START SESSION BUTTON CLICKED!')
+  const handleUseCurrentLocation = () => {
+    setLocationError('')
+    if (currentLocationRef.current.coords) {
+      setLocation(currentLocationRef.current.coords)
+      setLocationAddress(currentLocationRef.current.name)
+    }
+  }
 
+  const handleCustomLocationSubmit = async (query: string) => {
+    setLocationLoading(true)
+    setLocationError('')
+
+    try {
+      const response = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: query }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.location) {
+        throw new Error(data.error || 'Location not found')
+      }
+
+      setLocation(data.location)
+      setLocationAddress(data.formattedAddress || query)
+    } catch (err) {
+      setLocationError(err instanceof Error ? err.message : 'Could not find that location')
+    } finally {
+      setLocationLoading(false)
+    }
+  }
+
+  const handleStartSession = async () => {
     // Validate location
     if (!location) {
       setError('Please select a location to search for restaurants')
@@ -102,39 +117,28 @@ export default function SessionSetupPage() {
     setError(null)
 
     try {
-      // Get user ID or create one
-      const storedUserId = localStorage.getItem(`user-${sessionCode}`)
-      const userId = storedUserId || `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      if (!storedUserId) {
-        localStorage.setItem(`user-${sessionCode}`, userId)
-      }
-
-      // Create session via API
-      console.log('Creating session:', { code: sessionCode, userId, filters, location })
-
+      // Create session via API - code will be generated server-side
       const response = await fetch('/api/session/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: sessionCode,
-          userId,
           filters,
           location,
         }),
       })
 
-      console.log('Create session response status:', response.status)
-
       if (!response.ok) {
         const data = await response.json()
-        console.error('Create session error:', data)
         throw new Error(data.error || 'Failed to create session')
       }
 
       const result = await response.json()
-      console.log('Session created successfully:', result)
+      const sessionCode = result.session.code
 
-      // Navigate to the actual session
+      // Store user ID for this session
+      localStorage.setItem(`user-${sessionCode}`, result.userId)
+
+      // Navigate to the session
       router.push(`/session/${sessionCode}`)
     } catch (err) {
       console.error('Error starting session:', err)
@@ -149,7 +153,13 @@ export default function SessionSetupPage() {
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
         <div className="bg-white bg-opacity-20 backdrop-blur rounded-3xl p-8 max-w-md w-full text-center">
           <div className="mb-6">
-            <div className="text-6xl mb-4 animate-spin">🍽️</div>
+            <Image
+              src="/logo_groupNom.png"
+              alt="Group Nom"
+              width={80}
+              height={80}
+              className="mx-auto rounded-xl mb-4 animate-spin"
+            />
             <h1 className="text-3xl font-bold text-white mb-2">
               Starting Your Session
             </h1>
@@ -169,7 +179,7 @@ export default function SessionSetupPage() {
             </div>
             <div className="flex items-center justify-center gap-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse delay-300"></div>
-              <p>Creating session code: <span className="font-bold">{sessionCode}</span></p>
+              <p>Creating your session</p>
             </div>
           </div>
 
@@ -182,14 +192,24 @@ export default function SessionSetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Configure Session</h1>
-          <p className="text-orange-100 mb-4">Set your restaurant preferences</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+      <Header />
+      <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Configure Session</h1>
+            <p className="text-orange-100 mb-4">Set your restaurant preferences</p>
+          </div>
 
-        <RestaurantFilters filters={filters} onFiltersChange={setFilters} />
+        <RestaurantFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+          locationName={locationAddress}
+          onCustomLocationSubmit={handleCustomLocationSubmit}
+          onUseCurrentLocation={handleUseCurrentLocation}
+          locationLoading={locationLoading}
+          locationError={locationError}
+        />
 
         {error && (
           <div className="mt-4 bg-red-500 text-white p-4 rounded-lg">
@@ -202,22 +222,13 @@ export default function SessionSetupPage() {
           disabled={loading}
           className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          {loading ? 'Creating Session...' : 'Start Session'}
+          Start Session
         </button>
 
         <div className="mt-6 text-center text-orange-100 text-sm">
           <p>These filters will apply to all participants in this session.</p>
         </div>
-
-        <div className="mt-8">
-          <ShareCode code={sessionCode} />
         </div>
-
-        {locationAddress && (
-          <div className="mt-4 text-white text-sm text-center bg-white bg-opacity-20 py-3 px-4 rounded-lg">
-            📍 {locationAddress}
-          </div>
-        )}
       </div>
     </div>
   )

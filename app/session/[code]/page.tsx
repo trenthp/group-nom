@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { Restaurant } from '@/lib/types'
 import RestaurantCard from '@/components/RestaurantCard'
 import ResultsPage from '@/components/ResultsPage'
-import ShareCode from '@/components/ShareCode'
+import Header from '@/components/Header'
 import WaitingScreen from '@/components/WaitingScreen'
 
 export default function SessionPage() {
@@ -27,7 +28,7 @@ export default function SessionPage() {
       try {
         // Get or create user ID
         const storedUserId = localStorage.getItem(`user-${sessionCode}`)
-        const newUserId = storedUserId || `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        const newUserId = storedUserId || `user-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
         if (!storedUserId) {
           localStorage.setItem(`user-${sessionCode}`, newUserId)
@@ -220,15 +221,20 @@ export default function SessionPage() {
   }
 
   const handleNewSession = () => {
-    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase()
-    window.location.href = `/session/${newCode}/setup`
+    window.location.href = '/setup'
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="text-4xl mb-4">🍽️</div>
+          <Image
+            src="/logo_groupNom.png"
+            alt="Group Nom"
+            width={64}
+            height={64}
+            className="mx-auto rounded-xl mb-4 animate-spin"
+          />
           <p className="text-white text-lg">Loading session...</p>
         </div>
       </div>
@@ -239,6 +245,7 @@ export default function SessionPage() {
   if (sessionStatus === 'pending') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+        <Header sessionCode={sessionCode} />
         <WaitingScreen code={sessionCode} />
       </div>
     )
@@ -274,24 +281,23 @@ export default function SessionPage() {
   const currentRestaurant = restaurants[currentIndex]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
-      {currentRestaurant ? (
-        <div className="w-full max-w-md">
-          <RestaurantCard
-            restaurant={currentRestaurant}
-            onYes={handleYes}
-            onNo={handleNo}
-            progress={`${currentIndex + 1} / ${restaurants.length}`}
-          />
-        </div>
-      ) : (
-        <div className="text-white text-center">
-          <p>No restaurants available</p>
-        </div>
-      )}
-
-      <div className="w-full max-w-md mt-6">
-        <ShareCode code={sessionCode} />
+    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+      <Header sessionCode={sessionCode} />
+      <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+        {currentRestaurant ? (
+          <div className="w-full max-w-md">
+            <RestaurantCard
+              restaurant={currentRestaurant}
+              onYes={handleYes}
+              onNo={handleNo}
+              progress={`${currentIndex + 1} / ${restaurants.length}`}
+            />
+          </div>
+        ) : (
+          <div className="text-white text-center">
+            <p>No restaurants available</p>
+          </div>
+        )}
       </div>
     </div>
   )

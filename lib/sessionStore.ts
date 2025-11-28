@@ -10,37 +10,6 @@ const sessions: Map<string, Session> = globalForSessions.sessions ?? new Map()
 globalForSessions.sessions = sessions
 
 export const sessionStore = {
-  initPendingSession: (code: string, hostUserId: string): Session => {
-    const session: Session = {
-      code,
-      createdAt: Date.now(),
-      status: 'pending',
-      users: [hostUserId],
-      votes: [],
-      finished: false,
-      restaurants: [],
-    }
-    sessions.set(code, session)
-    return session
-  },
-
-  completeSession: (
-    code: string,
-    filters: Filters,
-    restaurants: Restaurant[],
-    location: { lat: number; lng: number }
-  ): Session | null => {
-    const session = sessions.get(code)
-    if (!session) return null
-
-    session.status = 'active'
-    session.filters = filters
-    session.restaurants = restaurants
-    session.location = location
-
-    return session
-  },
-
   createSession: (
     code: string,
     userId: string,

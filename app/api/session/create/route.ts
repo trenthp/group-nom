@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
-import { Filters } from '@/lib/types'
+
+function generateSessionCode(): string {
+  return Math.random().toString(36).substring(2, 8).toUpperCase()
+}
+
+function generateUserId(): string {
+  return `user-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+}
 
 export async function POST(request: NextRequest) {
   try {
     console.log('[API] POST /api/session/create called')
-    const { code, userId, filters, location } = await request.json()
-    console.log('[API] Request data:', { code, userId, filters, location })
+    const { filters, location } = await request.json()
+    console.log('[API] Request data:', { filters, location })
 
     // Validate inputs
-    if (!code || !userId || !filters || !location) {
+    if (!filters || !location) {
       console.error('[API] Missing required fields')
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -17,18 +24,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if session already exists
-    const existingSession = sessionStore.getSession(code)
+    // Generate session code and user ID server-side
+    const code = generateSessionCode()
+    const userId = generateUserId()
 
-    // If session exists and is active, return error
-    if (existingSession && existingSession.status === 'active') {
-      console.log('[API] Session already active:', code)
-      return NextResponse.json(
-        { error: 'Session already exists' },
-        { status: 409 }
-      )
-    }
-
+    console.log('[API] Generated code:', code, 'userId:', userId)
     console.log('[API] Fetching restaurants...')
 
     // Fetch restaurants with filters
@@ -59,34 +59,20 @@ export async function POST(request: NextRequest) {
     const restaurants = data.restaurants || []
     console.log('[API] Fetched', restaurants.length, 'restaurants')
 
-    let session
-
-    // If pending session exists, complete it
-    if (existingSession && existingSession.status === 'pending') {
-      console.log('[API] Completing pending session...')
-      session = sessionStore.completeSession(code, filters, restaurants, location)
-      if (!session) {
-        return NextResponse.json(
-          { error: 'Failed to complete session' },
-          { status: 500 }
-        )
-      }
-      console.log('[API] Pending session completed:', code)
-    } else {
-      // Create new session (fallback for backward compatibility)
-      console.log('[API] Creating new session in store...')
-      session = sessionStore.createSession(
-        code,
-        userId,
-        filters,
-        restaurants,
-        location
-      )
-      console.log('[API] Session created successfully:', code)
-    }
+    // Create session
+    console.log('[API] Creating new session in store...')
+    const session = sessionStore.createSession(
+      code,
+      userId,
+      filters,
+      restaurants,
+      location
+    )
+    console.log('[API] Session created successfully:', code)
 
     return NextResponse.json({
       success: true,
+      userId,
       session: {
         code: session.code,
         createdAt: session.createdAt,

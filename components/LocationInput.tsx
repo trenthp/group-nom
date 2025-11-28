@@ -117,7 +117,7 @@ export default function LocationInput({ onLocationChange }: LocationInputProps) 
             type="text"
             value={locationInput}
             onChange={(e) => setLocationInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleGeocodeAddress()}
+            onKeyDown={(e) => e.key === 'Enter' && handleGeocodeAddress()}
             placeholder="Enter zipcode or address..."
             className="w-full px-4 py-2 rounded-lg bg-white bg-opacity-20 text-white placeholder-white placeholder-opacity-60 border border-white border-opacity-30 focus:outline-none focus:border-opacity-60"
           />

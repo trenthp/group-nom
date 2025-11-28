@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { Restaurant } from '@/lib/types'
+import Header from '@/components/Header'
 
 interface ResultsPageProps {
   sessionCode: string
@@ -234,20 +236,23 @@ export default function ResultsPage({
   // Show waiting state if not everyone finished
   if (!allFinished) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md text-center">
-          <div className="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-8">
-            <div className="text-6xl mb-6 animate-bounce">⏳</div>
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Waiting for others...
-            </h2>
-            <p className="text-orange-100 text-lg">
-              You've finished voting! Waiting for the rest of your group to complete their selections.
-            </p>
-            <div className="mt-6 flex items-center justify-center gap-2">
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-100"></div>
-              <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-200"></div>
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+        <Header sessionCode={sessionCode} />
+        <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+          <div className="w-full max-w-md text-center">
+            <div className="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-8">
+              <div className="text-6xl mb-6 animate-bounce">⏳</div>
+              <h2 className="text-3xl font-bold text-white mb-4">
+                Waiting for others...
+              </h2>
+              <p className="text-orange-100 text-lg">
+                You've finished voting! Waiting for the rest of your group to complete their selections.
+              </p>
+              <div className="mt-6 flex items-center justify-center gap-2">
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-100"></div>
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-200"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -259,7 +264,13 @@ export default function ResultsPage({
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="text-4xl mb-4">🍽️</div>
+          <Image
+            src="/logo_groupNom.png"
+            alt="Group Nom"
+            width={64}
+            height={64}
+            className="mx-auto rounded-xl mb-4 animate-spin"
+          />
           <p className="text-white text-lg">Calculating results...</p>
         </div>
       </div>
@@ -268,27 +279,30 @@ export default function ResultsPage({
 
   if (noResults) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center mb-6">
-            <div className="text-6xl mb-4">😔</div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">
-              No Matches Found
-            </h2>
-            <p className="text-gray-600 mb-2">
-              Looks like nobody found a restaurant they liked!
-            </p>
-            <p className="text-gray-600 mb-6">
-              Try again with different filters or a wider search area.
-            </p>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+        <Header sessionCode={sessionCode} />
+        <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+          <div className="w-full max-w-md">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 text-center mb-6">
+              <div className="text-6xl mb-4">😔</div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                No Matches Found
+              </h2>
+              <p className="text-gray-600 mb-2">
+                Looks like nobody found a restaurant they liked!
+              </p>
+              <p className="text-gray-600 mb-6">
+                Try again with different filters or a wider search area.
+              </p>
+            </div>
 
-          <button
-            onClick={onNewSession}
-            className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-          >
-            🍽️ Start New Session
-          </button>
+            <button
+              onClick={onNewSession}
+              className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+            >
+              Start New Session
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -298,7 +312,13 @@ export default function ResultsPage({
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="text-4xl mb-4">🍽️</div>
+          <Image
+            src="/logo_groupNom.png"
+            alt="Group Nom"
+            width={64}
+            height={64}
+            className="mx-auto rounded-xl mb-4 animate-spin"
+          />
           <p className="text-white text-lg">Calculating results...</p>
         </div>
       </div>
@@ -306,10 +326,12 @@ export default function ResultsPage({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Winner Card */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden mb-8 transform scale-100 bounce-winner">
+    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+      <Header sessionCode={sessionCode} />
+      <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+        <div className="w-full max-w-md">
+          {/* Winner Card */}
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden mb-8 transform scale-100 bounce-winner">
           {/* Image */}
           {winner?.imageUrl ? (
             <div className="h-64 bg-gray-200 relative">
@@ -496,13 +518,14 @@ export default function ResultsPage({
           </div>
         )}
 
-        {/* Actions */}
-        <button
-          onClick={onNewSession}
-          className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-        >
-          🍽️ Start New Session
-        </button>
+          {/* Actions */}
+          <button
+            onClick={onNewSession}
+            className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+          >
+            Start New Session
+          </button>
+        </div>
       </div>
     </div>
   )
