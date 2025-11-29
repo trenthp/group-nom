@@ -96,18 +96,32 @@ h6 {
   animation: bounceThrice 1.5s ease-in-out forwards;
 }
 
-/* Logo spin animation */
+/* Logo spin animation - preserves centering transforms */
 @keyframes spinOnce {
   from {
-    transform: rotate(0deg);
+    transform: translate(-50%, -50%) rotate(0deg);
   }
   to {
-    transform: rotate(360deg);
+    transform: translate(-50%, -50%) rotate(360deg);
   }
 }
 
 .spin-once {
-  animation: spinOnce 0.6s ease-in-out;
+  animation: spinOnce 1.2s ease-in-out;
+}
+
+/* Counter-clockwise spin for circular text */
+@keyframes spinOnceReverse {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.spin-once-reverse {
+  animation: spinOnceReverse 1.2s ease-in-out;
 }
 
 /* Sequential fade-in animation for loading bullets */

@@ -12,7 +12,7 @@ export default function Home() {
   const handleLogoTap = () => {
     if (!isSpinning) {
       setIsSpinning(true)
-      setTimeout(() => setIsSpinning(false), 600)
+      setTimeout(() => setIsSpinning(false), 1200)
     }
   }
 
@@ -35,8 +35,7 @@ export default function Home() {
           <div className="relative w-52 h-52 mx-auto mb-4">
             {/* Rotating circular text path */}
             <svg
-              className="absolute inset-0 w-full h-full"
-              /*className="absolute inset-0 w-full h-full animate-spin-slow"*/
+              className={`absolute inset-0 w-full h-full ${isSpinning ? 'spin-once-reverse' : ''}`}
               viewBox="0 0 200 200"
             >
               <defs>
