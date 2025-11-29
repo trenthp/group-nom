@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
