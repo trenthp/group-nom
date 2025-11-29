@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const restaurants = data.restaurants || []
 
     // Create session
-    const session = sessionStore.createSession(
+    const session = await sessionStore.createSession(
       code,
       userId,
       filters,

@@ -1,22 +1,24 @@
+import { kv } from '@vercel/kv'
 import { Session, Restaurant, Filters } from './types'
 
-// In-memory store - in production, this would be a database
-// Use globalThis to persist across hot reloads in development
-const globalForSessions = globalThis as unknown as {
-  sessions: Map<string, Session> | undefined
+// Session expiration: 24 hours in seconds
+const SESSION_EXPIRY_SECONDS = 24 * 60 * 60
+
+// Key prefix for sessions
+const SESSION_KEY_PREFIX = 'session:'
+
+function getSessionKey(code: string): string {
+  return `${SESSION_KEY_PREFIX}${code}`
 }
 
-const sessions: Map<string, Session> = globalForSessions.sessions ?? new Map()
-globalForSessions.sessions = sessions
-
 export const sessionStore = {
-  createSession: (
+  createSession: async (
     code: string,
     userId: string,
     filters: Filters,
     restaurants: Restaurant[],
     location: { lat: number; lng: number }
-  ): Session => {
+  ): Promise<Session> => {
     const session: Session = {
       code,
       createdAt: Date.now(),
@@ -29,34 +31,34 @@ export const sessionStore = {
       restaurants,
       location,
     }
-    sessions.set(code, session)
+    await kv.set(getSessionKey(code), session, { ex: SESSION_EXPIRY_SECONDS })
     return session
   },
 
-  getSession: (code: string): Session | undefined => {
-    const session = sessions.get(code)
-    if (!session) return undefined
-
-    // Check if session is expired
-    if (sessionStore.isExpired(session)) {
-      sessions.delete(code)
-      return undefined
-    }
-
+  getSession: async (code: string): Promise<Session | null> => {
+    const session = await kv.get<Session>(getSessionKey(code))
     return session
   },
 
-  addUserToSession: (code: string, userId: string): boolean => {
-    const session = sessions.get(code)
+  updateSession: async (code: string, session: Session): Promise<void> => {
+    // Get current TTL to preserve it
+    const ttl = await kv.ttl(getSessionKey(code))
+    const expiry = ttl > 0 ? ttl : SESSION_EXPIRY_SECONDS
+    await kv.set(getSessionKey(code), session, { ex: expiry })
+  },
+
+  addUserToSession: async (code: string, userId: string): Promise<boolean> => {
+    const session = await sessionStore.getSession(code)
     if (!session) return false
     if (!session.users.includes(userId)) {
       session.users.push(userId)
+      await sessionStore.updateSession(code, session)
     }
     return true
   },
 
-  addVote: (code: string, userId: string, restaurantId: string, liked: boolean): void => {
-    const session = sessions.get(code)
+  addVote: async (code: string, userId: string, restaurantId: string, liked: boolean): Promise<void> => {
+    const session = await sessionStore.getSession(code)
     if (!session) return
 
     // Remove existing vote for this user/restaurant combination
@@ -66,53 +68,61 @@ export const sessionStore = {
 
     // Add new vote
     session.votes.push({ userId, restaurantId, liked })
+    await sessionStore.updateSession(code, session)
   },
 
-  getUserVoteCount: (code: string, userId: string): number => {
-    const session = sessions.get(code)
+  getUserVoteCount: async (code: string, userId: string): Promise<number> => {
+    const session = await sessionStore.getSession(code)
     if (!session) return 0
     return session.votes.filter(v => v.userId === userId).length
   },
 
-  hasUserFinishedVoting: (code: string, userId: string): boolean => {
-    const session = sessions.get(code)
+  hasUserFinishedVoting: async (code: string, userId: string): Promise<boolean> => {
+    const session = await sessionStore.getSession(code)
     if (!session) return false
     const userVotes = session.votes.filter(v => v.userId === userId)
     return userVotes.length >= session.restaurants.length
   },
 
-  allUsersFinished: (code: string): boolean => {
-    const session = sessions.get(code)
+  allUsersFinished: async (code: string): Promise<boolean> => {
+    const session = await sessionStore.getSession(code)
     if (!session || session.users.length === 0) return false
-    return session.users.every(userId =>
-      sessionStore.hasUserFinishedVoting(code, userId)
-    )
+
+    for (const userId of session.users) {
+      const userVotes = session.votes.filter(v => v.userId === userId)
+      if (userVotes.length < session.restaurants.length) {
+        return false
+      }
+    }
+    return true
   },
 
-  finishSession: (code: string): void => {
-    const session = sessions.get(code)
+  finishSession: async (code: string): Promise<void> => {
+    const session = await sessionStore.getSession(code)
     if (session) {
       session.finished = true
       session.status = 'finished'
+      await sessionStore.updateSession(code, session)
     }
   },
 
-  setReconfiguring: (code: string): boolean => {
-    const session = sessions.get(code)
+  setReconfiguring: async (code: string): Promise<boolean> => {
+    const session = await sessionStore.getSession(code)
     if (session) {
       session.status = 'reconfiguring'
+      await sessionStore.updateSession(code, session)
       return true
     }
     return false
   },
 
-  reconfigureSession: (
+  reconfigureSession: async (
     code: string,
     filters: Filters,
     restaurants: Restaurant[],
     location: { lat: number; lng: number }
-  ): Session | null => {
-    const session = sessions.get(code)
+  ): Promise<Session | null> => {
+    const session = await sessionStore.getSession(code)
     if (!session) return null
 
     // Reset session state but keep users
@@ -123,11 +133,12 @@ export const sessionStore = {
     session.restaurants = restaurants
     session.location = location
 
+    await sessionStore.updateSession(code, session)
     return session
   },
 
-  calculateResults: (code: string) => {
-    const session = sessions.get(code)
+  calculateResults: async (code: string) => {
+    const session = await sessionStore.getSession(code)
     if (!session) return null
 
     const aggregated = new Map<
@@ -192,42 +203,7 @@ export const sessionStore = {
     return null
   },
 
-  // Session expiration: 24 hours
-  SESSION_EXPIRY_MS: 24 * 60 * 60 * 1000,
-
-  isExpired: (session: Session): boolean => {
-    const age = Date.now() - session.createdAt
-    return age > sessionStore.SESSION_EXPIRY_MS
+  deleteSession: async (code: string): Promise<void> => {
+    await kv.del(getSessionKey(code))
   },
-
-  cleanupExpiredSessions: (): number => {
-    let cleaned = 0
-    for (const [code, session] of sessions.entries()) {
-      if (sessionStore.isExpired(session)) {
-        sessions.delete(code)
-        cleaned++
-      }
-    }
-    return cleaned
-  },
-
-  getAllSessions: (): Session[] => {
-    return Array.from(sessions.values())
-  },
-
-  getSessionCount: (): number => {
-    return sessions.size
-  },
-}
-
-// Start periodic cleanup (every hour)
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    sessionStore.cleanupExpiredSessions()
-  }, 60 * 60 * 1000) // Run every hour
-
-  // Also run cleanup on startup
-  setTimeout(() => {
-    sessionStore.cleanupExpiredSessions()
-  }, 5000) // Wait 5 seconds after startup
 }

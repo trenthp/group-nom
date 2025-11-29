@@ -10,7 +10,7 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
 
-    const session = sessionStore.getSession(code)
+    const session = await sessionStore.getSession(code)
 
     if (!session) {
       return NextResponse.json(
@@ -22,7 +22,7 @@ export async function GET(
     // Add user to session if userId provided and session is not finished
     // If session is finished, user can only view results (read-only)
     if (userId && session.status !== 'finished') {
-      sessionStore.addUserToSession(code, userId)
+      await sessionStore.addUserToSession(code, userId)
     }
 
     return NextResponse.json({

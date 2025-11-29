@@ -16,7 +16,7 @@ export async function POST(
       )
     }
 
-    const session = sessionStore.getSession(code)
+    const session = await sessionStore.getSession(code)
 
     if (!session) {
       return NextResponse.json(
@@ -60,7 +60,7 @@ export async function POST(
     const restaurants = data.restaurants || []
 
     // Reconfigure the session
-    const updatedSession = sessionStore.reconfigureSession(
+    const updatedSession = await sessionStore.reconfigureSession(
       code,
       filters,
       restaurants,

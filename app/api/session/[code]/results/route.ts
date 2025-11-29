@@ -8,7 +8,7 @@ export async function GET(
   try {
     const { code } = await params
 
-    const session = sessionStore.getSession(code)
+    const session = await sessionStore.getSession(code)
 
     if (!session) {
       return NextResponse.json(
@@ -17,7 +17,7 @@ export async function GET(
       )
     }
 
-    const results = sessionStore.calculateResults(code)
+    const results = await sessionStore.calculateResults(code)
 
     if (!results) {
       return NextResponse.json({

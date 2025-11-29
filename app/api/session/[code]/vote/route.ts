@@ -16,7 +16,7 @@ export async function POST(
       )
     }
 
-    const session = sessionStore.getSession(code)
+    const session = await sessionStore.getSession(code)
     if (!session) {
       return NextResponse.json(
         { error: 'Session not found' },
@@ -33,15 +33,15 @@ export async function POST(
     }
 
     // Add vote
-    sessionStore.addVote(code, userId, restaurantId, liked)
+    await sessionStore.addVote(code, userId, restaurantId, liked)
 
     // Check if user finished voting
-    const userFinished = sessionStore.hasUserFinishedVoting(code, userId)
-    const allFinished = sessionStore.allUsersFinished(code)
+    const userFinished = await sessionStore.hasUserFinishedVoting(code, userId)
+    const allFinished = await sessionStore.allUsersFinished(code)
 
     // Mark session as finished when all users complete voting
     if (allFinished) {
-      sessionStore.finishSession(code)
+      await sessionStore.finishSession(code)
     }
 
     return NextResponse.json({

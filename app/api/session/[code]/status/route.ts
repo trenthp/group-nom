@@ -10,7 +10,7 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
 
-    const session = sessionStore.getSession(code)
+    const session = await sessionStore.getSession(code)
 
     if (!session) {
       return NextResponse.json(
@@ -19,9 +19,9 @@ export async function GET(
       )
     }
 
-    const allFinished = sessionStore.allUsersFinished(code)
+    const allFinished = await sessionStore.allUsersFinished(code)
     const userFinished = userId
-      ? sessionStore.hasUserFinishedVoting(code, userId)
+      ? await sessionStore.hasUserFinishedVoting(code, userId)
       : false
 
     return NextResponse.json({
