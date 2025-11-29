@@ -139,3 +139,17 @@ h6 {
   animation: fadeInUp 0.8s ease-out forwards;
   animation-delay: 2.5s;
 }
+
+/* Slow spin for circular text around logo */
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 20s linear infinite;
+}

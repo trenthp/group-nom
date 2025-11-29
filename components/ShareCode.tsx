@@ -27,7 +27,7 @@ export default function ShareCode({ code }: ShareCodeProps) {
 
   return (
     <div className="bg-white bg-opacity-20 backdrop-blur rounded-xl p-4 text-white text-center">
-      <p className="text-sm opacity-90 mb-2">Session Code</p>
+      <p className="text-sm opacity-90 mb-2">Group Code</p>
       <div className="flex items-center justify-center gap-3">
         <code className="text-3xl font-mono font-bold tracking-wider">{code}</code>
         <div className="flex gap-2">

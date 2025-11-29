@@ -379,7 +379,7 @@ export default function ResultsPage({
                 onClick={onLeaveSession}
                 className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
               >
-                Leave Session
+                Leave Group
               </button>
             )}
 
@@ -612,14 +612,14 @@ export default function ResultsPage({
               onClick={onNewSession}
               className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
             >
-              Start New Session
+              Start New Group
             </button>
           ) : (
             <button
               onClick={onLeaveSession}
               className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
             >
-              Leave Session
+              Leave Group
             </button>
           )}
 

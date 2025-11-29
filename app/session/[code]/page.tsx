@@ -42,7 +42,7 @@ export default function SessionPage() {
 
         if (!response.ok) {
           if (response.status === 404) {
-            setError('Session not found. The host needs to complete the setup first.')
+            setError('Group not found. The host needs to complete the setup first.')
             setLoading(false)
             return
           }
@@ -73,7 +73,7 @@ export default function SessionPage() {
           setLoading(false)
         }
       } catch {
-        setError('Failed to load session. Please try again.')
+        setError('Failed to load group. Please try again.')
         setLoading(false)
       }
     }
@@ -241,7 +241,7 @@ export default function SessionPage() {
             height={64}
             className="mx-auto rounded-xl mb-4 animate-spin"
           />
-          <p className="text-white text-lg">Loading session...</p>
+          <p className="text-white text-lg">Loading group...</p>
         </div>
       </div>
     )

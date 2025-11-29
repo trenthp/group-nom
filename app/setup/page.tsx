@@ -186,7 +186,7 @@ function SetupPageContent() {
               className="mx-auto rounded-xl mb-4 animate-spin"
             />
             <h1 className="text-3xl font-bold text-white mb-2">
-              Starting Your Session
+              Starting Your Group
             </h1>
             <p className="text-white text-opacity-90 mb-4">
               Finding your type...
@@ -200,11 +200,11 @@ function SetupPageContent() {
             </div>
             <div className="flex items-center justify-center gap-2 fade-in-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <p>Filtering out the bad ones...</p>
+              <p>Curating the good ones…</p>
             </div>
             <div className="flex items-center justify-center gap-2 fade-in-3">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <p>Setting you up...</p>
+              <p>Setting the vibe...</p>
             </div>
           </div>
 
@@ -223,7 +223,7 @@ function SetupPageContent() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">
-              {reconfigureCode ? 'Try Again' : 'Configure Session'}
+              {reconfigureCode ? 'Try Again' : 'Configure Group'}
             </h1>
             <p className="text-orange-100 mb-2">
               {reconfigureCode ? 'Change the vibe' : 'Set the vibe'}
@@ -233,31 +233,31 @@ function SetupPageContent() {
             </p>
           </div>
 
-        <RestaurantFilters
-          filters={filters}
-          onFiltersChange={setFilters}
-          locationName={locationAddress}
-          onCustomLocationSubmit={handleCustomLocationSubmit}
-          onUseCurrentLocation={handleUseCurrentLocation}
-          locationLoading={locationLoading}
-          locationError={locationError}
-        />
+          <RestaurantFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            locationName={locationAddress}
+            onCustomLocationSubmit={handleCustomLocationSubmit}
+            onUseCurrentLocation={handleUseCurrentLocation}
+            locationLoading={locationLoading}
+            locationError={locationError}
+          />
 
-        {error && (
-          <div className="mt-4 bg-red-500 text-white p-4 rounded-lg">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="mt-4 bg-red-500 text-white p-4 rounded-lg">
+              {error}
+            </div>
+          )}
 
-        <button
-          onClick={handleStartSession}
-          disabled={loading}
-          className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-        >
-          {reconfigureCode ? 'Try Again' : 'Start Session'}
-        </button>
+          <button
+            onClick={handleStartSession}
+            disabled={loading}
+            className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          >
+            {reconfigureCode ? 'Try Again' : 'Start Group'}
+          </button>
 
-        <Footer />
+          <Footer />
         </div>
       </div>
     </div>

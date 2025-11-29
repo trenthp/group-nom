@@ -45,8 +45,8 @@ export default function SessionCodeOverlay({ code, isOpen, onClose }: SessionCod
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join my Group Nom session!',
-          text: `Join my restaurant voting session with code: ${code}`,
+          title: 'Join my Group Nom group!',
+          text: `Join my restaurant voting group with code: ${code}`,
           url,
         })
       } catch (err) {
@@ -80,12 +80,12 @@ export default function SessionCodeOverlay({ code, isOpen, onClose }: SessionCod
 
         {/* Content */}
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Share Session</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Share Group</h2>
           <p className="text-gray-600 text-sm mb-6">Invite friends to vote on restaurants together</p>
 
           {/* Session Code Display */}
           <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-xl p-4 mb-6">
-            <p className="text-white text-sm opacity-90 mb-1">Session Code</p>
+            <p className="text-white text-sm opacity-90 mb-1">Group Code</p>
             <code className="text-white text-3xl font-mono font-bold tracking-widest">{code}</code>
           </div>
 

@@ -25,7 +25,7 @@ export default function WaitingScreen({ code }: WaitingScreenProps) {
         </div>
 
         <div className="space-y-2 text-sm text-white text-opacity-80">
-          <p>✓ You've joined the session</p>
+          <p>✓ You've joined the group</p>
           <p>✓ Waiting for host to finish setup</p>
           <p className="animate-pulse">⟳ Checking status...</p>
         </div>
