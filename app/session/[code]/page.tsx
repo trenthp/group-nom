@@ -15,12 +15,13 @@ export default function SessionPage() {
   const sessionCode = params.code as string
 
   const [userId, setUserId] = useState<string>('')
+  const [hostId, setHostId] = useState<string>('')
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showingResults, setShowingResults] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [sessionStatus, setSessionStatus] = useState<'pending' | 'active' | 'finished' | null>(null)
+  const [sessionStatus, setSessionStatus] = useState<'pending' | 'active' | 'finished' | 'reconfiguring' | null>(null)
 
   // Initialize user and fetch session
   useEffect(() => {
@@ -37,15 +38,10 @@ export default function SessionPage() {
         setUserId(newUserId)
 
         // Fetch session data from API
-        console.log('Fetching session:', sessionCode, 'for user:', newUserId)
-
         const response = await fetch(`/api/session/${sessionCode}?userId=${newUserId}`)
-
-        console.log('Fetch session response status:', response.status)
 
         if (!response.ok) {
           if (response.status === 404) {
-            console.error('Session not found:', sessionCode)
             setError('Session not found. The host needs to complete the setup first.')
             setLoading(false)
             return
@@ -54,7 +50,11 @@ export default function SessionPage() {
         }
 
         const data = await response.json()
-        console.log('Session data loaded:', data)
+
+        // Set hostId from session data
+        if (data.session.hostId) {
+          setHostId(data.session.hostId)
+        }
 
         // Check session status (default to 'active' for backward compatibility)
         const status = data.session.status || 'active'
@@ -65,17 +65,14 @@ export default function SessionPage() {
           setLoading(false)
         } else if (status === 'pending') {
           // Session is pending, keep loading state until it becomes active
-          console.log('Session is pending, will poll for updates')
           setLoading(false)
         } else if (status === 'finished') {
           // Session is finished, show results directly
-          console.log('Session is finished, showing results')
           setRestaurants(data.session.restaurants)
           setShowingResults(true)
           setLoading(false)
         }
-      } catch (err) {
-        console.error('Error initializing session:', err)
+      } catch {
         setError('Failed to load session. Please try again.')
         setLoading(false)
       }
@@ -93,17 +90,15 @@ export default function SessionPage() {
         const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
         if (response.ok) {
           const data = await response.json()
-          console.log('Polling session status:', data.session.status)
 
           if (data.session.status === 'active') {
-            // Session is now active, reload the page to show restaurants
-            console.log('Session is now active!')
+            // Session is now active, show restaurants
             setSessionStatus('active')
             setRestaurants(data.session.restaurants)
           }
         }
-      } catch (err) {
-        console.error('Error polling session status:', err)
+      } catch {
+        // Silent retry on error
       }
     }
 
@@ -125,13 +120,12 @@ export default function SessionPage() {
 
           // If session became finished, show results
           if (data.session.status === 'finished') {
-            console.log('Session has finished, showing results')
             setSessionStatus('finished')
             setShowingResults(true)
           }
         }
-      } catch (err) {
-        console.error('Error polling for finished status:', err)
+      } catch {
+        // Silent retry on error
       }
     }
 
@@ -141,31 +135,6 @@ export default function SessionPage() {
     return () => clearInterval(interval)
   }, [sessionStatus, sessionCode, userId, showingResults])
 
-  // Poll for session status when showing results
-  useEffect(() => {
-    if (!showingResults || !userId) return
-
-    const pollStatus = async () => {
-      try {
-        const response = await fetch(`/api/session/${sessionCode}/status?userId=${userId}`)
-        if (response.ok) {
-          const data = await response.json()
-          // Keep polling - results page will handle showing matches
-          console.log('Session status:', data)
-        }
-      } catch (err) {
-        console.error('Error polling status:', err)
-      }
-    }
-
-    // Poll immediately
-    pollStatus()
-
-    // Poll every 3 seconds
-    const interval = setInterval(pollStatus, 3000)
-
-    return () => clearInterval(interval)
-  }, [showingResults, sessionCode, userId])
 
   const handleVote = useCallback(
     async (restaurantId: string, liked: boolean) => {
@@ -190,13 +159,11 @@ export default function SessionPage() {
           // User finished voting
           // If all users finished (e.g., single user or everyone done), mark session as finished
           if (data.allFinished) {
-            console.log('All users finished! Marking session as finished.')
             setSessionStatus('finished')
           }
           setShowingResults(true)
         }
-      } catch (err) {
-        console.error('Error saving vote:', err)
+      } catch {
         // Still move to next restaurant even if vote fails
         if (currentIndex < restaurants.length - 1) {
           setCurrentIndex(currentIndex + 1)
@@ -224,12 +191,51 @@ export default function SessionPage() {
     window.location.href = '/setup'
   }
 
+  const handleReconfigure = async () => {
+    // Set session to reconfiguring state so other users see waiting screen
+    try {
+      await fetch(`/api/session/${sessionCode}/set-reconfiguring`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+    } catch {
+      // Continue even if this fails
+    }
+    window.location.href = `/setup?reconfigure=${sessionCode}`
+  }
+
+  const handleLeaveSession = () => {
+    window.location.href = '/'
+  }
+
+  const handleSessionReconfigured = useCallback(async () => {
+    // Refetch session data to get new restaurants
+    try {
+      const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setRestaurants(data.session.restaurants)
+        setCurrentIndex(0)
+        setShowingResults(false)
+        setSessionStatus('active')
+      }
+    } catch {
+      // On error, just reset to voting view with existing restaurants
+      setCurrentIndex(0)
+      setShowingResults(false)
+      setSessionStatus('active')
+    }
+  }, [sessionCode, userId])
+
+  const isHost = userId === hostId
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
         <div className="text-center">
           <Image
-            src="/logo_groupNom.png"
+            src="/logo_groupNom.svg"
             alt="Group Nom"
             width={64}
             height={64}
@@ -273,7 +279,11 @@ export default function SessionPage() {
       <ResultsPage
         sessionCode={sessionCode}
         restaurants={restaurants}
+        isHost={isHost}
         onNewSession={handleNewSession}
+        onReconfigure={handleReconfigure}
+        onLeaveSession={handleLeaveSession}
+        onSessionReconfigured={handleSessionReconfigured}
       />
     )
   }

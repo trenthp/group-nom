@@ -21,6 +21,7 @@ export const sessionStore = {
       code,
       createdAt: Date.now(),
       status: 'active',
+      hostId: userId,
       users: [userId],
       votes: [],
       finished: false,
@@ -39,7 +40,6 @@ export const sessionStore = {
     // Check if session is expired
     if (sessionStore.isExpired(session)) {
       sessions.delete(code)
-      console.log(`🧹 Removed expired session: ${code}`)
       return undefined
     }
 
@@ -95,6 +95,35 @@ export const sessionStore = {
       session.finished = true
       session.status = 'finished'
     }
+  },
+
+  setReconfiguring: (code: string): boolean => {
+    const session = sessions.get(code)
+    if (session) {
+      session.status = 'reconfiguring'
+      return true
+    }
+    return false
+  },
+
+  reconfigureSession: (
+    code: string,
+    filters: Filters,
+    restaurants: Restaurant[],
+    location: { lat: number; lng: number }
+  ): Session | null => {
+    const session = sessions.get(code)
+    if (!session) return null
+
+    // Reset session state but keep users
+    session.status = 'active'
+    session.votes = []
+    session.finished = false
+    session.filters = filters
+    session.restaurants = restaurants
+    session.location = location
+
+    return session
   },
 
   calculateResults: (code: string) => {
@@ -178,9 +207,6 @@ export const sessionStore = {
         sessions.delete(code)
         cleaned++
       }
-    }
-    if (cleaned > 0) {
-      console.log(`🧹 Cleaned up ${cleaned} expired session(s)`)
     }
     return cleaned
   },

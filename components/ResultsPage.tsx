@@ -4,11 +4,16 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { Restaurant } from '@/lib/types'
 import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 
 interface ResultsPageProps {
   sessionCode: string
   restaurants: Restaurant[]
+  isHost: boolean
   onNewSession: () => void
+  onReconfigure: () => void
+  onLeaveSession: () => void
+  onSessionReconfigured: () => void
 }
 
 interface VoteCount {
@@ -21,8 +26,12 @@ interface VoteCount {
 
 export default function ResultsPage({
   sessionCode,
-  restaurants,
+  restaurants: _restaurants,
+  isHost,
   onNewSession,
+  onReconfigure,
+  onLeaveSession,
+  onSessionReconfigured,
 }: ResultsPageProps) {
   const [winner, setWinner] = useState<Restaurant | null>(null)
   const [voteDetails, setVoteDetails] = useState<VoteCount[]>([])
@@ -32,6 +41,7 @@ export default function ResultsPage({
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
   const [showVoteBreakdown, setShowVoteBreakdown] = useState(false)
   const [noResults, setNoResults] = useState(false)
+  const [isReconfiguring, setIsReconfiguring] = useState(false)
 
   // Fetch results from API
   const fetchResults = async () => {
@@ -39,7 +49,6 @@ export default function ResultsPage({
       const response = await fetch(`/api/session/${sessionCode}/results`)
 
       if (!response.ok) {
-        console.error('Failed to fetch results')
         setLoading(false)
         return
       }
@@ -53,8 +62,11 @@ export default function ResultsPage({
         return
       }
 
+      // Reset noResults in case a previous fetch set it (e.g., before all users finished)
+      setNoResults(false)
+
       if (data.results) {
-        const { type, restaurant, allVotes, yesCount, userCount } = data.results
+        const { type, restaurant: _restaurant, allVotes, yesCount, userCount } = data.results
 
         // Set result type
         if (type === 'full-agreement') {
@@ -105,8 +117,7 @@ export default function ResultsPage({
       }
 
       setLoading(false)
-    } catch (err) {
-      console.error('Error fetching results:', err)
+    } catch {
       setLoading(false)
     }
   }
@@ -158,7 +169,6 @@ export default function ResultsPage({
 
           // If just became finished, refetch results with updated votes
           if (data.allFinished && !wasFinished) {
-            console.log('All users finished voting! Refetching results...')
             await fetchResults()
           }
 
@@ -167,8 +177,7 @@ export default function ResultsPage({
             interval = setTimeout(checkAndPollStatus, 3000)
           }
         }
-      } catch (err) {
-        console.error('Error polling status:', err)
+      } catch {
         // Retry on error
         interval = setTimeout(checkAndPollStatus, 3000)
       }
@@ -182,12 +191,47 @@ export default function ResultsPage({
     }
   }, [sessionCode, allFinished])
 
+  // Poll for reconfiguring status (non-host users)
+  useEffect(() => {
+    if (isHost) return // Host doesn't need to poll - they're doing the reconfiguring
+
+    let interval: NodeJS.Timeout
+
+    const checkForReconfigure = async () => {
+      try {
+        const response = await fetch(`/api/session/${sessionCode}/status`)
+        if (response.ok) {
+          const data = await response.json()
+
+          if (data.status === 'reconfiguring') {
+            setIsReconfiguring(true)
+          } else if (data.status === 'active' && isReconfiguring) {
+            // Session was reconfigured and is now active again
+            setIsReconfiguring(false)
+            onSessionReconfigured()
+            return // Stop polling
+          }
+        }
+      } catch {
+        // Silent retry
+      }
+
+      interval = setTimeout(checkForReconfigure, 2000)
+    }
+
+    checkForReconfigure()
+
+    return () => {
+      if (interval) clearTimeout(interval)
+    }
+  }, [sessionCode, isHost, isReconfiguring, onSessionReconfigured])
+
   const resultMessage =
     resultType === 'unanimous'
       ? "Everyone agrees! 🎉"
       : resultType === 'majority'
         ? "Majority match! 🥳"
-        : "Best match found! 👌"
+        : "It's a match! 👌"
 
   // Get winning matches only (full agreement or tied for highest votes)
   const matchesWithVotes = voteDetails.filter(v => Object.keys(v.votes).length > 0)
@@ -233,6 +277,33 @@ export default function ResultsPage({
     }
   }
 
+  // Show waiting state if host is reconfiguring the session
+  if (isReconfiguring) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+        <Header sessionCode={sessionCode} />
+        <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+          <div className="w-full max-w-md text-center">
+            <div className="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-8">
+              <div className="text-6xl mb-6 animate-bounce">🔄</div>
+              <h2 className="text-3xl font-bold text-white mb-4">
+                Host is changing the vibe...
+              </h2>
+              <p className="text-orange-100 text-lg">
+                New options incoming. Stay hungry.
+              </p>
+              <div className="mt-6 flex items-center justify-center gap-2">
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-100"></div>
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-200"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Show waiting state if not everyone finished
   if (!allFinished) {
     return (
@@ -243,10 +314,10 @@ export default function ResultsPage({
             <div className="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-8">
               <div className="text-6xl mb-6 animate-bounce">⏳</div>
               <h2 className="text-3xl font-bold text-white mb-4">
-                Waiting for others...
+                Waiting on your friends...
               </h2>
               <p className="text-orange-100 text-lg">
-                You've finished voting! Waiting for the rest of your group to complete their selections.
+                You've made your choices. Now we wait.
               </p>
               <div className="mt-6 flex items-center justify-center gap-2">
                 <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
@@ -265,7 +336,7 @@ export default function ResultsPage({
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
         <div className="text-center">
           <Image
-            src="/logo_groupNom.png"
+            src="/logo_groupNom.svg"
             alt="Group Nom"
             width={64}
             height={64}
@@ -289,19 +360,30 @@ export default function ResultsPage({
                 No Matches Found
               </h2>
               <p className="text-gray-600 mb-2">
-                Looks like nobody found a restaurant they liked!
+                Looks like the spark wasn't there.
               </p>
               <p className="text-gray-600 mb-6">
-                Try again with different filters or a wider search area.
+                {isHost ? "Try again. Maybe lower your standards?" : "Waiting on the host to try again."}
               </p>
             </div>
 
-            <button
-              onClick={onNewSession}
-              className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-            >
-              Start New Session
-            </button>
+            {isHost ? (
+              <button
+                onClick={onReconfigure}
+                className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+              >
+                Try Different Settings
+              </button>
+            ) : (
+              <button
+                onClick={onLeaveSession}
+                className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+              >
+                Leave Session
+              </button>
+            )}
+
+            <Footer />
           </div>
         </div>
       </div>
@@ -313,7 +395,7 @@ export default function ResultsPage({
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
         <div className="text-center">
           <Image
-            src="/logo_groupNom.png"
+            src="/logo_groupNom.svg"
             alt="Group Nom"
             width={64}
             height={64}
@@ -356,22 +438,26 @@ export default function ResultsPage({
               {winner?.name}
             </h2>
 
-            <p className="text-gray-600 mb-4">{winner?.address}</p>
+            {winner?.address && (
+              <p className="text-gray-600 mb-4">{winner.address}</p>
+            )}
 
             <div className="bg-green-100 text-green-800 px-4 py-3 rounded-lg mb-6 font-bold">
               {resultMessage}
             </div>
 
             <div className="space-y-3 mb-6">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">Rating</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-yellow-400">⭐</span>
-                  <span className="font-bold text-gray-800">
-                    {winner?.rating} ({winner?.reviewCount} reviews)
-                  </span>
+              {winner?.rating && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-700">Rating</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-400">⭐</span>
+                    <span className="font-bold text-gray-800">
+                      {winner.rating} ({winner.reviewCount} reviews)
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {winner?.priceLevel && (
                 <div className="flex items-center justify-between">
@@ -382,12 +468,14 @@ export default function ResultsPage({
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">Cuisines</span>
-                <span className="font-semibold text-gray-800">
-                  {winner?.cuisines.join(', ')}
-                </span>
-              </div>
+              {winner?.cuisines && winner.cuisines.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-700">Cuisines</span>
+                  <span className="font-semibold text-gray-800">
+                    {winner.cuisines.join(', ')}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Primary Actions */}
@@ -519,12 +607,23 @@ export default function ResultsPage({
         )}
 
           {/* Actions */}
-          <button
-            onClick={onNewSession}
-            className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-          >
-            Start New Session
-          </button>
+          {isHost ? (
+            <button
+              onClick={onNewSession}
+              className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+            >
+              Start New Session
+            </button>
+          ) : (
+            <button
+              onClick={onLeaveSession}
+              className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+            >
+              Leave Session
+            </button>
+          )}
+
+          <Footer />
         </div>
       </div>
     </div>

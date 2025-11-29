@@ -78,8 +78,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`Fetched ${allResults.length} total restaurants before filtering`)
-
     // Transform Google Places results to our Restaurant type
     let results = allResults
 
@@ -103,8 +101,6 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log(`${results.length} restaurants after filtering`)
-
     // Use Fisher-Yates shuffle for true randomization
     const shuffled = fisherYatesShuffle(results)
 
@@ -123,10 +119,10 @@ export async function POST(request: NextRequest) {
           address: place.vicinity || 'Address not available',
           rating: place.rating || 0,
           reviewCount: place.user_ratings_total || 0,
-          cuisines: place.types?.filter(t =>
+          cuisines: place.types?.filter((t: string) =>
             !['restaurant', 'food', 'point_of_interest', 'establishment'].includes(t)
-          ).map(t =>
-            t.split('_').map(word =>
+          ).map((t: string) =>
+            t.split('_').map((word: string) =>
               word.charAt(0).toUpperCase() + word.slice(1)
             ).join(' ')
           ) || ['Restaurant'],

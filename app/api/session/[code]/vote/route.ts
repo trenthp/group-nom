@@ -39,12 +39,8 @@ export async function POST(
     const userFinished = sessionStore.hasUserFinishedVoting(code, userId)
     const allFinished = sessionStore.allUsersFinished(code)
 
-    // Debug logging
-    console.log(`[VOTE] ${code}: userId=${userId}, userFinished=${userFinished}, allFinished=${allFinished}, users=${session.users.length}, votes=${sessionStore.getUserVoteCount(code, userId)}/${session.restaurants.length}`)
-
     // Mark session as finished when all users complete voting
-    if (allFinished && session.status !== 'finished') {
-      console.log(`[VOTE] Marking session ${code} as finished`)
+    if (allFinished) {
       sessionStore.finishSession(code)
     }
 

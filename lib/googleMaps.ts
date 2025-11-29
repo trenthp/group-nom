@@ -112,8 +112,6 @@ export async function fetchNearbyRestaurants(
     distance: number
   }
 ): Promise<Restaurant[]> {
-  // TODO: Replace with actual Google Maps API call
-  // For now, return mock restaurants shuffled
   try {
     const response = await fetch('/api/restaurants/nearby', {
       method: 'POST',
@@ -122,16 +120,12 @@ export async function fetchNearbyRestaurants(
     })
 
     if (!response.ok) {
-      console.error('Failed to fetch restaurants')
       return getRandomRestaurants(limit)
     }
 
     const data = await response.json()
-    const restaurants = data.restaurants || getRandomRestaurants(limit)
-    console.log(`Fetched ${restaurants.length} restaurants (using mock data: ${data.usingMockData})`)
-    return restaurants
-  } catch (error) {
-    console.error('Error fetching restaurants:', error)
+    return data.restaurants || getRandomRestaurants(limit)
+  } catch {
     return getRandomRestaurants(limit)
   }
 }

@@ -11,13 +11,10 @@ function generateUserId(): string {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[API] POST /api/session/create called')
     const { filters, location } = await request.json()
-    console.log('[API] Request data:', { filters, location })
 
     // Validate inputs
     if (!filters || !location) {
-      console.error('[API] Missing required fields')
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -27,9 +24,6 @@ export async function POST(request: NextRequest) {
     // Generate session code and user ID server-side
     const code = generateSessionCode()
     const userId = generateUserId()
-
-    console.log('[API] Generated code:', code, 'userId:', userId)
-    console.log('[API] Fetching restaurants...')
 
     // Fetch restaurants with filters
     const response = await fetch(
@@ -48,7 +42,6 @@ export async function POST(request: NextRequest) {
     )
 
     if (!response.ok) {
-      console.error('[API] Failed to fetch restaurants, status:', response.status)
       return NextResponse.json(
         { error: 'Failed to fetch restaurants' },
         { status: 500 }
@@ -57,10 +50,8 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json()
     const restaurants = data.restaurants || []
-    console.log('[API] Fetched', restaurants.length, 'restaurants')
 
     // Create session
-    console.log('[API] Creating new session in store...')
     const session = sessionStore.createSession(
       code,
       userId,
@@ -68,7 +59,6 @@ export async function POST(request: NextRequest) {
       restaurants,
       location
     )
-    console.log('[API] Session created successfully:', code)
 
     return NextResponse.json({
       success: true,

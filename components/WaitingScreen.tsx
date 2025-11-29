@@ -13,10 +13,10 @@ export default function WaitingScreen({ code }: WaitingScreenProps) {
         <div className="mb-6">
           <div className="text-6xl mb-4 animate-bounce">⏳</div>
           <h1 className="text-3xl font-bold text-white mb-2">
-            Session Starting Soon
+            Waiting in the lobby...
           </h1>
           <p className="text-white text-opacity-90">
-            The host is setting up the session
+            The host is picking the vibe
           </p>
         </div>
 
@@ -31,7 +31,7 @@ export default function WaitingScreen({ code }: WaitingScreenProps) {
         </div>
 
         <p className="text-xs text-white text-opacity-60 mt-6">
-          This page will automatically update when ready
+          Sit tight. We'll let you know.
         </p>
       </div>
     </div>

@@ -2,10 +2,19 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Footer from '@/components/Footer'
 
 export default function Home() {
   const [sessionCode, setSessionCode] = useState('')
   const [showJoinForm, setShowJoinForm] = useState(false)
+  const [isSpinning, setIsSpinning] = useState(false)
+
+  const handleLogoTap = () => {
+    if (!isSpinning) {
+      setIsSpinning(true)
+      setTimeout(() => setIsSpinning(false), 600)
+    }
+  }
 
   const startNewSession = () => {
     window.location.href = '/setup'
@@ -24,14 +33,15 @@ export default function Home() {
         {/* Large centered logo and name */}
         <div className="text-center mb-8">
           <Image
-            src="/logo_groupNom.png"
+            src="/logo_groupNom.svg"
             alt="Group Nom"
             width={120}
             height={120}
-            className="mx-auto rounded-2xl mb-4"
+            className={`mx-auto rounded-2xl mb-4 cursor-pointer ${isSpinning ? 'spin-once' : ''}`}
+            onClick={handleLogoTap}
           />
           <h1 className="text-4xl font-bold text-white mb-2">Group Nom</h1>
-          <p className="text-orange-100 text-lg">Find your next favorite restaurant <br />(or at least for tonight)</p>
+          <p className="text-orange-100 text-lg">Find your next favorite restaurant.<br />Or at least a rebound.</p>
         </div>
 
         <div className="space-y-4">
@@ -82,9 +92,11 @@ export default function Home() {
           )}
         </div>
 
-        <div className="mt-12 text-center text-orange-100 text-sm">
-          <p>Swipe through restaurants and find your perfect match!</p>
+        <div className="mt-8 text-center text-orange-100 text-sm">
+          <p>Swipe together. Eat together.</p>
         </div>
+
+        <Footer />
       </div>
     </div>
   )

@@ -34,7 +34,7 @@ export default function Header({ sessionCode }: HeaderProps) {
             className="flex items-center gap-2 hover:opacity-80 transition"
           >
             <Image
-              src="/logo_groupNom.png"
+              src="/logo_groupNom.svg"
               alt="Group Nom"
               width={32}
               height={32}
@@ -77,10 +77,10 @@ export default function Header({ sessionCode }: HeaderProps) {
           {/* Modal */}
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
             <div className="text-center">
-              <div className="text-5xl mb-4">🚪</div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Leave Session?</h2>
+              <div className="text-5xl mb-4">👻</div>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Ghosting?</h2>
               <p className="text-gray-600 text-sm mb-6">
-                Are you sure you want to leave this session? Your votes will be saved, but you'll need the session code to rejoin.
+                Your votes are saved, but you'll need the code to come back.
               </p>
 
               <div className="space-y-3">
@@ -88,13 +88,13 @@ export default function Header({ sessionCode }: HeaderProps) {
                   onClick={handleLeaveSession}
                   className="w-full py-3 px-4 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition"
                 >
-                  Leave Session
+                  Ghost
                 </button>
                 <button
                   onClick={() => setShowLeaveModal(false)}
                   className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
                 >
-                  Stay Here
+                  Stay
                 </button>
               </div>
             </div>

@@ -24,11 +24,9 @@ export async function GET(
       ? sessionStore.hasUserFinishedVoting(code, userId)
       : false
 
-    // Debug logging for single user issue
-    console.log(`[STATUS] ${code}: users=${session.users.length}, votes=${session.votes.length}, allFinished=${allFinished}, restaurants=${session.restaurants.length}`)
-
     return NextResponse.json({
       success: true,
+      status: session.status,
       allFinished,
       userFinished,
       userCount: session.users.length,

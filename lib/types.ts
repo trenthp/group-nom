@@ -29,7 +29,8 @@ export interface Filters {
 export interface Session {
   code: string
   createdAt: number
-  status: 'pending' | 'active' | 'finished'
+  status: 'pending' | 'active' | 'finished' | 'reconfiguring'
+  hostId: string
   users: string[]
   votes: Vote[]
   finished: boolean

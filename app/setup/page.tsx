@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import RestaurantFilters from '@/components/RestaurantFilters'
 import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 import { getUserLocation } from '@/lib/googleMaps'
 
-export default function SetupPage() {
+function SetupPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const reconfigureCode = searchParams.get('reconfigure')
 
   const [filters, setFilters] = useState<{
     minRating: number
@@ -117,31 +120,53 @@ export default function SetupPage() {
     setError(null)
 
     try {
-      // Create session via API - code will be generated server-side
-      const response = await fetch('/api/session/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filters,
-          location,
-        }),
-      })
+      if (reconfigureCode) {
+        // Reconfigure existing session
+        const userId = localStorage.getItem(`user-${reconfigureCode}`)
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to create session')
+        const response = await fetch(`/api/session/${reconfigureCode}/reconfigure`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            filters,
+            location,
+          }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to reconfigure session')
+        }
+
+        // Navigate back to the session
+        router.push(`/session/${reconfigureCode}`)
+      } else {
+        // Create new session via API - code will be generated server-side
+        const response = await fetch('/api/session/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filters,
+            location,
+          }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to create session')
+        }
+
+        const result = await response.json()
+        const sessionCode = result.session.code
+
+        // Store user ID for this session
+        localStorage.setItem(`user-${sessionCode}`, result.userId)
+
+        // Navigate to the session
+        router.push(`/session/${sessionCode}`)
       }
-
-      const result = await response.json()
-      const sessionCode = result.session.code
-
-      // Store user ID for this session
-      localStorage.setItem(`user-${sessionCode}`, result.userId)
-
-      // Navigate to the session
-      router.push(`/session/${sessionCode}`)
     } catch (err) {
-      console.error('Error starting session:', err)
       setError(err instanceof Error ? err.message : 'Failed to start session')
       setLoading(false)
     }
@@ -154,7 +179,7 @@ export default function SetupPage() {
         <div className="bg-white bg-opacity-20 backdrop-blur rounded-3xl p-8 max-w-md w-full text-center">
           <div className="mb-6">
             <Image
-              src="/logo_groupNom.png"
+              src="/logo_groupNom.svg"
               alt="Group Nom"
               width={80}
               height={80}
@@ -164,22 +189,22 @@ export default function SetupPage() {
               Starting Your Session
             </h1>
             <p className="text-white text-opacity-90 mb-4">
-              Finding the best restaurants for you...
+              Finding your type...
             </p>
           </div>
 
           <div className="space-y-3 text-sm text-white text-opacity-80">
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 fade-in-1">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <p>Searching nearby restaurants</p>
+              <p>Scanning the area...</p>
             </div>
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse delay-150"></div>
-              <p>Applying your filters</p>
+            <div className="flex items-center justify-center gap-2 fade-in-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <p>Filtering out the bad ones...</p>
             </div>
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse delay-300"></div>
-              <p>Creating your session</p>
+            <div className="flex items-center justify-center gap-2 fade-in-3">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <p>Setting you up...</p>
             </div>
           </div>
 
@@ -197,8 +222,15 @@ export default function SetupPage() {
       <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Configure Session</h1>
-            <p className="text-orange-100 mb-4">Set your restaurant preferences</p>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {reconfigureCode ? 'Try Again' : 'Configure Session'}
+            </h1>
+            <p className="text-orange-100 mb-2">
+              {reconfigureCode ? 'Change the vibe' : 'Set the vibe'}
+            </p>
+            <p className="text-orange-100 text-sm opacity-80">
+              {reconfigureCode ? 'Your group is waiting.' : 'Everyone plays by the same rules.'}
+            </p>
           </div>
 
         <RestaurantFilters
@@ -222,14 +254,33 @@ export default function SetupPage() {
           disabled={loading}
           className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          Start Session
+          {reconfigureCode ? 'Try Again' : 'Start Session'}
         </button>
 
-        <div className="mt-6 text-center text-orange-100 text-sm">
-          <p>These filters will apply to all participants in this session.</p>
-        </div>
+        <Footer />
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SetupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Image
+            src="/logo_groupNom.svg"
+            alt="Group Nom"
+            width={64}
+            height={64}
+            className="mx-auto rounded-xl mb-4 animate-spin"
+          />
+          <p className="text-white text-lg">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SetupPageContent />
+    </Suspense>
   )
 }

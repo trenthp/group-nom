@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
 
-export async function GET(
-  _request: NextRequest,
+export async function POST(
+  request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const { code } = await params
+    const { userId } = await request.json()
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Missing userId' },
+        { status: 400 }
+      )
+    }
 
     const session = sessionStore.getSession(code)
 
@@ -17,26 +25,22 @@ export async function GET(
       )
     }
 
-    const results = sessionStore.calculateResults(code)
-
-    if (!results) {
-      return NextResponse.json({
-        success: true,
-        results: null,
-        message: 'No matches found',
-      })
+    // Only host can set reconfiguring
+    if (session.hostId !== userId) {
+      return NextResponse.json(
+        { error: 'Only the host can reconfigure the session' },
+        { status: 403 }
+      )
     }
+
+    sessionStore.setReconfiguring(code)
 
     return NextResponse.json({
       success: true,
-      results,
-      session: {
-        code: session.code,
-        userCount: session.users.length,
-      },
+      status: 'reconfiguring',
     })
   } catch (error) {
-    console.error('Error calculating results:', error)
+    console.error('Error setting reconfiguring:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

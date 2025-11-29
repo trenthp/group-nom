@@ -10,19 +10,14 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
 
-    console.log('[API] GET /api/session/' + code, '(userId:', userId + ')')
-
     const session = sessionStore.getSession(code)
 
     if (!session) {
-      console.error('[API] Session not found:', code)
       return NextResponse.json(
         { error: 'Session not found' },
         { status: 404 }
       )
     }
-
-    console.log('[API] Session found:', code, 'with', session.restaurants.length, 'restaurants')
 
     // Add user to session if userId provided and session is not finished
     // If session is finished, user can only view results (read-only)
@@ -36,6 +31,7 @@ export async function GET(
         code: session.code,
         createdAt: session.createdAt,
         status: session.status,
+        hostId: session.hostId,
         users: session.users,
         filters: session.filters,
         restaurants: session.restaurants,

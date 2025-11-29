@@ -99,16 +99,18 @@ export default function RestaurantCard({
             </h2>
 
             {/* Cuisines - More prominent */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {restaurant.cuisines.map((cuisine) => (
-                <span
-                  key={cuisine}
-                  className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-semibold"
-                >
-                  {cuisine}
-                </span>
-              ))}
-            </div>
+            {restaurant.cuisines && restaurant.cuisines.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {restaurant.cuisines.map((cuisine) => (
+                  <span
+                    key={cuisine}
+                    className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-semibold"
+                  >
+                    {cuisine}
+                  </span>
+                ))}
+              </div>
+            )}
 
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1">
@@ -124,7 +126,9 @@ export default function RestaurantCard({
             </div>
 
             <div className="flex items-start justify-between gap-2">
-              <p className="text-gray-600 text-xs flex-1">{restaurant.address}</p>
+              {restaurant.address && (
+                <p className="text-gray-600 text-xs flex-1">{restaurant.address}</p>
+              )}
 
               {/* Subdued action buttons */}
               <div className="flex gap-2 flex-shrink-0">
@@ -180,7 +184,7 @@ export default function RestaurantCard({
 
       {/* Swipe hint (mobile) */}
       <div className="text-center mt-4 text-white text-xs opacity-60 md:hidden">
-        ← Swipe left or right →
+        ← Pass or Pull →
       </div>
     </div>
   )
