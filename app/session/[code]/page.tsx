@@ -62,6 +62,10 @@ export default function SessionPage() {
 
         if (status === 'active') {
           setRestaurants(data.session.restaurants)
+          // If no restaurants found from search, go straight to results (shows "no matches" screen)
+          if (!data.session.restaurants || data.session.restaurants.length === 0) {
+            setShowingResults(true)
+          }
           setLoading(false)
         } else if (status === 'pending') {
           // Session is pending, keep loading state until it becomes active
@@ -95,6 +99,10 @@ export default function SessionPage() {
             // Session is now active, show restaurants
             setSessionStatus('active')
             setRestaurants(data.session.restaurants)
+            // If no restaurants found, go straight to results (shows "no matches" screen)
+            if (!data.session.restaurants || data.session.restaurants.length === 0) {
+              setShowingResults(true)
+            }
           }
         }
       } catch {
@@ -217,8 +225,13 @@ export default function SessionPage() {
         const data = await response.json()
         setRestaurants(data.session.restaurants)
         setCurrentIndex(0)
-        setShowingResults(false)
         setSessionStatus('active')
+        // If no restaurants found, go straight to results (shows "no matches" screen)
+        if (!data.session.restaurants || data.session.restaurants.length === 0) {
+          setShowingResults(true)
+        } else {
+          setShowingResults(false)
+        }
       }
     } catch {
       // On error, just reset to voting view with existing restaurants
@@ -265,7 +278,7 @@ export default function SessionPage() {
           <p className="text-white text-lg mb-4">{error}</p>
           <button
             onClick={() => router.push('/')}
-            className="bg-white text-orange-600 font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+            className="bg-white text-orange-600 font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
           >
             Go Home
           </button>

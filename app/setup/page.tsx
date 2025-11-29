@@ -18,11 +18,15 @@ function SetupPageContent() {
     openNow: boolean
     maxReviews: number
     distance: number
+    priceLevel: number[]
+    cuisines: string[]
   }>({
     minRating: 0,
     openNow: false,
     maxReviews: 0,
     distance: 5,
+    priceLevel: [],
+    cuisines: [],
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,7 +41,7 @@ function SetupPageContent() {
     name: '',
   })
 
-  // Auto-fetch current location on mount
+  // Auto-fetch current location on mount - triggers browser's native location prompt
   useEffect(() => {
     const fetchCurrentLocation = async () => {
       setLocationLoading(true)
@@ -65,7 +69,7 @@ function SetupPageContent() {
           console.error('Error reverse geocoding:', err)
         }
       } else {
-        // Fallback to NYC
+        // Fallback to NYC if location denied
         setLocation({ lat: 40.7128, lng: -74.006 })
         setLocationAddress('New York, NY')
         currentLocationRef.current = { coords: { lat: 40.7128, lng: -74.006 }, name: 'New York, NY' }
@@ -252,7 +256,7 @@ function SetupPageContent() {
           <button
             onClick={handleStartSession}
             disabled={loading}
-            className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
             {reconfigureCode ? 'Try Again' : 'Start Group'}
           </button>

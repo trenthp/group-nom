@@ -67,9 +67,7 @@ export default function RestaurantCard({
     document.addEventListener('touchend', endHandler)
   }
 
-  const priceDisplay = restaurant.priceLevel
-    ? '💵'.repeat(restaurant.priceLevel.length)
-    : '$'
+  const priceDisplay = restaurant.priceLevel || '$'
 
   return (
     <div
@@ -125,37 +123,20 @@ export default function RestaurantCard({
               <span className="text-lg">{priceDisplay}</span>
             </div>
 
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-stretch justify-between gap-2">
               {restaurant.address && (
-                <p className="text-gray-600 text-xs flex-1">{restaurant.address}</p>
+                <p className="text-gray-600 text-xs w-1/2">{restaurant.address}</p>
               )}
-
-              {/* Subdued action buttons */}
-              <div className="flex gap-2 flex-shrink-0">
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name + ' ' + restaurant.address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-orange-600 hover:text-orange-700 font-semibold whitespace-nowrap"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  View on Google
-                </a>
-                {restaurant.website && (
-                  <>
-                    <span className="text-gray-300">•</span>
-                    <a
-                      href={restaurant.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-orange-600 hover:text-orange-700 font-semibold whitespace-nowrap"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Visit Website
-                    </a>
-                  </>
-                )}
-              </div>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name + ' ' + restaurant.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium w-1/2 pt-[0.5rem] pb-[0.4rem] px-[0.75rem] bg-blue-50 rounded hover:bg-blue-100 transition flex flex-col justify-center text-left border border-blue-200 leading-[0.8rem]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="text-center">📍 View on Google</span>
+                <span className="text-[10px] text-blue-500 font-normal text-right">see menu, photos, reviews, & more</span>
+              </a>
             </div>
           </div>
         </div>

@@ -8,12 +8,16 @@ interface RestaurantFiltersProps {
     openNow: boolean
     maxReviews: number
     distance: number
+    priceLevel: number[]
+    cuisines: string[]
   }
   onFiltersChange: (filters: {
     minRating: number
     openNow: boolean
     maxReviews: number
     distance: number
+    priceLevel: number[]
+    cuisines: string[]
   }) => void
   locationName?: string
   onCustomLocationSubmit: (query: string) => Promise<void>
@@ -46,6 +50,30 @@ export default function RestaurantFilters({
   const getDistanceLabel = (km: number) => {
     const miles = (km * 0.621371).toFixed(1)
     return `${km} km (${miles} mi)`
+  }
+
+  const cuisineOptions = [
+    'American', 'Italian', 'Mexican', 'Japanese', 'Chinese',
+    'Indian', 'Thai', 'Korean', 'Vietnamese', 'Mediterranean',
+    'French', 'Greek', 'Spanish', 'Caribbean', 'BBQ'
+  ]
+
+  const togglePriceLevel = (level: number) => {
+    const current = filters.priceLevel || []
+    if (current.includes(level)) {
+      onFiltersChange({ ...filters, priceLevel: current.filter(l => l !== level) })
+    } else {
+      onFiltersChange({ ...filters, priceLevel: [...current, level].sort() })
+    }
+  }
+
+  const toggleCuisine = (cuisine: string) => {
+    const current = filters.cuisines || []
+    if (current.includes(cuisine)) {
+      onFiltersChange({ ...filters, cuisines: current.filter(c => c !== cuisine) })
+    } else {
+      onFiltersChange({ ...filters, cuisines: [...current, cuisine] })
+    }
   }
 
   const handleLocationSubmit = async () => {
@@ -221,6 +249,52 @@ export default function RestaurantFilters({
               }`}
             />
           </button>
+        </div>
+
+        {/* Price Level */}
+        <div className="pt-2">
+          <label className="text-gray-700 font-semibold block mb-3">Price Level</label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map((level) => (
+              <button
+                key={level}
+                onClick={() => togglePriceLevel(level)}
+                className={`flex-1 py-2 px-3 rounded-lg font-bold text-sm transition ${
+                  (filters.priceLevel || []).includes(level)
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {'$'.repeat(level)}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 mt-1 text-center">
+            {(filters.priceLevel || []).length === 0 ? 'All prices' : 'Tap to toggle'}
+          </p>
+        </div>
+
+        {/* Cuisine Type */}
+        <div className="pt-2">
+          <label className="text-gray-700 font-semibold block mb-3">Cuisine Type</label>
+          <div className="flex flex-wrap gap-2">
+            {cuisineOptions.map((cuisine) => (
+              <button
+                key={cuisine}
+                onClick={() => toggleCuisine(cuisine)}
+                className={`py-1.5 px-3 rounded-full text-sm font-medium transition ${
+                  (filters.cuisines || []).includes(cuisine)
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {cuisine}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            {(filters.cuisines || []).length === 0 ? 'All cuisines' : `${(filters.cuisines || []).length} selected`}
+          </p>
         </div>
       </div>
     </div>

@@ -5,6 +5,14 @@ import Image from 'next/image'
 import { Restaurant } from '@/lib/types'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import HostStatusPanel from '@/components/HostStatusPanel'
+
+interface UserStatus {
+  userIndex: number
+  finished: boolean
+  voteCount: number
+  isHost: boolean
+}
 
 interface ResultsPageProps {
   sessionCode: string
@@ -36,12 +44,15 @@ export default function ResultsPage({
   const [winner, setWinner] = useState<Restaurant | null>(null)
   const [voteDetails, setVoteDetails] = useState<VoteCount[]>([])
   const [resultType, setResultType] = useState<string>('')
-  const [allFinished, setAllFinished] = useState(false)
+  const [allFinished, setAllFinished] = useState<boolean | null>(null) // null = not yet checked
   const [loading, setLoading] = useState(true)
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
   const [showVoteBreakdown, setShowVoteBreakdown] = useState(false)
   const [noResults, setNoResults] = useState(false)
   const [isReconfiguring, setIsReconfiguring] = useState(false)
+  const [userStatus, setUserStatus] = useState<UserStatus[]>([])
+  const [totalRestaurants, setTotalRestaurants] = useState(0)
+  const [closingVoting, setClosingVoting] = useState(false)
 
   // Fetch results from API
   const fetchResults = async () => {
@@ -122,9 +133,8 @@ export default function ResultsPage({
     }
   }
 
-  useEffect(() => {
-    fetchResults()
-  }, [sessionCode])
+  // Results are fetched when status check confirms allFinished
+  // No need to fetch on mount - status check will trigger it
 
   // Update winner when currentMatchIndex changes
   useEffect(() => {
@@ -155,20 +165,30 @@ export default function ResultsPage({
     }
   }, [currentMatchIndex, voteDetails])
 
-  // Check if all users finished and poll for updates
+  // Check if all users finished and poll for updates (also fetches userStatus for host)
   useEffect(() => {
     let interval: NodeJS.Timeout
 
     const checkAndPollStatus = async () => {
       try {
+        // Fetch session data to get userStatus
+        const sessionResponse = await fetch(`/api/session/${sessionCode}`)
+        if (sessionResponse.ok) {
+          const sessionData = await sessionResponse.json()
+          if (sessionData.session?.userStatus) {
+            setUserStatus(sessionData.session.userStatus)
+            setTotalRestaurants(sessionData.session.totalRestaurants || 0)
+          }
+        }
+
         const response = await fetch(`/api/session/${sessionCode}/status`)
         if (response.ok) {
           const data = await response.json()
           const wasFinished = allFinished
           setAllFinished(data.allFinished)
 
-          // If just became finished, refetch results with updated votes
-          if (data.allFinished && !wasFinished) {
+          // If just became finished (or first check shows finished), fetch results
+          if (data.allFinished && wasFinished !== true) {
             await fetchResults()
           }
 
@@ -225,6 +245,24 @@ export default function ResultsPage({
       if (interval) clearTimeout(interval)
     }
   }, [sessionCode, isHost, isReconfiguring, onSessionReconfigured])
+
+  const handleCloseVoting = async () => {
+    setClosingVoting(true)
+    try {
+      const response = await fetch(`/api/session/${sessionCode}/close-voting`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (response.ok) {
+        setAllFinished(true)
+        await fetchResults()
+      }
+    } catch {
+      // Error closing voting
+    } finally {
+      setClosingVoting(false)
+    }
+  }
 
   const resultMessage =
     resultType === 'unanimous'
@@ -304,8 +342,8 @@ export default function ResultsPage({
     )
   }
 
-  // Show waiting state if not everyone finished
-  if (!allFinished) {
+  // Show waiting state if not everyone finished (but only after we've checked)
+  if (allFinished === false) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
         <Header sessionCode={sessionCode} />
@@ -325,6 +363,27 @@ export default function ResultsPage({
                 <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-200"></div>
               </div>
             </div>
+
+            {/* Host Status Panel */}
+            {isHost && userStatus.length > 0 && (
+              <div className="mt-6">
+                <HostStatusPanel
+                  userStatus={userStatus}
+                  totalRestaurants={totalRestaurants}
+                />
+
+                <button
+                  onClick={handleCloseVoting}
+                  disabled={closingVoting}
+                  className="w-full mt-4 bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+                >
+                  {closingVoting ? 'Closing...' : 'Close Voting & See Results'}
+                </button>
+                <p className="text-white text-opacity-60 text-xs mt-2">
+                  End voting early if someone left
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -370,14 +429,14 @@ export default function ResultsPage({
             {isHost ? (
               <button
                 onClick={onReconfigure}
-                className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+                className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
               >
                 Try Different Settings
               </button>
             ) : (
               <button
                 onClick={onLeaveSession}
-                className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+                className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
               >
                 Leave Group
               </button>
@@ -485,7 +544,7 @@ export default function ResultsPage({
                   href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(winner.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full bg-orange-600 text-white font-bold py-3 rounded-lg hover:bg-orange-700 transition text-center"
+                  className="block w-full bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-700 transition text-center"
                 >
                   🧭 Get Directions
                 </a>
@@ -496,7 +555,7 @@ export default function ResultsPage({
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name + ' ' + winner.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition text-center"
+                  className="block w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition text-center"
                 >
                   📍 View on Google Maps
                   <div className="text-xs font-normal mt-1 opacity-90">
@@ -610,14 +669,14 @@ export default function ResultsPage({
           {isHost ? (
             <button
               onClick={onNewSession}
-              className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+              className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
             >
               Start New Group
             </button>
           ) : (
             <button
               onClick={onLeaveSession}
-              className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+              className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
             >
               Leave Group
             </button>

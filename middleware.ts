@@ -17,10 +17,10 @@ const rateLimiters = {
     limiter: Ratelimit.slidingWindow(30, '60 s'),
     prefix: 'ratelimit:vote',
   }),
-  // General API: 60 per minute (for status checks, fetching session, etc.)
+  // General API: 120 per minute (for status checks, fetching session, etc.)
   general: new Ratelimit({
     redis: kv,
-    limiter: Ratelimit.slidingWindow(60, '60 s'),
+    limiter: Ratelimit.slidingWindow(120, '60 s'),
     prefix: 'ratelimit:general',
   }),
   // Restaurant search: 10 per minute (expensive Google API calls)
@@ -70,7 +70,7 @@ export async function middleware(request: NextRequest) {
     if (pathname === '/api/session/create') {
       limiter = rateLimiters.createSession
       identifier = `create:${ip}`
-    } else if (pathname.includes('/vote')) {
+    } else if (pathname.includes('/vote') || pathname.includes('/close-voting')) {
       limiter = rateLimiters.vote
       identifier = `vote:${ip}`
     } else if (pathname === '/api/restaurants/nearby' || pathname === '/api/geocode') {

@@ -24,6 +24,8 @@ export interface Filters {
   openNow: boolean
   maxReviews: number
   distance: number
+  priceLevel: number[] // [1, 2, 3, 4] for $, $$, $$$, $$$$
+  cuisines: string[]
 }
 
 export interface Session {

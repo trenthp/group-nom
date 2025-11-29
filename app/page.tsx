@@ -46,9 +46,9 @@ export default function Home() {
                   fill="none"
                 />
               </defs>
-              <text className="fill-white opacity-88 text-[18px] font-bold tracking-[.075em]">
+              <text className="fill-white opacity-88 text-[22px] font-bold tracking-[.02em]">
                 <textPath href="#circlePath" startOffset="0%">
-                  GROUP NOM • GROUP NOM • GROUP NOM •
+                  Group Nom • Group Nom • Group Nom •
                 </textPath>
               </text>
             </svg>
@@ -56,20 +56,20 @@ export default function Home() {
             <Image
               src="/logo_groupNom.svg"
               alt="Group Nom"
-              width={148}
-              height={148}
+              width={132}
+              height={132}
               className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl cursor-pointer ${isSpinning ? 'spin-once' : ''}`}
               onClick={handleLogoTap}
             />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Group Nom</h1>
+          {/*<h1 className="text-4xl font-bold text-white mb-2">Group Nom</h1>*/}
           <p className="text-orange-100 text-lg">Find your next favorite restaurant.<br />Or at least a rebound.</p>
         </div>
 
         <div className="space-y-4">
           <button
             onClick={startNewSession}
-            className="w-full bg-white text-orange-600 font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+            className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
           >
             Start New Group
           </button>
@@ -77,7 +77,7 @@ export default function Home() {
           {!showJoinForm ? (
             <button
               onClick={() => setShowJoinForm(true)}
-              className="w-full bg-orange-700 text-white font-bold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+              className="w-full bg-orange-700 text-white font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
             >
               Join Group
             </button>
@@ -99,13 +99,13 @@ export default function Home() {
                     setShowJoinForm(false)
                     setSessionCode('')
                   }}
-                  className="flex-1 bg-orange-600 text-white font-bold py-3 rounded-lg hover:bg-orange-500 transition"
+                  className="flex-1 bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-500 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-white text-orange-700 font-bold py-3 rounded-lg hover:bg-orange-50 transition"
+                  className="flex-1 bg-white text-orange-700 font-semibold py-3 rounded-lg hover:bg-orange-50 transition"
                 >
                   Join
                 </button>

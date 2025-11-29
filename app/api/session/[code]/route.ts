@@ -25,6 +25,18 @@ export async function GET(
       await sessionStore.addUserToSession(code, userId)
     }
 
+    // Calculate per-user voting status for host view
+    const totalRestaurants = session.restaurants.length
+    const userStatus = session.users.map((uid, index) => {
+      const userVotes = session.votes.filter(v => v.userId === uid)
+      return {
+        userIndex: index + 1,
+        finished: userVotes.length >= totalRestaurants,
+        voteCount: userVotes.length,
+        isHost: uid === session.hostId,
+      }
+    })
+
     return NextResponse.json({
       success: true,
       session: {
@@ -37,6 +49,8 @@ export async function GET(
         restaurants: session.restaurants,
         location: session.location,
         finished: session.finished,
+        userStatus,
+        totalRestaurants,
       },
     })
   } catch (error) {

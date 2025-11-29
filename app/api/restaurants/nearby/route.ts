@@ -11,6 +11,8 @@ export async function POST(request: NextRequest) {
     const minRating = filters?.minRating || 0
     const openNow = filters?.openNow || false
     const maxReviews = filters?.maxReviews || 0
+    const priceLevel = filters?.priceLevel || [] // [1, 2, 3, 4] for $, $$, $$$, $$$$
+    const cuisines = filters?.cuisines || [] // ['Italian', 'Mexican', etc.]
 
     // Check if API key is configured
     const apiKey = process.env.GOOGLE_MAPS_API_KEY
@@ -35,47 +37,70 @@ export async function POST(request: NextRequest) {
       return shuffled
     }
 
-    // Fetch multiple pages of results for better variety
+    // Fetch restaurants - if cuisines selected, make separate calls per cuisine for better results
     let allResults: any[] = []
-    let pageToken: string | undefined = undefined
-    const maxPages = 3 // Fetch up to 3 pages (60 restaurants max) for best variety
+    const seenPlaceIds = new Set<string>()
 
-    for (let page = 0; page < maxPages; page++) {
-      const response = await client.placesNearby({
-        params: {
-          location: { lat, lng },
-          radius,
-          type: 'restaurant',
-          key: apiKey,
-          ...(openNow && { opennow: true }),
-          ...(pageToken && { pagetoken: pageToken }),
-        },
-      })
+    // Helper to fetch results for a keyword
+    const fetchForKeyword = async (keyword?: string) => {
+      let pageToken: string | undefined = undefined
+      const maxPages = cuisines.length > 1 ? 1 : 3 // Fewer pages per cuisine when multiple selected
+      const results: any[] = []
 
-      if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
-        if (page === 0) {
-          // Only error if first page fails
-          console.error('Google Places API error:', response.data.status, response.data.error_message)
-          const restaurants = getRandomRestaurants(limit)
-          return NextResponse.json({
-            success: true,
-            restaurants,
-            usingMockData: true,
-          })
+      for (let page = 0; page < maxPages; page++) {
+        const response = await client.placesNearby({
+          params: {
+            location: { lat, lng },
+            radius,
+            type: 'restaurant',
+            key: apiKey,
+            ...(openNow && { opennow: true }),
+            ...(pageToken && { pagetoken: pageToken }),
+            ...(keyword && { keyword }),
+          },
+        })
+
+        if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
+          break
         }
-        break // Stop pagination on error
+
+        results.push(...(response.data.results || []))
+        pageToken = response.data.next_page_token
+
+        if (!pageToken) break
+
+        if (page < maxPages - 1 && pageToken) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
       }
+      return results
+    }
 
-      allResults = [...allResults, ...(response.data.results || [])]
-      pageToken = response.data.next_page_token
-
-      // Break if no more pages
-      if (!pageToken) break
-
-      // Google requires a short delay between pagination requests
-      if (page < maxPages - 1 && pageToken) {
-        await new Promise(resolve => setTimeout(resolve, 2000))
+    if (cuisines.length > 0) {
+      // Make separate API calls for each cuisine to ensure we get results for each
+      for (const cuisine of cuisines) {
+        const results = await fetchForKeyword(cuisine)
+        // Deduplicate by place_id
+        for (const place of results) {
+          if (place.place_id && !seenPlaceIds.has(place.place_id)) {
+            seenPlaceIds.add(place.place_id)
+            allResults.push(place)
+          }
+        }
       }
+    } else {
+      // No cuisine filter - fetch normally with pagination
+      allResults = await fetchForKeyword(undefined)
+    }
+
+    // Handle case where first call fails completely
+    if (allResults.length === 0 && cuisines.length === 0) {
+      const restaurants = getRandomRestaurants(limit)
+      return NextResponse.json({
+        success: true,
+        restaurants,
+        usingMockData: true,
+      })
     }
 
     // Transform Google Places results to our Restaurant type
@@ -100,6 +125,19 @@ export async function POST(request: NextRequest) {
         return true
       })
     }
+
+    // Filter by price level
+    if (priceLevel.length > 0) {
+      results = results.filter((place) => {
+        // Google's price_level: 0=free, 1=$, 2=$$, 3=$$$, 4=$$$$
+        // Our priceLevel: [1, 2, 3, 4] maps to $, $$, $$$, $$$$
+        const placePriceLevel = place.price_level || 1 // Default to $ if not specified
+        return priceLevel.includes(placePriceLevel)
+      })
+    }
+
+    // Note: Cuisine filtering is now done at the API level (separate calls per cuisine)
+    // so we don't need to filter locally anymore
 
     // Use Fisher-Yates shuffle for true randomization
     const shuffled = fisherYatesShuffle(results)

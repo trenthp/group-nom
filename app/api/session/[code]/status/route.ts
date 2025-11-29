@@ -19,7 +19,10 @@ export async function GET(
       )
     }
 
-    const allFinished = await sessionStore.allUsersFinished(code)
+    // Check if session was force-closed OR all users finished voting
+    const votingFinished = await sessionStore.allUsersFinished(code)
+    const allFinished = session.status === 'finished' || votingFinished
+
     const userFinished = userId
       ? await sessionStore.hasUserFinishedVoting(code, userId)
       : false
