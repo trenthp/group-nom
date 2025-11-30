@@ -55,8 +55,8 @@ export default function Home() {
             <Image
               src="/logo_groupNom.svg"
               alt="Group Nom"
-              width={132}
-              height={132}
+              width={128}
+              height={128}
               className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl cursor-pointer ${isSpinning ? 'spin-once' : ''}`}
               onClick={handleLogoTap}
             />

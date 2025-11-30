@@ -6,7 +6,10 @@ export const metadata: Metadata = {
   title: 'Group Nom',
   description: 'Find your next favorite restaurant with friends',
   icons: {
-    icon: '/favicon_groupNom.png',
+    icon: [
+      { url: '/favicon_groupNom.svg', type: 'image/svg+xml' },
+      { url: '/favicon_groupNom.png', type: 'image/png' },
+    ],
     apple: '/favicon_groupNom.png',
   },
 }
