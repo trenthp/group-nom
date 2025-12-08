@@ -1,14 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { useUser } from '@clerk/nextjs'
 import Image from 'next/image'
+import Link from 'next/link'
 import SessionCodeOverlay from './SessionCodeOverlay'
+import UserMenu from './auth/UserMenu'
 
 interface HeaderProps {
   sessionCode?: string
 }
 
 export default function Header({ sessionCode }: HeaderProps) {
+  const { isSignedIn, isLoaded } = useUser()
   const [showOverlay, setShowOverlay] = useState(false)
   const [showLeaveModal, setShowLeaveModal] = useState(false)
 
@@ -43,16 +47,46 @@ export default function Header({ sessionCode }: HeaderProps) {
             <span className="text-white font-bold text-lg">Group Nom</span>
           </button>
 
-          {/* Right: Session Code Badge */}
-          {sessionCode && (
-            <button
-              onClick={() => setShowOverlay(true)}
-              className="bg-white bg-opacity-20 hover:bg-opacity-30 transition px-3 py-1.5 rounded-lg flex items-center gap-2"
-            >
-              <span className="text-white text-sm font-medium">Code:</span>
-              <code className="text-white font-mono font-bold tracking-wider">{sessionCode}</code>
-            </button>
-          )}
+          {/* Right: Session Code Badge + Auth */}
+          <div className="flex items-center gap-3">
+            {sessionCode && (
+              <button
+                onClick={() => setShowOverlay(true)}
+                className="bg-white bg-opacity-20 hover:bg-opacity-30 transition px-3 py-1.5 rounded-lg flex items-center gap-2"
+              >
+                <span className="text-white text-sm font-medium">Code:</span>
+                <code className="text-white font-mono font-bold tracking-wider">{sessionCode}</code>
+              </button>
+            )}
+
+            {/* Auth section */}
+            {isLoaded && (
+              isSignedIn ? (
+                <UserMenu />
+              ) : (
+                <div className="flex items-center gap-4">
+                  <Link
+                    href="/about"
+                    className="text-white text-sm font-medium hover:text-orange-100 transition"
+                  >
+                    About
+                  </Link>
+                  <Link
+                    href="/sign-in"
+                    className="text-white text-sm font-medium hover:text-orange-100 transition"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    className="bg-white text-orange-600 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-orange-50 transition"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )
+            )}
+          </div>
         </div>
       </header>
 
@@ -80,7 +114,7 @@ export default function Header({ sessionCode }: HeaderProps) {
               <div className="text-5xl mb-4">👻</div>
               <h2 className="text-xl font-bold text-gray-800 mb-2">Ghosting?</h2>
               <p className="text-gray-600 text-sm mb-6">
-                Your votes are saved, but you'll need the code to come back.
+                Your votes are saved, but you&apos;ll need the code to come back.
               </p>
 
               <div className="space-y-3">

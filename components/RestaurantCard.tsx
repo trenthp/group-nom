@@ -2,6 +2,7 @@
 
 import { Restaurant } from '@/lib/types'
 import { useCallback, useState, useEffect } from 'react'
+import { UtensilsIcon, StarIcon, LocationIcon } from '@/components/icons'
 
 interface RestaurantCardProps {
   restaurant: Restaurant
@@ -85,7 +86,7 @@ export default function RestaurantCard({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="text-6xl">🍴</div>
+            <UtensilsIcon size={64} className="text-white" />
           )}
         </div>
 
@@ -112,7 +113,7 @@ export default function RestaurantCard({
 
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1">
-                <span className="text-yellow-400">⭐</span>
+                <StarIcon size={16} className="text-yellow-400" />
                 <span className="font-semibold text-gray-800">
                   {restaurant.rating}
                 </span>
@@ -134,7 +135,10 @@ export default function RestaurantCard({
                 className="text-xs text-blue-600 hover:text-blue-700 font-medium w-1/2 pt-[0.5rem] pb-[0.4rem] px-[0.75rem] bg-blue-50 rounded hover:bg-blue-100 transition flex flex-col justify-center text-left border border-blue-200 leading-[0.8rem]"
                 onClick={(e) => e.stopPropagation()}
               >
-                <span className="text-center">📍 View on Google</span>
+                <span className="flex items-center justify-center gap-1">
+                  <LocationIcon size={12} />
+                  View on Google
+                </span>
                 <span className="text-[10px] text-blue-500 font-normal text-right">see menu, photos, reviews, & more</span>
               </a>
             </div>

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import SessionProvider from '@/components/auth/SessionProvider'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -30,10 +31,12 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Alan+Sans:wght@500;900&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@500&family=Alan+Sans:wght@800&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-gray-50">
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
         <Analytics />
       </body>
     </html>

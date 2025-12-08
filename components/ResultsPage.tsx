@@ -6,6 +6,17 @@ import { Restaurant } from '@/lib/types'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import HostStatusPanel from '@/components/HostStatusPanel'
+import {
+  RefreshIcon,
+  HourglassIcon,
+  SadFaceIcon,
+  ConfettiIcon,
+  StarIcon,
+  CompassIcon,
+  LocationIcon,
+  PhoneIcon,
+  GlobeIcon,
+} from '@/components/icons'
 
 interface UserStatus {
   userIndex: number
@@ -266,10 +277,10 @@ export default function ResultsPage({
 
   const resultMessage =
     resultType === 'unanimous'
-      ? "Everyone agrees! 🎉"
+      ? "Everyone agrees!"
       : resultType === 'majority'
-        ? "Majority match! 🥳"
-        : "It's a match! 👌"
+        ? "Majority match!"
+        : "It's a match!"
 
   // Get winning matches only (full agreement or tied for highest votes)
   const matchesWithVotes = voteDetails.filter(v => Object.keys(v.votes).length > 0)
@@ -323,7 +334,9 @@ export default function ResultsPage({
         <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
           <div className="w-full max-w-md text-center">
             <div className="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-8">
-              <div className="text-6xl mb-6 animate-bounce">🔄</div>
+              <div className="mb-6 animate-bounce flex justify-center">
+                <RefreshIcon size={64} className="text-white" />
+              </div>
               <h2 className="text-3xl font-bold text-white mb-4">
                 Host is changing the vibe...
               </h2>
@@ -350,7 +363,9 @@ export default function ResultsPage({
         <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
           <div className="w-full max-w-md text-center">
             <div className="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-8">
-              <div className="text-6xl mb-6 animate-bounce">⏳</div>
+              <div className="mb-6 animate-bounce flex justify-center">
+                <HourglassIcon size={64} className="text-white" />
+              </div>
               <h2 className="text-3xl font-bold text-white mb-4">
                 Waiting on your friends...
               </h2>
@@ -414,7 +429,9 @@ export default function ResultsPage({
         <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
           <div className="w-full max-w-md">
             <div className="bg-white rounded-2xl shadow-2xl p-8 text-center mb-6">
-              <div className="text-6xl mb-4">😔</div>
+              <div className="mb-4 flex justify-center">
+                <SadFaceIcon size={64} className="text-gray-400" />
+              </div>
               <h2 className="text-3xl font-bold text-gray-800 mb-4">
                 No Matches Found
               </h2>
@@ -482,12 +499,12 @@ export default function ResultsPage({
                 className="w-full h-full object-cover"
               />
               <div className="absolute top-4 right-4 bg-white bg-opacity-90 rounded-full p-3 shadow-lg">
-                <div className="text-3xl">🎊</div>
+                <ConfettiIcon size={32} className="text-orange-500" />
               </div>
             </div>
           ) : (
             <div className="h-64 bg-gradient-to-br from-green-300 to-blue-400 flex items-center justify-center">
-              <div className="text-8xl">🎊</div>
+              <ConfettiIcon size={96} className="text-white" />
             </div>
           )}
 
@@ -510,7 +527,7 @@ export default function ResultsPage({
                 <div className="flex items-center justify-between">
                   <span className="text-gray-700">Rating</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-yellow-400">⭐</span>
+                    <StarIcon size={18} className="text-yellow-400" />
                     <span className="font-bold text-gray-800">
                       {winner.rating} ({winner.reviewCount} reviews)
                     </span>
@@ -544,9 +561,10 @@ export default function ResultsPage({
                   href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(winner.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-700 transition text-center"
+                  className="flex items-center justify-center gap-2 w-full bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-700 transition"
                 >
-                  🧭 Get Directions
+                  <CompassIcon size={20} />
+                  Get Directions
                 </a>
               )}
 
@@ -557,7 +575,10 @@ export default function ResultsPage({
                   rel="noopener noreferrer"
                   className="block w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition text-center"
                 >
-                  📍 View on Google Maps
+                  <span className="flex items-center justify-center gap-2">
+                    <LocationIcon size={20} />
+                    View on Google Maps
+                  </span>
                   <div className="text-xs font-normal mt-1 opacity-90">
                     See menu, photos, reviews & more
                   </div>
@@ -571,9 +592,10 @@ export default function ResultsPage({
                 {winner?.phone && (
                   <a
                     href={`tel:${winner.phone}`}
-                    className="block w-full bg-gray-100 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-200 transition text-center text-sm"
+                    className="flex items-center justify-center gap-2 w-full bg-gray-100 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-200 transition text-sm"
                   >
-                    📞 Call Restaurant
+                    <PhoneIcon size={16} />
+                    Call Restaurant
                   </a>
                 )}
 
@@ -582,9 +604,10 @@ export default function ResultsPage({
                     href={winner.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full bg-gray-100 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-200 transition text-center text-sm"
+                    className="flex items-center justify-center gap-2 w-full bg-gray-100 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-200 transition text-sm"
                   >
-                    🌐 Visit Website
+                    <GlobeIcon size={16} />
+                    Visit Website
                   </a>
                 )}
               </div>
