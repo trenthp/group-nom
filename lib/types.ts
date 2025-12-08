@@ -49,3 +49,25 @@ export interface AggregatedVote {
   totalVotes: number
   userIds: { [userId: string]: boolean } // userId -> liked
 }
+
+// Auth types
+export interface User {
+  id: string
+  email: string
+  name?: string
+  role: 'user' | 'admin'
+  status: 'pending' | 'approved' | 'rejected'
+  createdAt: number
+  approvedAt?: number
+  approvedBy?: string
+  lastLoginAt?: number
+}
+
+export interface WaitlistEntry {
+  id: string
+  email: string
+  createdAt: number
+  status: 'pending' | 'invited' | 'converted'
+  invitedAt?: number
+  convertedAt?: number
+}

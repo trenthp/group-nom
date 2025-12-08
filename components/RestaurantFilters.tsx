@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { LocationIcon, StarIcon } from '@/components/icons'
 
 interface RestaurantFiltersProps {
   filters: {
@@ -102,9 +103,10 @@ export default function RestaurantFilters({
               <label className="text-gray-700 font-semibold">Location</label>
               <button
                 onClick={() => setIsEditingLocation(true)}
-                className="text-orange-600 font-bold hover:text-orange-700 transition"
+                className="flex items-center gap-1 text-orange-600 font-bold hover:text-orange-700 transition"
               >
-                📍 {locationLoading ? 'Finding...' : (locationName || 'Current Location')}
+                <LocationIcon size={16} />
+                {locationLoading ? 'Finding...' : (locationName || 'Current Location')}
               </button>
             </div>
           ) : (
@@ -178,8 +180,13 @@ export default function RestaurantFilters({
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="text-gray-700 font-semibold">Minimum Rating</label>
-            <span className="text-orange-600 font-bold">
-              {filters.minRating === 0 ? 'Any' : `${(filters.minRating || 0).toFixed(1)}+ ⭐`}
+            <span className="flex items-center gap-1 text-orange-600 font-bold">
+              {filters.minRating === 0 ? 'Any' : (
+                <>
+                  {(filters.minRating || 0).toFixed(1)}+
+                  <StarIcon size={14} className="text-yellow-400" />
+                </>
+              )}
             </span>
           </div>
           <input

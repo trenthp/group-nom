@@ -12,9 +12,9 @@ html,
 body {
   height: 100%;
   width: 100%;
-  font-family: 'Alan Sans', sans-serif;
-  font-weight: 400;
-  /* Alan Sans Regular for body text */
+  font-family: 'Albert Sans', sans-serif;
+  font-weight: 500;
+  /* Albert Sans Medium for body text */
   letter-spacing: 0.5px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -27,6 +27,7 @@ h3,
 h4,
 h5,
 h6 {
+  font-family: 'Alan Sans', sans-serif;
   font-weight: 800;
 }
 
@@ -166,4 +167,25 @@ h6 {
 
 .animate-spin-slow {
   animation: spinSlow 20s linear infinite;
+}
+
+/* Sign Up / Sign In UI */
+.cl-internal-ithg78 {
+  width: 100% !important; 
+}
+
+.cl-internal-ht35d7 {
+  gap: calc(var(--clerk-spacing, 1rem) * .5) !important; 
+}
+
+.cl-internal-15jyt7n {
+      gap: 0 !important; 
+}
+
+.cl-formFieldLabelRow .mb-2 {
+    margin-bottom: 0;
+}
+
+.cl-internal-vvtys3 {
+  gap: 0 !important;
 }

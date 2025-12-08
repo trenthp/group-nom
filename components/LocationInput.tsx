@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { LocationIcon, MapIcon } from '@/components/icons'
 
 interface LocationInputProps {
   onLocationChange: (location: { lat: number; lng: number } | null, address?: string) => void
@@ -87,26 +88,28 @@ export default function LocationInput({ onLocationChange }: LocationInputProps) 
             setError(null)
             handleUseCurrentLocation()
           }}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium transition ${
+          className={`flex-1 py-2 px-3 rounded-lg font-medium transition flex items-center justify-center gap-2 ${
             useCurrentLocation
               ? 'bg-white text-orange-600'
               : 'bg-white bg-opacity-20 text-white hover:bg-opacity-30'
           }`}
         >
-          📍 Current Location
+          <LocationIcon size={16} />
+          Current Location
         </button>
         <button
           onClick={() => {
             setUseCurrentLocation(false)
             setError(null)
           }}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium transition ${
+          className={`flex-1 py-2 px-3 rounded-lg font-medium transition flex items-center justify-center gap-2 ${
             !useCurrentLocation
               ? 'bg-white text-orange-600'
               : 'bg-white bg-opacity-20 text-white hover:bg-opacity-30'
           }`}
         >
-          🗺️ Enter Location
+          <MapIcon size={16} />
+          Enter Location
         </button>
       </div>
 

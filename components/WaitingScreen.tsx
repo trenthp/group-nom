@@ -1,6 +1,7 @@
 'use client'
 
 import ShareCode from './ShareCode'
+import { HourglassIcon, CheckIcon, LoaderIcon } from '@/components/icons'
 
 interface WaitingScreenProps {
   code: string
@@ -11,7 +12,9 @@ export default function WaitingScreen({ code }: WaitingScreenProps) {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="bg-white bg-opacity-20 backdrop-blur rounded-3xl p-8 max-w-md w-full text-center">
         <div className="mb-6">
-          <div className="text-6xl mb-4 animate-bounce">⏳</div>
+          <div className="mb-4 animate-bounce flex justify-center">
+            <HourglassIcon size={64} className="text-white" />
+          </div>
           <h1 className="text-3xl font-bold text-white mb-2">
             Waiting in the lobby...
           </h1>
@@ -25,9 +28,18 @@ export default function WaitingScreen({ code }: WaitingScreenProps) {
         </div>
 
         <div className="space-y-2 text-sm text-white text-opacity-80">
-          <p>✓ You've joined the group</p>
-          <p>✓ Waiting for host to finish setup</p>
-          <p className="animate-pulse">⟳ Checking status...</p>
+          <p className="flex items-center justify-center gap-2">
+            <CheckIcon size={14} />
+            You've joined the group
+          </p>
+          <p className="flex items-center justify-center gap-2">
+            <CheckIcon size={14} />
+            Waiting for host to finish setup
+          </p>
+          <p className="flex items-center justify-center gap-2 animate-pulse">
+            <LoaderIcon size={14} className="animate-spin" />
+            Checking status...
+          </p>
         </div>
 
         <p className="text-xs text-white text-opacity-60 mt-6">

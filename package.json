@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.36.0",
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
@@ -17,15 +18,16 @@
     "@vercel/analytics": "^1.5.0",
     "@vercel/kv": "^3.0.0",
     "autoprefixer": "^10.4.16",
-    "next": "^15.0.0",
+    "next": "^15.5.7",
     "postcss": "^8.4.31",
     "react": "^19.0.0-rc",
     "react-dom": "^19.0.0-rc",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "eslint": "^8.54.0",
-    "eslint-config-next": "^15.0.0"
+    "eslint-config-next": "^15.5.7"
   }
 }
