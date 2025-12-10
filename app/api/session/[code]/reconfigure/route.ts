@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
+import { selectRestaurantsForSession } from '@/lib/restaurantSelection'
+import { fetchNearbyRestaurants } from '@/lib/googleMaps'
+
+// Feature flag: use new data layer or fall back to Google
+const USE_LOCAL_DATA = process.env.USE_LOCAL_DATA === 'true'
 
 export async function POST(
   request: NextRequest,
@@ -33,31 +38,57 @@ export async function POST(
       )
     }
 
-    // Fetch new restaurants with updated filters
-    const response = await fetch(
-      `${request.nextUrl.origin}/api/restaurants/nearby`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    // Get previously shown restaurant IDs to exclude
+    const excludeIds = session.restaurants.map(r => r.id)
+
+    let restaurants
+
+    if (USE_LOCAL_DATA) {
+      // New path: Use local Overture data + Foursquare enrichment
+      try {
+        restaurants = await selectRestaurantsForSession({
           lat: location.lat,
           lng: location.lng,
-          radius: filters.distance * 1000,
-          limit: 10,
           filters,
-        }),
-      }
-    )
+          limit: 10,
+          excludeGersIds: excludeIds, // Don't show same restaurants again
+        })
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: 'Failed to fetch restaurants' },
-        { status: 500 }
+        // If no results from local data, fall back to Google
+        if (restaurants.length === 0) {
+          console.log('[API] No local results, falling back to Google')
+          restaurants = await fetchNearbyRestaurants(
+            location.lat,
+            location.lng,
+            filters.distance * 1000,
+            filters
+          )
+        }
+      } catch (error) {
+        console.error('[API] Local data error, falling back to Google:', error)
+        restaurants = await fetchNearbyRestaurants(
+          location.lat,
+          location.lng,
+          filters.distance * 1000,
+          filters
+        )
+      }
+    } else {
+      // Legacy path: Use Google Places API
+      restaurants = await fetchNearbyRestaurants(
+        location.lat,
+        location.lng,
+        filters.distance * 1000,
+        filters
       )
     }
 
-    const data = await response.json()
-    const restaurants = data.restaurants || []
+    if (!restaurants || restaurants.length === 0) {
+      return NextResponse.json(
+        { error: 'No restaurants found in this area' },
+        { status: 404 }
+      )
+    }
 
     // Reconfigure the session
     const updatedSession = await sessionStore.reconfigureSession(

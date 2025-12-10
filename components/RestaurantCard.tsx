@@ -11,6 +11,22 @@ interface RestaurantCardProps {
   progress: string
 }
 
+// Placeholder images for restaurants without photos
+const PLACEHOLDER_GRADIENTS = [
+  'from-orange-400 to-red-500',
+  'from-emerald-400 to-teal-500',
+  'from-violet-400 to-purple-500',
+  'from-amber-400 to-orange-500',
+  'from-rose-400 to-pink-500',
+  'from-cyan-400 to-blue-500',
+]
+
+function getPlaceholderGradient(id: string): string {
+  // Deterministic gradient based on restaurant ID
+  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return PLACEHOLDER_GRADIENTS[hash % PLACEHOLDER_GRADIENTS.length]
+}
+
 export default function RestaurantCard({
   restaurant,
   onYes,
@@ -18,10 +34,12 @@ export default function RestaurantCard({
   progress,
 }: RestaurantCardProps) {
   const [animatingClass, setAnimatingClass] = useState('')
+  const [imageError, setImageError] = useState(false)
 
-  // Reset animation when restaurant changes
+  // Reset animation and image error when restaurant changes
   useEffect(() => {
     setAnimatingClass('')
+    setImageError(false)
   }, [restaurant.id])
 
   const handleYes = useCallback(() => {
@@ -78,15 +96,22 @@ export default function RestaurantCard({
       {/* Card */}
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         {/* Image or Placeholder */}
-        <div className="h-64 flex-shrink-0 bg-gradient-to-br from-orange-300 to-red-400 flex items-center justify-center relative overflow-hidden">
-          {restaurant.imageUrl ? (
+        <div className={`h-64 flex-shrink-0 bg-gradient-to-br ${getPlaceholderGradient(restaurant.id)} flex items-center justify-center relative overflow-hidden`}>
+          {restaurant.imageUrl && !imageError ? (
             <img
               src={restaurant.imageUrl}
               alt={restaurant.name}
               className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
+              loading="eager"
             />
           ) : (
-            <UtensilsIcon size={64} className="text-white" />
+            <div className="flex flex-col items-center justify-center text-white">
+              <UtensilsIcon size={64} className="mb-2" />
+              <span className="text-lg font-semibold opacity-90">
+                {restaurant.cuisines?.[0] || 'Restaurant'}
+              </span>
+            </div>
           )}
         </div>
 
@@ -113,15 +138,27 @@ export default function RestaurantCard({
 
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1">
-                <StarIcon size={16} className="text-yellow-400" />
-                <span className="font-semibold text-gray-800">
-                  {restaurant.rating}
-                </span>
-                <span className="text-gray-600 text-sm">
-                  ({restaurant.reviewCount} reviews)
-                </span>
+                {restaurant.rating > 0 ? (
+                  <>
+                    <StarIcon size={16} className="text-yellow-400" />
+                    <span className="font-semibold text-gray-800">
+                      {restaurant.rating.toFixed(1)}
+                    </span>
+                    {restaurant.reviewCount > 0 && (
+                      <span className="text-gray-600 text-sm">
+                        ({restaurant.reviewCount} reviews)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-gray-500 text-sm italic">
+                    No rating yet
+                  </span>
+                )}
               </div>
-              <span className="text-lg">{priceDisplay}</span>
+              {priceDisplay && (
+                <span className="text-lg text-gray-700">{priceDisplay}</span>
+              )}
             </div>
 
             <div className="flex items-stretch justify-between gap-2">

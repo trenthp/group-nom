@@ -41,7 +41,7 @@ export default function Hero() {
             alt="Group Nom"
             width={96}
             height={96}
-            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl cursor-pointer ${isSpinning ? 'spin-once' : ''}`}
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl cursor-pointer w-20 h-20 md:w-24 md:h-24 ${isSpinning ? 'spin-once' : ''}`}
             onClick={handleLogoTap}
           />
         </div>
