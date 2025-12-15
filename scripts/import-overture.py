@@ -112,6 +112,7 @@ class OvertureImporter:
         # DuckDB for reading Parquet files
         self.duck = duckdb.connect()
         self.duck.execute("INSTALL httpfs; LOAD httpfs;")
+        self.duck.execute("INSTALL spatial; LOAD spatial;")
         self.duck.execute("SET s3_region='us-west-2';")
 
         # Postgres for writing
@@ -160,7 +161,7 @@ class OvertureImporter:
     def build_category_filter(self) -> str:
         """Build SQL filter for restaurant categories."""
         patterns = [f"'%{cat}%'" for cat in RESTAURANT_CATEGORIES]
-        conditions = [f"LOWER(category) LIKE {p}" for p in patterns]
+        conditions = [f"LOWER(categories.primary) LIKE {p}" for p in patterns]
         return " OR ".join(conditions)
 
     def get_overture_path(self) -> str:
@@ -214,7 +215,9 @@ class OvertureImporter:
     def compute_h3_index(self, lat: float, lng: float, resolution: int) -> int:
         """Compute H3 index for a coordinate."""
         try:
-            return h3.latlng_to_cell(lat, lng, resolution)
+            hex_index = h3.latlng_to_cell(lat, lng, resolution)
+            # Convert hex string to integer for Postgres BIGINT
+            return int(hex_index, 16)
         except Exception:
             return None
 
@@ -246,6 +249,9 @@ class OvertureImporter:
                     alt_cats if alt_cats else []
                 )
 
+                # Convert release to date (remove .0 suffix)
+                release_date = self.release.split('.')[0]  # "2025-11-19.0" -> "2025-11-19"
+
                 processed.append((
                     gers_id,
                     name[:255] if name else None,  # Truncate long names
@@ -260,7 +266,7 @@ class OvertureImporter:
                     h3_res9,
                     categories,
                     primary_category,
-                    self.release  # overture_update_date
+                    release_date  # overture_update_date
                 ))
             except Exception as e:
                 logger.warning(f"Error processing row {gers_id}: {e}")

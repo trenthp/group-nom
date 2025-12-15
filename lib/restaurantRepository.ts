@@ -6,7 +6,7 @@
  */
 
 import { sql, DbRestaurant, serializeRestaurant } from './db'
-import { distanceToH3Query, DEFAULT_RESOLUTION, FINE_RESOLUTION } from './h3'
+import { distanceToH3Query, FINE_RESOLUTION } from './h3'
 
 /**
  * Get a restaurant by GERS ID
@@ -40,15 +40,21 @@ export async function getRestaurantsNearby(
   limit: number = 50
 ): Promise<DbRestaurant[]> {
   const { indexes, resolution } = distanceToH3Query(lat, lng, radiusKm)
-  const h3Column = resolution === FINE_RESOLUTION ? 'h3_index_res9' : 'h3_index_res8'
   const h3Values = indexes.map(h => BigInt(`0x${h}`))
 
-  const results = await sql`
-    SELECT *
-    FROM restaurants
-    WHERE ${sql.identifier([h3Column])} = ANY(${h3Values}::bigint[])
-    LIMIT ${limit}
-  `
+  const results = resolution === FINE_RESOLUTION
+    ? await sql`
+        SELECT *
+        FROM restaurants
+        WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+        LIMIT ${limit}
+      `
+    : await sql`
+        SELECT *
+        FROM restaurants
+        WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+        LIMIT ${limit}
+      `
   return results.map(serializeRestaurant)
 }
 
@@ -64,18 +70,27 @@ export async function searchRestaurantsByName(
   // If location provided, prefer nearby results
   if (lat !== undefined && lng !== undefined) {
     const { indexes, resolution } = distanceToH3Query(lat, lng, 10) // 10km radius
-    const h3Column = resolution === FINE_RESOLUTION ? 'h3_index_res9' : 'h3_index_res8'
     const h3Values = indexes.map(h => BigInt(`0x${h}`))
 
-    const results = await sql`
-      SELECT *,
-        similarity(name, ${query}) as sim
-      FROM restaurants
-      WHERE ${sql.identifier([h3Column])} = ANY(${h3Values}::bigint[])
-        AND name % ${query}
-      ORDER BY sim DESC
-      LIMIT ${limit}
-    `
+    const results = resolution === FINE_RESOLUTION
+      ? await sql`
+          SELECT *,
+            similarity(name, ${query}) as sim
+          FROM restaurants
+          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+            AND name % ${query}
+          ORDER BY sim DESC
+          LIMIT ${limit}
+        `
+      : await sql`
+          SELECT *,
+            similarity(name, ${query}) as sim
+          FROM restaurants
+          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+            AND name % ${query}
+          ORDER BY sim DESC
+          LIMIT ${limit}
+        `
     return results.map(serializeRestaurant)
   }
 
@@ -209,19 +224,29 @@ export async function getCategoriesInArea(
   radiusKm: number = 10
 ): Promise<Array<{ category: string; count: number }>> {
   const { indexes, resolution } = distanceToH3Query(lat, lng, radiusKm)
-  const h3Column = resolution === FINE_RESOLUTION ? 'h3_index_res9' : 'h3_index_res8'
   const h3Values = indexes.map(h => BigInt(`0x${h}`))
 
-  const results = await sql`
-    SELECT
-      unnest(categories) as category,
-      COUNT(*) as count
-    FROM restaurants
-    WHERE ${sql.identifier([h3Column])} = ANY(${h3Values}::bigint[])
-    GROUP BY category
-    ORDER BY count DESC
-    LIMIT 30
-  `
+  const results = resolution === FINE_RESOLUTION
+    ? await sql`
+        SELECT
+          unnest(categories) as category,
+          COUNT(*) as count
+        FROM restaurants
+        WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+        GROUP BY category
+        ORDER BY count DESC
+        LIMIT 30
+      `
+    : await sql`
+        SELECT
+          unnest(categories) as category,
+          COUNT(*) as count
+        FROM restaurants
+        WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+        GROUP BY category
+        ORDER BY count DESC
+        LIMIT 30
+      `
 
   return results.map((r: any) => ({
     category: r.category.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),

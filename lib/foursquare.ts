@@ -85,33 +85,6 @@ async function searchFoursquare(
 }
 
 /**
- * Get place details including photos
- */
-async function getPlaceDetails(fsqId: string): Promise<FoursquarePlace | null> {
-  const apiKey = process.env.FOURSQUARE_API_KEY
-  if (!apiKey) return null
-
-  try {
-    const params = new URLSearchParams({
-      fields: 'fsq_id,name,location,categories,rating,price,photos',
-    })
-
-    const response = await fetch(`${FSQ_API_BASE}/places/${fsqId}?${params}`, {
-      headers: {
-        Authorization: apiKey,
-        Accept: 'application/json',
-      },
-    })
-
-    if (!response.ok) return null
-    return await response.json()
-  } catch (error) {
-    console.error('Foursquare details fetch failed:', error)
-    return null
-  }
-}
-
-/**
  * Build photo URL from Foursquare photo object
  */
 export function buildPhotoUrl(prefix: string, suffix: string, size = '400x400'): string {
@@ -148,10 +121,7 @@ export async function linkToFoursquare(
     return { fsqPlaceId: null, photoIds: [], rating: null, priceLevel: null }
   }
 
-  // Extract photo IDs (can cache indefinitely per ToS)
-  const photoIds = place.photos?.map(p => p.id) || []
-
-  // Build full photo data for caching
+  // Build full photo data for caching (can cache indefinitely per ToS)
   const photoData = place.photos?.map(p => `${p.prefix}|${p.suffix}`) || []
 
   // Update database with cached Foursquare data

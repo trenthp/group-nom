@@ -5,15 +5,30 @@
  * for optimal performance with Vercel Edge/Serverless functions.
  */
 
-import { neon, neonConfig } from '@neondatabase/serverless'
+import { neon, NeonQueryFunction } from '@neondatabase/serverless'
 
-// Configure for Vercel Edge compatibility
-neonConfig.fetchConnectionCache = true
+// Lazy initialization to avoid build-time errors when DATABASE_URL is not set
+let _sql: NeonQueryFunction<false, false> | null = null
 
-// Create SQL client
-const sql = neon(process.env.DATABASE_URL!)
+function getSql(): NeonQueryFunction<false, false> {
+  if (!_sql) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set')
+    }
+    _sql = neon(process.env.DATABASE_URL)
+  }
+  return _sql
+}
 
-export { sql }
+// Export a proxy that lazily initializes the SQL client
+export const sql = new Proxy({} as NeonQueryFunction<false, false>, {
+  apply(_target, _thisArg, args) {
+    return getSql()(args[0] as TemplateStringsArray, ...args.slice(1))
+  },
+  get(_target, prop) {
+    return (getSql() as any)[prop]
+  }
+})
 
 // Types for database records
 export interface DbRestaurant {

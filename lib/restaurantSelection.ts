@@ -10,7 +10,7 @@
  */
 
 import { sql, DbRestaurant, serializeRestaurant } from './db'
-import { distanceToH3Query, haversineDistance, DEFAULT_RESOLUTION, FINE_RESOLUTION } from './h3'
+import { distanceToH3Query, haversineDistance, FINE_RESOLUTION } from './h3'
 import { batchLinkToFoursquare, buildPhotoUrl } from './foursquare'
 import type { Restaurant, Filters } from './types'
 
@@ -37,7 +37,7 @@ export async function selectRestaurantsForSession(
 
   // Step 1: Get H3 indexes for spatial filtering
   const { indexes, resolution } = distanceToH3Query(lat, lng, filters.distance)
-  const h3Column = resolution === FINE_RESOLUTION ? 'h3_index_res9' : 'h3_index_res8'
+  const useFineResolution = resolution === FINE_RESOLUTION
 
   // Step 2: Build category filter
   const categoryFilter = filters.cuisines.length > 0
@@ -47,7 +47,7 @@ export async function selectRestaurantsForSession(
   // Step 3: Query with filters
   const candidates = await queryCandidates(
     indexes,
-    h3Column,
+    useFineResolution,
     categoryFilter,
     filters.priceLevel,
     excludeGersIds,
@@ -104,7 +104,7 @@ export async function selectRestaurantsForSession(
  */
 async function queryCandidates(
   h3Indexes: string[],
-  h3Column: string,
+  useFineResolution: boolean,
   categories: string[] | null,
   priceLevels: number[],
   excludeIds: string[],
@@ -113,32 +113,156 @@ async function queryCandidates(
   // Convert H3 strings to BigInt for comparison
   const h3Values = h3Indexes.map(h => BigInt(`0x${h}`))
 
-  // Build dynamic query based on filters
-  let query
-
-  if (categories && categories.length > 0) {
-    query = sql`
-      SELECT *
-      FROM restaurants
-      WHERE ${sql.identifier([h3Column])} = ANY(${h3Values}::bigint[])
-        AND categories && ${categories}::text[]
-        ${priceLevels.length > 0 ? sql`AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))` : sql``}
-        ${excludeIds.length > 0 ? sql`AND gers_id != ALL(${excludeIds})` : sql``}
-      LIMIT ${limit}
-    `
+  // Build queries for each resolution and filter combination
+  if (useFineResolution) {
+    if (categories && categories.length > 0) {
+      if (priceLevels.length > 0 && excludeIds.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+            AND categories && ${categories}::text[]
+            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
+            AND gers_id != ALL(${excludeIds})
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else if (priceLevels.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+            AND categories && ${categories}::text[]
+            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else if (excludeIds.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+            AND categories && ${categories}::text[]
+            AND gers_id != ALL(${excludeIds})
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+            AND categories && ${categories}::text[]
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      }
+    } else {
+      if (priceLevels.length > 0 && excludeIds.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
+            AND gers_id != ALL(${excludeIds})
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else if (priceLevels.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else if (excludeIds.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+            AND gers_id != ALL(${excludeIds})
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      }
+    }
   } else {
-    query = sql`
-      SELECT *
-      FROM restaurants
-      WHERE ${sql.identifier([h3Column])} = ANY(${h3Values}::bigint[])
-        ${priceLevels.length > 0 ? sql`AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))` : sql``}
-        ${excludeIds.length > 0 ? sql`AND gers_id != ALL(${excludeIds})` : sql``}
-      LIMIT ${limit}
-    `
+    if (categories && categories.length > 0) {
+      if (priceLevels.length > 0 && excludeIds.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+            AND categories && ${categories}::text[]
+            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
+            AND gers_id != ALL(${excludeIds})
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else if (priceLevels.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+            AND categories && ${categories}::text[]
+            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else if (excludeIds.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+            AND categories && ${categories}::text[]
+            AND gers_id != ALL(${excludeIds})
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+            AND categories && ${categories}::text[]
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      }
+    } else {
+      if (priceLevels.length > 0 && excludeIds.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
+            AND gers_id != ALL(${excludeIds})
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else if (priceLevels.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else if (excludeIds.length > 0) {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+            AND gers_id != ALL(${excludeIds})
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      } else {
+        const results = await sql`
+          SELECT * FROM restaurants
+          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
+          LIMIT ${limit}
+        `
+        return results.map(serializeRestaurant)
+      }
+    }
   }
-
-  const results = await query
-  return results.map(serializeRestaurant)
 }
 
 /**
