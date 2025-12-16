@@ -49,7 +49,7 @@ export default function HomePage() {
                     fill="none"
                   />
                 </defs>
-                <text className="fill-white opacity-88 text-[22px] font-bold tracking-[.02em]">
+                <text className="fill-white opacity-88 text-[22px] font-bold tracking-[.02em]" style={{ fontFamily: "'Alan Sans', sans-serif" }}>
                   <textPath href="#circlePath" startOffset="0%">
                     Group Nom • Group Nom • Group Nom •
                   </textPath>
@@ -65,7 +65,7 @@ export default function HomePage() {
                 onClick={handleLogoTap}
               />
             </div>
-            <p className="text-orange-100 text-lg">Find your next favorite restaurant.<br />Or at least a rebound.</p>
+            <p className="text-orange-100 text-lg">Swipe together, match together, eat together.</p>
           </div>
 
           <div className="space-y-4">
@@ -117,7 +117,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-8 text-center text-orange-100 text-sm">
-            <p>Swipe together. Eat together.</p>
+            <p>Find your next favorite restaurant.<br />Or at least a rebound.</p>
           </div>
 
           <Footer />

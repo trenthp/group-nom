@@ -30,7 +30,7 @@ export default function Hero() {
                 fill="none"
               />
             </defs>
-            <text className="fill-white opacity-88 text-[22px] font-bold tracking-[.02em]">
+            <text className="fill-white opacity-88 text-[22px] font-bold tracking-[.02em]" style={{ fontFamily: "'Alan Sans', sans-serif" }}>
               <textPath href="#circlePath" startOffset="0%">
                 Group Nom • Group Nom • Group Nom •
               </textPath>
