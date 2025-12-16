@@ -65,7 +65,7 @@ export default function HomePage() {
                 onClick={handleLogoTap}
               />
             </div>
-            <p className="text-orange-100 text-lg">Swipe together, match together, eat together.</p>
+            <p className="text-orange-100 text-xl">Swipe together, match together, eat together.</p>
           </div>
 
           <div className="space-y-4">
