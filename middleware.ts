@@ -70,7 +70,7 @@ async function handleRateLimit(request: NextRequest): Promise<NextResponse | nul
     } else if (pathname.includes('/vote') || pathname.includes('/close-voting')) {
       limiter = rateLimiters.vote
       identifier = `vote:${ip}`
-    } else if (pathname === '/api/restaurants/nearby' || pathname === '/api/geocode') {
+    } else if (pathname === '/api/geocode') {
       limiter = rateLimiters.restaurants
       identifier = `restaurants:${ip}`
     } else {

@@ -11,6 +11,7 @@ interface RestaurantFiltersProps {
     distance: number
     priceLevel: number[]
     cuisines: string[]
+    excludeChains: boolean
   }
   onFiltersChange: (filters: {
     minRating: number
@@ -19,6 +20,7 @@ interface RestaurantFiltersProps {
     distance: number
     priceLevel: number[]
     cuisines: string[]
+    excludeChains: boolean
   }) => void
   locationName?: string
   onCustomLocationSubmit: (query: string) => Promise<void>
@@ -253,6 +255,28 @@ export default function RestaurantFilters({
             <span
               className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform ${
                 filters.openNow ? 'translate-x-7' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Include Chains Toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="text-gray-700 font-semibold">Include Chain Restaurants</label>
+            <p className="text-xs text-gray-500">McDonald&apos;s, Starbucks, etc.</p>
+          </div>
+          <button
+            onClick={() =>
+              onFiltersChange({ ...filters, excludeChains: !filters.excludeChains })
+            }
+            className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
+              !filters.excludeChains ? 'bg-orange-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform ${
+                !filters.excludeChains ? 'translate-x-7' : 'translate-x-1'
               }`}
             />
           </button>

@@ -26,6 +26,7 @@ export interface Filters {
   distance: number
   priceLevel: number[] // [1, 2, 3, 4] for $, $$, $$$, $$$$
   cuisines: string[]
+  excludeChains?: boolean // Filter out chain restaurants (50+ locations nationwide)
 }
 
 export interface Session {

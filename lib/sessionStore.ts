@@ -11,6 +11,45 @@ function getSessionKey(code: string): string {
   return `${SESSION_KEY_PREFIX}${code}`
 }
 
+// In-memory store for development when KV is not configured
+const inMemoryStore = new Map<string, { session: Session; expires: number }>()
+
+// Check if KV is properly configured
+const useInMemory = !process.env.KV_REST_API_URL || process.env.USE_IN_MEMORY_SESSIONS === 'true'
+
+if (useInMemory) {
+  console.log('[SessionStore] Using in-memory session storage (development mode)')
+}
+
+// Helper functions for in-memory store
+function inMemoryGet(key: string): Session | null {
+  const entry = inMemoryStore.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expires) {
+    inMemoryStore.delete(key)
+    return null
+  }
+  return entry.session
+}
+
+function inMemorySet(key: string, session: Session, expirySeconds: number): void {
+  inMemoryStore.set(key, {
+    session,
+    expires: Date.now() + expirySeconds * 1000,
+  })
+}
+
+function inMemoryDel(key: string): void {
+  inMemoryStore.delete(key)
+}
+
+function inMemoryTtl(key: string): number {
+  const entry = inMemoryStore.get(key)
+  if (!entry) return -1
+  const remaining = Math.floor((entry.expires - Date.now()) / 1000)
+  return remaining > 0 ? remaining : -1
+}
+
 export const sessionStore = {
   createSession: async (
     code: string,
@@ -31,20 +70,33 @@ export const sessionStore = {
       restaurants,
       location,
     }
-    await kv.set(getSessionKey(code), session, { ex: SESSION_EXPIRY_SECONDS })
+    if (useInMemory) {
+      inMemorySet(getSessionKey(code), session, SESSION_EXPIRY_SECONDS)
+    } else {
+      await kv.set(getSessionKey(code), session, { ex: SESSION_EXPIRY_SECONDS })
+    }
     return session
   },
 
   getSession: async (code: string): Promise<Session | null> => {
+    if (useInMemory) {
+      return inMemoryGet(getSessionKey(code))
+    }
     const session = await kv.get<Session>(getSessionKey(code))
     return session
   },
 
   updateSession: async (code: string, session: Session): Promise<void> => {
-    // Get current TTL to preserve it
-    const ttl = await kv.ttl(getSessionKey(code))
-    const expiry = ttl > 0 ? ttl : SESSION_EXPIRY_SECONDS
-    await kv.set(getSessionKey(code), session, { ex: expiry })
+    if (useInMemory) {
+      const ttl = inMemoryTtl(getSessionKey(code))
+      const expiry = ttl > 0 ? ttl : SESSION_EXPIRY_SECONDS
+      inMemorySet(getSessionKey(code), session, expiry)
+    } else {
+      // Get current TTL to preserve it
+      const ttl = await kv.ttl(getSessionKey(code))
+      const expiry = ttl > 0 ? ttl : SESSION_EXPIRY_SECONDS
+      await kv.set(getSessionKey(code), session, { ex: expiry })
+    }
   },
 
   addUserToSession: async (code: string, userId: string): Promise<boolean> => {
@@ -204,6 +256,10 @@ export const sessionStore = {
   },
 
   deleteSession: async (code: string): Promise<void> => {
-    await kv.del(getSessionKey(code))
+    if (useInMemory) {
+      inMemoryDel(getSessionKey(code))
+    } else {
+      await kv.del(getSessionKey(code))
+    }
   },
 }

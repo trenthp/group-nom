@@ -30,8 +30,9 @@ from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-# Load environment variables
-load_dotenv()
+# Load environment variables (prefer .env.local for Next.js compatibility)
+load_dotenv('.env.local')
+load_dotenv()  # Fallback to .env
 
 # Configure logging
 logging.basicConfig(
@@ -45,15 +46,26 @@ OVERTURE_S3_BASE = "s3://overturemaps-us-west-2/release"
 OVERTURE_THEME = "places"
 
 # Restaurant-related categories to include
+# Using exact matches and _restaurant/_bar suffixes to avoid false positives like "barber"
 RESTAURANT_CATEGORIES = [
     'restaurant',
     'cafe',
     'coffee_shop',
-    'bar',
-    'pub',
-    'brewery',
     'bakery',
     'food_truck',
+    'food_court',
+    'diner',
+    'steakhouse',
+    'pub',
+    'brewery',
+    'cafeteria',
+    'tea_house',
+    'ice_cream_shop',
+    'dessert_shop',
+]
+
+# Categories that end with _restaurant
+RESTAURANT_SUFFIX_CATEGORIES = [
     'fast_food_restaurant',
     'pizza_restaurant',
     'italian_restaurant',
@@ -68,21 +80,56 @@ RESTAURANT_CATEGORIES = [
     'greek_restaurant',
     'mediterranean_restaurant',
     'american_restaurant',
-    'steakhouse',
     'seafood_restaurant',
     'bbq_restaurant',
+    'barbecue_restaurant',
     'burger_restaurant',
     'sushi_restaurant',
     'vegetarian_restaurant',
     'vegan_restaurant',
-    'diner',
     'buffet_restaurant',
-    'food_court',
-    'ice_cream_shop',
-    'dessert_shop',
-    'juice_bar',
-    'tea_house',
+    'asian_restaurant',
+    'latin_american_restaurant',
+    'caribbean_restaurant',
+    'cuban_restaurant',
+    'chicken_restaurant',
+    'taco_restaurant',
+    'breakfast_and_brunch_restaurant',
+    'southern_restaurant',
+    'health_food_restaurant',
+    'peruvian_restaurant',
+    'colombian_restaurant',
+    'texmex_restaurant',
+    'asian_fusion_restaurant',
+]
+
+# Categories that end with _bar (careful to exclude barber, bartender, etc.)
+BAR_SUFFIX_CATEGORIES = [
     'wine_bar',
+    'juice_bar',
+    'sports_bar',
+    'cocktail_bar',
+    'beer_bar',
+    'hookah_bar',
+    'tapas_bar',
+    'dive_bar',
+    'tiki_bar',
+    'salad_bar',
+    'milk_bar',
+    'gay_bar',
+    'hotel_bar',
+    'beach_bar',
+    'smoothie_juice_bar',
+]
+
+# Categories to explicitly exclude (matched by patterns but not food)
+EXCLUDED_CATEGORIES = [
+    'barber',
+    'bartender',
+    'public_',  # prefix - matches public_school, public_health_clinic, etc.
+    'notary_public',
+    'topic_publisher',
+    'restaurant_equipment',
 ]
 
 # US State codes for filtering
@@ -160,9 +207,38 @@ class OvertureImporter:
 
     def build_category_filter(self) -> str:
         """Build SQL filter for restaurant categories."""
-        patterns = [f"'%{cat}%'" for cat in RESTAURANT_CATEGORIES]
-        conditions = [f"LOWER(categories.primary) LIKE {p}" for p in patterns]
-        return " OR ".join(conditions)
+        conditions = []
+
+        # Exact matches for base categories
+        for cat in RESTAURANT_CATEGORIES:
+            conditions.append(f"LOWER(categories.primary) = '{cat}'")
+
+        # Exact matches for _restaurant suffix categories
+        for cat in RESTAURANT_SUFFIX_CATEGORIES:
+            conditions.append(f"LOWER(categories.primary) = '{cat}'")
+
+        # Exact matches for _bar suffix categories
+        for cat in BAR_SUFFIX_CATEGORIES:
+            conditions.append(f"LOWER(categories.primary) = '{cat}'")
+
+        # Also catch generic patterns like "xxx_restaurant" we might have missed
+        conditions.append("LOWER(categories.primary) LIKE '%_restaurant'")
+        conditions.append("LOWER(categories.primary) LIKE '%_pub'")
+
+        # Build exclusion clause
+        exclusions = []
+        for exc in EXCLUDED_CATEGORIES:
+            if exc.endswith('_'):
+                # Prefix match
+                exclusions.append(f"LOWER(categories.primary) LIKE '{exc}%'")
+            else:
+                exclusions.append(f"LOWER(categories.primary) = '{exc}'")
+
+        filter_clause = f"({' OR '.join(conditions)})"
+        if exclusions:
+            filter_clause += f" AND NOT ({' OR '.join(exclusions)})"
+
+        return filter_clause
 
     def get_overture_path(self) -> str:
         """Get the S3 path for Overture places data."""

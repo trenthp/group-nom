@@ -21,7 +21,9 @@ function getSql(): NeonQueryFunction<false, false> {
 }
 
 // Export a proxy that lazily initializes the SQL client
-export const sql = new Proxy({} as NeonQueryFunction<false, false>, {
+// The target must be a function for the apply trap to work
+const sqlProxy = function() {} as unknown as NeonQueryFunction<false, false>
+export const sql = new Proxy(sqlProxy, {
   apply(_target, _thisArg, args) {
     return getSql()(args[0] as TemplateStringsArray, ...args.slice(1))
   },

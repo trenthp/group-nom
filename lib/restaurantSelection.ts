@@ -35,24 +35,49 @@ export async function selectRestaurantsForSession(
 ): Promise<Restaurant[]> {
   const { lat, lng, filters, limit = 10, excludeGersIds = [] } = options
 
+  console.log('[Selection] Starting selection for:', { lat, lng, distance: filters.distance })
+
   // Step 1: Get H3 indexes for spatial filtering
   const { indexes, resolution } = distanceToH3Query(lat, lng, filters.distance)
   const useFineResolution = resolution === FINE_RESOLUTION
 
+  console.log('[Selection] H3 indexes:', indexes.length, 'resolution:', resolution)
+
   // Step 2: Build category filter
+  // Map UI cuisine names to database category format (e.g., "Italian" -> "italian_restaurant")
+  const cuisineToCategory: Record<string, string> = {
+    'bbq': 'barbecue_restaurant',
+    'mediterranean': 'mediterranean_restaurant',
+  }
+
   const categoryFilter = filters.cuisines.length > 0
-    ? filters.cuisines.map(c => c.toLowerCase().replace(/ /g, '_'))
+    ? filters.cuisines.map(c => {
+        const normalized = c.toLowerCase().replace(/ /g, '_')
+        // Check for special mappings first, then default to {cuisine}_restaurant
+        return cuisineToCategory[normalized] ||
+          (normalized.endsWith('_restaurant') ? normalized : `${normalized}_restaurant`)
+      })
     : null
 
+  console.log('[Selection] Category filter:', categoryFilter, 'Price levels:', filters.priceLevel)
+
   // Step 3: Query with filters
-  const candidates = await queryCandidates(
-    indexes,
-    useFineResolution,
-    categoryFilter,
-    filters.priceLevel,
-    excludeGersIds,
-    limit * 10 // Get more candidates than needed for scoring
-  )
+  let candidates: DbRestaurant[] = []
+  try {
+    candidates = await queryCandidates(
+      indexes,
+      useFineResolution,
+      categoryFilter,
+      filters.priceLevel,
+      excludeGersIds,
+      filters.excludeChains ?? false,
+      limit * 10 // Get more candidates than needed for scoring
+    )
+    console.log('[Selection] Candidates found:', candidates.length)
+  } catch (error) {
+    console.error('[Selection] Query error:', error)
+    throw error
+  }
 
   if (candidates.length === 0) {
     return []
@@ -65,42 +90,58 @@ export async function selectRestaurantsForSession(
   const selected = stratifiedSelect(scored, categoryFilter, limit)
 
   // Step 6: Link to Foursquare if needed (lazy linking)
+  // Wrapped in try-catch to handle DB capacity limits gracefully
   const needsLinking = selected.filter(r => !r.fsq_place_id)
   if (needsLinking.length > 0) {
-    await batchLinkToFoursquare(
-      needsLinking.map(r => ({
-        gersId: r.gers_id,
-        name: r.name,
-        lat: r.lat,
-        lng: r.lng,
-      }))
-    )
+    try {
+      await batchLinkToFoursquare(
+        needsLinking.map(r => ({
+          gersId: r.gers_id,
+          name: r.name,
+          lat: r.lat,
+          lng: r.lng,
+        }))
+      )
 
-    // Re-fetch to get updated photo data
-    const updatedIds = needsLinking.map(r => r.gers_id)
-    const updated = await sql`
-      SELECT * FROM restaurants WHERE gers_id = ANY(${updatedIds})
-    `
-    const updatedMap = new Map(updated.map((r: any) => [r.gers_id, r]))
+      // Re-fetch to get updated photo data
+      const updatedIds = needsLinking.map(r => r.gers_id)
+      const updated = await sql`
+        SELECT * FROM restaurants WHERE gers_id = ANY(${updatedIds})
+      `
+      const updatedMap = new Map(updated.map((r: any) => [r.gers_id, r]))
 
-    for (let i = 0; i < selected.length; i++) {
-      const update = updatedMap.get(selected[i].gers_id)
-      if (update) {
-        selected[i] = { ...selected[i], ...update }
+      for (let i = 0; i < selected.length; i++) {
+        const update = updatedMap.get(selected[i].gers_id)
+        if (update) {
+          selected[i] = { ...selected[i], ...update }
+        }
       }
+    } catch (error) {
+      console.warn('[Selection] Foursquare linking skipped (DB may be at capacity):', error)
     }
   }
 
   // Step 7: Increment times_shown for selected restaurants
-  const selectedIds = selected.map(r => r.gers_id)
-  await sql`SELECT increment_times_shown(${selectedIds})`
+  // Wrapped in try-catch to handle DB capacity limits gracefully
+  try {
+    const selectedIds = selected.map(r => r.gers_id)
+    await sql`SELECT increment_times_shown(${selectedIds})`
+  } catch (error) {
+    console.warn('[Selection] times_shown increment skipped (DB may be at capacity):', error)
+  }
 
   // Step 8: Transform to API response format
   return selected.map(transformToRestaurant)
 }
 
+// Threshold for considering a restaurant a "chain" (locations nationwide)
+const CHAIN_THRESHOLD = 20
+
 /**
  * Query candidate restaurants from database
+ *
+ * Uses conditional SQL to handle all filter combinations in just 2 queries
+ * (one for each H3 resolution) instead of 16 separate query branches.
  */
 async function queryCandidates(
   h3Indexes: string[],
@@ -108,161 +149,56 @@ async function queryCandidates(
   categories: string[] | null,
   priceLevels: number[],
   excludeIds: string[],
+  excludeChains: boolean,
   limit: number
 ): Promise<DbRestaurant[]> {
   // Convert H3 strings to BigInt for comparison
   const h3Values = h3Indexes.map(h => BigInt(`0x${h}`))
 
-  // Build queries for each resolution and filter combination
-  if (useFineResolution) {
-    if (categories && categories.length > 0) {
-      if (priceLevels.length > 0 && excludeIds.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
-            AND categories && ${categories}::text[]
-            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
-            AND gers_id != ALL(${excludeIds})
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else if (priceLevels.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
-            AND categories && ${categories}::text[]
-            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else if (excludeIds.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
-            AND categories && ${categories}::text[]
-            AND gers_id != ALL(${excludeIds})
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
-            AND categories && ${categories}::text[]
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      }
-    } else {
-      if (priceLevels.length > 0 && excludeIds.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
-            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
-            AND gers_id != ALL(${excludeIds})
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else if (priceLevels.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
-            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else if (excludeIds.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
-            AND gers_id != ALL(${excludeIds})
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res9 = ANY(${h3Values}::bigint[])
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      }
-    }
-  } else {
-    if (categories && categories.length > 0) {
-      if (priceLevels.length > 0 && excludeIds.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
-            AND categories && ${categories}::text[]
-            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
-            AND gers_id != ALL(${excludeIds})
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else if (priceLevels.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
-            AND categories && ${categories}::text[]
-            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else if (excludeIds.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
-            AND categories && ${categories}::text[]
-            AND gers_id != ALL(${excludeIds})
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
-            AND categories && ${categories}::text[]
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      }
-    } else {
-      if (priceLevels.length > 0 && excludeIds.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
-            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
-            AND gers_id != ALL(${excludeIds})
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else if (priceLevels.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
-            AND (fsq_price_level IS NULL OR fsq_price_level = ANY(${priceLevels}))
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else if (excludeIds.length > 0) {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
-            AND gers_id != ALL(${excludeIds})
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      } else {
-        const results = await sql`
-          SELECT * FROM restaurants
-          WHERE h3_index_res8 = ANY(${h3Values}::bigint[])
-          LIMIT ${limit}
-        `
-        return results.map(serializeRestaurant)
-      }
-    }
-  }
+  // Normalize filter arrays - use null for "no filter" cases
+  const categoryFilter = categories && categories.length > 0 ? categories : null
+  const priceFilter = priceLevels.length > 0 ? priceLevels : null
+  const excludeFilter = excludeIds.length > 0 ? excludeIds : null
+
+  // Query with conditional filters
+  // - Categories: only filter if categoryFilter is not null
+  // - Price: allow null prices (unlinked restaurants) or matching prices
+  // - Exclude: only filter if excludeFilter is not null
+  // - Chains: use CTE to identify and exclude chain restaurants
+  // - ORDER BY RANDOM() ensures we sample from the full pool, not just first N rows
+  const results = useFineResolution
+    ? await sql`
+        WITH chain_names AS (
+          SELECT name FROM restaurants
+          GROUP BY name
+          HAVING COUNT(*) > ${CHAIN_THRESHOLD}
+        )
+        SELECT r.* FROM restaurants r
+        WHERE r.h3_index_res9 = ANY(${h3Values}::bigint[])
+          AND (${categoryFilter}::text[] IS NULL OR r.categories && ${categoryFilter}::text[])
+          AND (${priceFilter}::int[] IS NULL OR r.fsq_price_level IS NULL OR r.fsq_price_level = ANY(${priceFilter}::int[]))
+          AND (${excludeFilter}::text[] IS NULL OR r.gers_id != ALL(${excludeFilter}::text[]))
+          AND (NOT ${excludeChains} OR r.name NOT IN (SELECT name FROM chain_names))
+        ORDER BY RANDOM()
+        LIMIT ${limit}
+      `
+    : await sql`
+        WITH chain_names AS (
+          SELECT name FROM restaurants
+          GROUP BY name
+          HAVING COUNT(*) > ${CHAIN_THRESHOLD}
+        )
+        SELECT r.* FROM restaurants r
+        WHERE r.h3_index_res8 = ANY(${h3Values}::bigint[])
+          AND (${categoryFilter}::text[] IS NULL OR r.categories && ${categoryFilter}::text[])
+          AND (${priceFilter}::int[] IS NULL OR r.fsq_price_level IS NULL OR r.fsq_price_level = ANY(${priceFilter}::int[]))
+          AND (${excludeFilter}::text[] IS NULL OR r.gers_id != ALL(${excludeFilter}::text[]))
+          AND (NOT ${excludeChains} OR r.name NOT IN (SELECT name FROM chain_names))
+        ORDER BY RANDOM()
+        LIMIT ${limit}
+      `
+
+  return results.map(serializeRestaurant)
 }
 
 /**

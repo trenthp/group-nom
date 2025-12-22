@@ -6,7 +6,7 @@ import Image from 'next/image'
 import RestaurantFilters from '@/components/RestaurantFilters'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { getUserLocation } from '@/lib/googleMaps'
+import { getUserLocation } from '@/lib/geolocation'
 
 function SetupPageContent() {
   const router = useRouter()
@@ -20,6 +20,7 @@ function SetupPageContent() {
     distance: number
     priceLevel: number[]
     cuisines: string[]
+    excludeChains: boolean
   }>({
     minRating: 0,
     openNow: false,
@@ -27,6 +28,7 @@ function SetupPageContent() {
     distance: 5,
     priceLevel: [],
     cuisines: [],
+    excludeChains: true, // Default: show local gems, hide chains
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
