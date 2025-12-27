@@ -15,7 +15,11 @@ function getSql(): NeonQueryFunction<false, false> {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL environment variable is not set')
     }
-    _sql = neon(process.env.DATABASE_URL)
+    const dbUrl = process.env.DATABASE_URL.trim()
+    console.log('[DB] URL length:', dbUrl.length)
+    console.log('[DB] URL starts with:', dbUrl.substring(0, 15))
+    console.log('[DB] URL char codes (first 20):', Array.from(dbUrl.substring(0, 20)).map(c => c.charCodeAt(0)).join(','))
+    _sql = neon(dbUrl)
   }
   return _sql
 }
