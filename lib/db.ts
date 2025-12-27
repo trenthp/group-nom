@@ -46,10 +46,9 @@ export interface DbRestaurant {
   h3_index_res9: string | null
   categories: string[]
   primary_category: string | null
-  fsq_place_id: string | null
-  fsq_photo_ids: string[]
-  fsq_rating: number | null
-  fsq_price_level: number | null
+  ta_location_id: string | null
+  ta_photo_urls: string[]
+  ta_price_level: string | null
   times_shown: number
   times_picked: number
   pick_rate: number | null

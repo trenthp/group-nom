@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const code = generateSessionCode()
     const userId = generateUserId()
 
-    // Select restaurants from local Overture data + Foursquare enrichment
+    // Select restaurants from local Overture data + TripAdvisor photos
     const restaurants = await selectRestaurantsForSession({
       lat: location.lat,
       lng: location.lng,

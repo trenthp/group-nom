@@ -37,7 +37,7 @@ export async function POST(
     // Get previously shown restaurant IDs to exclude
     const excludeIds = session.restaurants.map(r => r.id)
 
-    // Select restaurants from local Overture data + Foursquare enrichment
+    // Select restaurants from local Overture data + TripAdvisor photos
     const restaurants = await selectRestaurantsForSession({
       lat: location.lat,
       lng: location.lng,

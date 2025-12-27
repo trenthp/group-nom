@@ -30,12 +30,11 @@ CREATE TABLE restaurants (
   categories TEXT[] DEFAULT '{}',
   primary_category TEXT,
 
-  -- Foursquare linking (populated lazily on first query)
-  fsq_place_id TEXT,
-  fsq_photo_ids TEXT[] DEFAULT '{}',
-  fsq_rating REAL,  -- Cached on link, refreshed periodically
-  fsq_price_level INTEGER,  -- 1-4
-  fsq_linked_at TIMESTAMP,
+  -- TripAdvisor linking (populated lazily on first query)
+  ta_location_id TEXT,
+  ta_photo_urls TEXT[] DEFAULT '{}',  -- Direct URLs to photos (large size)
+  ta_price_level TEXT,  -- e.g., "$", "$$", "$$$", "$$$$"
+  ta_linked_at TIMESTAMP,
 
   -- Proprietary analytics (YOUR competitive moat)
   times_shown INTEGER DEFAULT 0,
@@ -64,9 +63,9 @@ CREATE INDEX idx_restaurants_h3_res9 ON restaurants(h3_index_res9);
 CREATE INDEX idx_restaurants_categories ON restaurants USING GIN(categories);
 CREATE INDEX idx_restaurants_primary_category ON restaurants(primary_category);
 
--- Foursquare linking status
-CREATE INDEX idx_restaurants_fsq_unlinked ON restaurants(gers_id)
-  WHERE fsq_place_id IS NULL;
+-- TripAdvisor linking status
+CREATE INDEX idx_restaurants_ta_unlinked ON restaurants(gers_id)
+  WHERE ta_location_id IS NULL;
 
 -- Location-based sorting (for distance calculations when needed)
 CREATE INDEX idx_restaurants_location ON restaurants(lat, lng);
@@ -219,11 +218,11 @@ $$ LANGUAGE plpgsql;
 -- VIEWS FOR COMMON QUERIES
 -- ============================================================================
 
--- Restaurants needing Foursquare linking
-CREATE VIEW restaurants_needing_fsq_link AS
+-- Restaurants needing TripAdvisor linking
+CREATE VIEW restaurants_needing_ta_link AS
 SELECT gers_id, name, lat, lng, city, state
 FROM restaurants
-WHERE fsq_place_id IS NULL
+WHERE ta_location_id IS NULL
 ORDER BY times_shown DESC;  -- Prioritize frequently shown
 
 -- Top performing restaurants
@@ -235,8 +234,7 @@ SELECT
   primary_category,
   times_shown,
   times_picked,
-  pick_rate,
-  fsq_rating
+  pick_rate
 FROM restaurants
 WHERE times_shown >= 10
 ORDER BY pick_rate DESC

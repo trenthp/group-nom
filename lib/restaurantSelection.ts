@@ -11,7 +11,7 @@
 
 import { sql, DbRestaurant, serializeRestaurant } from './db'
 import { distanceToH3Query, haversineDistance, FINE_RESOLUTION } from './h3'
-import { batchLinkToFoursquare, buildPhotoUrl } from './foursquare'
+import { batchLinkToTripAdvisor } from './tripadvisor'
 import type { Restaurant, Filters } from './types'
 
 interface SelectionOptions {
@@ -89,18 +89,20 @@ export async function selectRestaurantsForSession(
   // Step 5: Select with stratification for variety
   const selected = stratifiedSelect(scored, categoryFilter, limit)
 
-  // Step 6: Link to Foursquare if needed (lazy linking)
-  // Wrapped in try-catch to handle DB capacity limits gracefully
-  const needsLinking = selected.filter(r => !r.fsq_place_id)
+  // Step 6: Link to TripAdvisor if needed (lazy linking for photos)
+  // Fetch price data only if user is filtering by price (saves API calls)
+  const needsPriceData = filters.priceLevel.length > 0
+  const needsLinking = selected.filter(r => !r.ta_location_id)
   if (needsLinking.length > 0) {
     try {
-      await batchLinkToFoursquare(
+      await batchLinkToTripAdvisor(
         needsLinking.map(r => ({
           gersId: r.gers_id,
           name: r.name,
           lat: r.lat,
           lng: r.lng,
-        }))
+        })),
+        needsPriceData // Only fetch price level if filter is active
       )
 
       // Re-fetch to get updated photo data
@@ -117,7 +119,7 @@ export async function selectRestaurantsForSession(
         }
       }
     } catch (error) {
-      console.warn('[Selection] Foursquare linking skipped (DB may be at capacity):', error)
+      console.warn('[Selection] TripAdvisor linking skipped (DB may be at capacity):', error)
     }
   }
 
@@ -157,12 +159,18 @@ async function queryCandidates(
 
   // Normalize filter arrays - use null for "no filter" cases
   const categoryFilter = categories && categories.length > 0 ? categories : null
-  const priceFilter = priceLevels.length > 0 ? priceLevels : null
   const excludeFilter = excludeIds.length > 0 ? excludeIds : null
+
+  // Convert numeric price levels to TripAdvisor format for matching
+  // TripAdvisor uses "$", "$$", "$$$", "$$$$" or ranges like "$$-$$$"
+  // We match if the restaurant's price contains any of the requested levels
+  const pricePatterns = priceLevels.length > 0
+    ? priceLevels.map(p => '$'.repeat(p))
+    : null
 
   // Query with conditional filters
   // - Categories: only filter if categoryFilter is not null
-  // - Price: allow null prices (unlinked restaurants) or matching prices
+  // - Price: match if ta_price_level contains any requested level (or is null/not yet fetched)
   // - Exclude: only filter if excludeFilter is not null
   // - Chains: use CTE to identify and exclude chain restaurants
   // - ORDER BY RANDOM() ensures we sample from the full pool, not just first N rows
@@ -176,7 +184,7 @@ async function queryCandidates(
         SELECT r.* FROM restaurants r
         WHERE r.h3_index_res9 = ANY(${h3Values}::bigint[])
           AND (${categoryFilter}::text[] IS NULL OR r.categories && ${categoryFilter}::text[])
-          AND (${priceFilter}::int[] IS NULL OR r.fsq_price_level IS NULL OR r.fsq_price_level = ANY(${priceFilter}::int[]))
+          AND (${pricePatterns}::text[] IS NULL OR r.ta_price_level IS NULL OR r.ta_price_level = ANY(${pricePatterns}::text[]))
           AND (${excludeFilter}::text[] IS NULL OR r.gers_id != ALL(${excludeFilter}::text[]))
           AND (NOT ${excludeChains} OR r.name NOT IN (SELECT name FROM chain_names))
         ORDER BY RANDOM()
@@ -191,7 +199,7 @@ async function queryCandidates(
         SELECT r.* FROM restaurants r
         WHERE r.h3_index_res8 = ANY(${h3Values}::bigint[])
           AND (${categoryFilter}::text[] IS NULL OR r.categories && ${categoryFilter}::text[])
-          AND (${priceFilter}::int[] IS NULL OR r.fsq_price_level IS NULL OR r.fsq_price_level = ANY(${priceFilter}::int[]))
+          AND (${pricePatterns}::text[] IS NULL OR r.ta_price_level IS NULL OR r.ta_price_level = ANY(${pricePatterns}::text[]))
           AND (${excludeFilter}::text[] IS NULL OR r.gers_id != ALL(${excludeFilter}::text[]))
           AND (NOT ${excludeChains} OR r.name NOT IN (SELECT name FROM chain_names))
         ORDER BY RANDOM()
@@ -226,11 +234,6 @@ function scoreCandidates(
         ? restaurant.pick_rate
         : 0.5, // Default for new restaurants
 
-      // Quality: Foursquare rating (if available)
-      fsqRating: restaurant.fsq_rating !== null
-        ? restaurant.fsq_rating / 10
-        : 0.5,
-
       // Discovery: boost for less-shown restaurants
       discovery: 1 / Math.log(restaurant.times_shown + 2),
 
@@ -243,10 +246,9 @@ function scoreCandidates(
 
     // Weighted final score
     const score =
-      0.25 * scores.pickRate +
-      0.15 * scores.fsqRating +
-      0.25 * scores.discovery +
-      0.20 * scores.random +
+      0.30 * scores.pickRate +
+      0.30 * scores.discovery +
+      0.25 * scores.random +
       0.15 * scores.distance
 
     return {
@@ -319,19 +321,11 @@ function stratifiedSelect(
  * Transform database record to API response format
  */
 function transformToRestaurant(db: ScoredRestaurant): Restaurant {
-  // Build photo URL from cached Foursquare data
+  // Use TripAdvisor photo URL if available
   let imageUrl: string | undefined
-  if (db.fsq_photo_ids && db.fsq_photo_ids.length > 0) {
-    const [prefix, suffix] = db.fsq_photo_ids[0].split('|')
-    if (prefix && suffix) {
-      imageUrl = buildPhotoUrl(prefix, suffix)
-    }
+  if (db.ta_photo_urls && db.ta_photo_urls.length > 0) {
+    imageUrl = db.ta_photo_urls[0]
   }
-
-  // Map price level to display format
-  const priceLevel = db.fsq_price_level
-    ? '$'.repeat(db.fsq_price_level)
-    : undefined
 
   // Map categories to display names
   const cuisines = db.categories
@@ -342,13 +336,13 @@ function transformToRestaurant(db: ScoredRestaurant): Restaurant {
     id: db.gers_id,
     name: db.name,
     address: [db.address, db.city, db.state].filter(Boolean).join(', '),
-    rating: db.fsq_rating || 0,
-    reviewCount: 0, // We don't store this
+    rating: 0, // TODO: Add rating source
+    reviewCount: 0,
     cuisines,
     imageUrl,
     lat: db.lat,
     lng: db.lng,
-    priceLevel,
+    priceLevel: db.ta_price_level || undefined,
   }
 }
 

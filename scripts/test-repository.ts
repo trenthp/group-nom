@@ -30,7 +30,7 @@ async function runTests() {
   try {
     const stats = await getRestaurantStats()
     console.log('   Total restaurants:', stats.totalRestaurants)
-    console.log('   Linked to Foursquare:', stats.linkedToFoursquare)
+    console.log('   Linked to TripAdvisor:', stats.linkedToTripAdvisor)
     console.log('   With photos:', stats.withPhotos)
     console.log('   States:', Object.keys(stats.byState).join(', '))
     console.log('   ✓ PASS\n')

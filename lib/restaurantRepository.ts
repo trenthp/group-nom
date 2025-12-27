@@ -168,15 +168,15 @@ export async function getTopRestaurants(
 }
 
 /**
- * Get restaurants that need Foursquare linking
+ * Get restaurants that need TripAdvisor linking
  */
 export async function getUnlinkedRestaurants(
   limit: number = 100
 ): Promise<DbRestaurant[]> {
   const results = await sql`
     SELECT * FROM restaurants
-    WHERE fsq_place_id IS NULL
-      AND fsq_linked_at IS NULL
+    WHERE ta_location_id IS NULL
+      AND ta_linked_at IS NULL
     ORDER BY times_shown DESC
     LIMIT ${limit}
   `
@@ -188,7 +188,7 @@ export async function getUnlinkedRestaurants(
  */
 export async function getRestaurantStats(): Promise<{
   totalRestaurants: number
-  linkedToFoursquare: number
+  linkedToTripAdvisor: number
   withPhotos: number
   withPickRate: number
   byState: Record<string, number>
@@ -196,8 +196,8 @@ export async function getRestaurantStats(): Promise<{
   const stats = await sql`
     SELECT
       COUNT(*) as total,
-      COUNT(fsq_place_id) as linked,
-      COUNT(CASE WHEN array_length(fsq_photo_ids, 1) > 0 THEN 1 END) as with_photos,
+      COUNT(ta_location_id) as linked_ta,
+      COUNT(CASE WHEN array_length(ta_photo_urls, 1) > 0 THEN 1 END) as with_photos,
       COUNT(pick_rate) as with_pick_rate
     FROM restaurants
   `
@@ -212,7 +212,7 @@ export async function getRestaurantStats(): Promise<{
 
   return {
     totalRestaurants: parseInt(stats[0].total),
-    linkedToFoursquare: parseInt(stats[0].linked),
+    linkedToTripAdvisor: parseInt(stats[0].linked_ta),
     withPhotos: parseInt(stats[0].with_photos),
     withPickRate: parseInt(stats[0].with_pick_rate),
     byState: Object.fromEntries(byState.map((r: any) => [r.state, parseInt(r.count)])),

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRestaurantById } from '@/lib/restaurantRepository'
-import { getRestaurantDetails } from '@/lib/foursquare'
 
 /**
  * GET /api/restaurants/[id]/details
  *
- * Fetch enriched details for a restaurant (rating, tips, hours, etc.)
- * This data is NOT cached per Foursquare ToS (for non-Enterprise customers).
- * Only call this when user explicitly taps "more info".
+ * Fetch details for a restaurant.
+ * Currently returns local data only.
+ * TODO: Add external data source for ratings, tips, hours.
  */
 export async function GET(
   _request: NextRequest,
@@ -33,49 +32,7 @@ export async function GET(
       )
     }
 
-    // If not linked to Foursquare, return basic info
-    if (!restaurant.fsq_place_id) {
-      return NextResponse.json({
-        success: true,
-        details: {
-          name: restaurant.name,
-          address: [restaurant.address, restaurant.city, restaurant.state]
-            .filter(Boolean)
-            .join(', '),
-          categories: restaurant.categories,
-          rating: null,
-          tips: [],
-          hours: null,
-          priceLevel: null,
-          attributes: [],
-          source: 'local',
-        },
-      })
-    }
-
-    // Fetch fresh details from Foursquare (not cached per ToS)
-    const details = await getRestaurantDetails(restaurant.fsq_place_id)
-
-    if (!details) {
-      // Foursquare request failed, return what we have
-      return NextResponse.json({
-        success: true,
-        details: {
-          name: restaurant.name,
-          address: [restaurant.address, restaurant.city, restaurant.state]
-            .filter(Boolean)
-            .join(', '),
-          categories: restaurant.categories,
-          rating: restaurant.fsq_rating,
-          tips: [],
-          hours: null,
-          priceLevel: restaurant.fsq_price_level,
-          attributes: [],
-          source: 'cached',
-        },
-      })
-    }
-
+    // Return local data
     return NextResponse.json({
       success: true,
       details: {
@@ -84,12 +41,12 @@ export async function GET(
           .filter(Boolean)
           .join(', '),
         categories: restaurant.categories,
-        rating: details.rating,
-        tips: details.tips,
-        hours: details.hours,
-        priceLevel: details.priceLevel,
-        attributes: details.attributes,
-        source: 'foursquare',
+        rating: null,
+        tips: [],
+        hours: null,
+        priceLevel: null,
+        attributes: [],
+        source: 'local',
       },
     })
   } catch (error) {
