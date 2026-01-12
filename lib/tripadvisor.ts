@@ -64,9 +64,11 @@ async function searchTripAdvisor(
 ): Promise<TripAdvisorLocation | null> {
   const apiKey = process.env.TRIPADVISOR_API_KEY
   if (!apiKey) {
-    console.warn('TRIPADVISOR_API_KEY not configured')
+    console.warn('[TripAdvisor] API key not configured')
     return null
   }
+
+  console.log(`[TripAdvisor] Searching for: "${name}" at ${lat},${lng}`)
 
   try {
     const params = new URLSearchParams({
@@ -84,14 +86,16 @@ async function searchTripAdvisor(
     })
 
     if (!response.ok) {
-      console.error(`TripAdvisor API error: ${response.status}`)
+      const errorText = await response.text()
+      console.error(`[TripAdvisor] API error ${response.status}: ${errorText}`)
       return null
     }
 
     const data: TripAdvisorSearchResponse = await response.json()
+    console.log(`[TripAdvisor] Found ${data.data?.length || 0} results for "${name}"`)
     return data.data?.[0] || null
   } catch (error) {
-    console.error('TripAdvisor search failed:', error)
+    console.error('[TripAdvisor] Search failed:', error)
     return null
   }
 }
@@ -105,9 +109,11 @@ async function getLocationPhotos(
 ): Promise<TripAdvisorPhoto[]> {
   const apiKey = process.env.TRIPADVISOR_API_KEY
   if (!apiKey) {
-    console.warn('TRIPADVISOR_API_KEY not configured')
+    console.warn('[TripAdvisor] API key not configured for photos')
     return []
   }
+
+  console.log(`[TripAdvisor] Fetching photos for location: ${locationId}`)
 
   try {
     const params = new URLSearchParams({
@@ -125,14 +131,16 @@ async function getLocationPhotos(
     )
 
     if (!response.ok) {
-      console.error(`TripAdvisor photos API error: ${response.status}`)
+      const errorText = await response.text()
+      console.error(`[TripAdvisor] Photos API error ${response.status}: ${errorText}`)
       return []
     }
 
     const data: TripAdvisorPhotosResponse = await response.json()
+    console.log(`[TripAdvisor] Got ${data.data?.length || 0} photos for location ${locationId}`)
     return data.data || []
   } catch (error) {
-    console.error('TripAdvisor photos fetch failed:', error)
+    console.error('[TripAdvisor] Photos fetch failed:', error)
     return []
   }
 }
@@ -208,10 +216,13 @@ export async function linkToTripAdvisor(
   photoUrls: string[]
   priceLevel: string | null
 }> {
+  console.log(`[TripAdvisor] Linking restaurant: ${name} (${gersId})`)
+
   // Search for matching location
   const location = await searchTripAdvisor(name, lat, lng)
 
   if (!location) {
+    console.log(`[TripAdvisor] No match found for: ${name}`)
     // Mark as attempted but not found (avoid repeated lookups)
     await sql`
       UPDATE restaurants
@@ -221,11 +232,14 @@ export async function linkToTripAdvisor(
     return { taLocationId: null, photoUrls: [], priceLevel: null }
   }
 
+  console.log(`[TripAdvisor] Matched "${name}" to TA location: ${location.location_id}`)
+
   // Fetch photos for the location
   const photos = await getLocationPhotos(location.location_id)
 
   // Extract large photo URLs for caching
   const photoUrls = photos.map(p => getPhotoUrl(p, 'large')).filter(Boolean)
+  console.log(`[TripAdvisor] Extracted ${photoUrls.length} photo URLs for ${name}`)
 
   // Optionally fetch details for price level
   let priceLevel: string | null = null
@@ -243,6 +257,8 @@ export async function linkToTripAdvisor(
       ta_linked_at = NOW()
     WHERE gers_id = ${gersId}
   `
+
+  console.log(`[TripAdvisor] Successfully linked ${name} with ${photoUrls.length} photos`)
 
   return {
     taLocationId: location.location_id,
