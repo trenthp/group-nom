@@ -7,6 +7,20 @@ import { kv } from '@vercel/kv'
 // Define route matchers
 const isAdminRoute = createRouteMatcher(['/admin(.*)'])
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
+const isProtectedRoute = createRouteMatcher([
+  '/discover(.*)',
+  '/nominate(.*)',
+  '/favorites(.*)',
+  '/profile(.*)',
+])
+const isProtectedApiRoute = createRouteMatcher([
+  '/api/user(.*)',
+  '/api/nominations(.*)',
+  '/api/enrichment(.*)',
+  '/api/favorites(.*)',
+  '/api/swipes(.*)',
+  '/api/upload(.*)',
+])
 
 // Create rate limiters for different endpoints
 const rateLimiters = {
@@ -29,6 +43,16 @@ const rateLimiters = {
     redis: kv,
     limiter: Ratelimit.slidingWindow(10, '60 s'),
     prefix: 'ratelimit:restaurants',
+  }),
+  upload: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(10, '60 s'),
+    prefix: 'ratelimit:upload',
+  }),
+  nominations: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(20, '60 s'),
+    prefix: 'ratelimit:nominations',
   }),
 }
 
@@ -73,6 +97,12 @@ async function handleRateLimit(request: NextRequest): Promise<NextResponse | nul
     } else if (pathname === '/api/geocode') {
       limiter = rateLimiters.restaurants
       identifier = `restaurants:${ip}`
+    } else if (pathname.startsWith('/api/upload')) {
+      limiter = rateLimiters.upload
+      identifier = `upload:${ip}`
+    } else if (pathname.startsWith('/api/nominations')) {
+      limiter = rateLimiters.nominations
+      identifier = `nominations:${ip}`
     } else {
       limiter = rateLimiters.general
       identifier = `general:${ip}`
@@ -113,6 +143,11 @@ export default clerkMiddleware(async (auth, request) => {
 
   // Protect /admin/* routes - require sign in
   if (isAdminRoute(request)) {
+    await auth.protect()
+  }
+
+  // Protect user-specific routes and APIs
+  if (isProtectedRoute(request) || isProtectedApiRoute(request)) {
     await auth.protect()
   }
 })

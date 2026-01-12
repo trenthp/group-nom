@@ -1,5 +1,5 @@
 import { kv } from '@vercel/kv'
-import { Session, Restaurant, Filters } from './types'
+import { Session, Restaurant, Filters, FoodMethod } from './types'
 
 // Session expiration: 24 hours in seconds
 const SESSION_EXPIRY_SECONDS = 24 * 60 * 60
@@ -261,5 +261,85 @@ export const sessionStore = {
     } else {
       await kv.del(getSessionKey(code))
     }
+  },
+
+  // ============================================================================
+  // Food Method Voting (after restaurant match)
+  // ============================================================================
+
+  /**
+   * Cast a food method vote (any user can vote)
+   */
+  voteFoodMethod: async (code: string, userId: string, method: FoodMethod): Promise<boolean> => {
+    const session = await sessionStore.getSession(code)
+    if (!session) return false
+
+    // Initialize foodMethodVotes if not present
+    if (!session.foodMethodVotes) {
+      session.foodMethodVotes = {}
+    }
+
+    // Record the vote
+    session.foodMethodVotes[userId] = method
+    await sessionStore.updateSession(code, session)
+    return true
+  },
+
+  /**
+   * Get food method vote tallies
+   */
+  getFoodMethodTallies: async (code: string): Promise<{
+    dine_in: number
+    pickup: number
+    delivery: number
+    total: number
+  } | null> => {
+    const session = await sessionStore.getSession(code)
+    if (!session) return null
+
+    const votes = session.foodMethodVotes ?? {}
+    const tallies = {
+      dine_in: 0,
+      pickup: 0,
+      delivery: 0,
+      total: 0,
+    }
+
+    Object.values(votes).forEach(method => {
+      tallies[method]++
+      tallies.total++
+    })
+
+    return tallies
+  },
+
+  /**
+   * Set the final food method result (host only)
+   */
+  setFoodMethodResult: async (
+    code: string,
+    userId: string,
+    method: FoodMethod
+  ): Promise<boolean> => {
+    const session = await sessionStore.getSession(code)
+    if (!session) return false
+
+    // Only host can set the result
+    if (session.hostId !== userId) {
+      return false
+    }
+
+    session.foodMethodResult = method
+    await sessionStore.updateSession(code, session)
+    return true
+  },
+
+  /**
+   * Check if user is the host
+   */
+  isHost: async (code: string, userId: string): Promise<boolean> => {
+    const session = await sessionStore.getSession(code)
+    if (!session) return false
+    return session.hostId === userId
   },
 }

@@ -17,6 +17,7 @@ import {
   PhoneIcon,
   GlobeIcon,
 } from '@/components/icons'
+import { FoodMethodVote, HostFoodMethodPanel } from '@/components/results'
 
 interface UserStatus {
   userIndex: number
@@ -27,6 +28,7 @@ interface UserStatus {
 
 interface ResultsPageProps {
   sessionCode: string
+  userId: string
   restaurants: Restaurant[]
   isHost: boolean
   onNewSession: () => void
@@ -45,6 +47,7 @@ interface VoteCount {
 
 export default function ResultsPage({
   sessionCode,
+  userId,
   restaurants: _restaurants,
   isHost,
   onNewSession,
@@ -687,6 +690,24 @@ export default function ResultsPage({
             </div>
           </div>
         )}
+
+          {/* Food Method Voting */}
+          {winner && (
+            <div className="mb-6">
+              {isHost ? (
+                <HostFoodMethodPanel
+                  sessionCode={sessionCode}
+                  userId={userId}
+                  restaurant={winner}
+                />
+              ) : (
+                <FoodMethodVote
+                  sessionCode={sessionCode}
+                  userId={userId}
+                />
+              )}
+            </div>
+          )}
 
           {/* Actions */}
           {isHost ? (

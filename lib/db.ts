@@ -56,6 +56,9 @@ export interface DbRestaurant {
   times_shown: number
   times_picked: number
   pick_rate: number | null
+  // Nomination layer
+  nomination_count: number
+  first_nominated_at: Date | null
 }
 
 export interface DbVotingOutcome {

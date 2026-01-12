@@ -237,6 +237,10 @@ function scoreCandidates(
       // Discovery: boost for less-shown restaurants
       discovery: 1 / Math.log(restaurant.times_shown + 2),
 
+      // Nomination boost: restaurants nominated by locals get a boost
+      // 0.1 per nomination, capped at 0.5 (5 nominations)
+      nominationBoost: Math.min((restaurant.nomination_count ?? 0) * 0.1, 0.5),
+
       // Freshness: random factor to prevent staleness
       random: Math.random(),
 
@@ -245,10 +249,12 @@ function scoreCandidates(
     }
 
     // Weighted final score
+    // Nomination boost reduces other weights slightly to accommodate
     const score =
-      0.30 * scores.pickRate +
-      0.30 * scores.discovery +
-      0.25 * scores.random +
+      0.25 * scores.pickRate +
+      0.20 * scores.discovery +
+      0.20 * scores.nominationBoost +
+      0.20 * scores.random +
       0.15 * scores.distance
 
     return {

@@ -3,12 +3,16 @@
 import { Restaurant } from '@/lib/types'
 import { useCallback, useState, useEffect } from 'react'
 import { UtensilsIcon, StarIcon, LocationIcon } from '@/components/icons'
+import { NominationBadge, NominatePromptBadge } from '@/components/nomination'
 
 interface RestaurantCardProps {
   restaurant: Restaurant
   onYes: () => void
   onNo: () => void
   progress: string
+  nominationCount?: number
+  userHasNominated?: boolean
+  onNominate?: () => void
 }
 
 // Placeholder images for restaurants without photos
@@ -32,6 +36,9 @@ export default function RestaurantCard({
   onYes,
   onNo,
   progress,
+  nominationCount = 0,
+  userHasNominated = false,
+  onNominate,
 }: RestaurantCardProps) {
   const [animatingClass, setAnimatingClass] = useState('')
   const [imageError, setImageError] = useState(false)
@@ -135,6 +142,21 @@ export default function RestaurantCard({
                 ))}
               </div>
             )}
+
+            {/* Nomination Badge */}
+            <div className="mb-3">
+              {nominationCount > 0 ? (
+                <NominationBadge
+                  nominationCount={nominationCount}
+                  userHasNominated={userHasNominated}
+                  size="sm"
+                />
+              ) : onNominate ? (
+                <button onClick={(e) => { e.stopPropagation(); onNominate(); }}>
+                  <NominatePromptBadge size="sm" />
+                </button>
+              ) : null}
+            </div>
 
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1">

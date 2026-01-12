@@ -291,6 +291,7 @@ export default function SessionPage() {
     return (
       <ResultsPage
         sessionCode={sessionCode}
+        userId={userId}
         restaurants={restaurants}
         isHost={isHost}
         onNewSession={handleNewSession}
