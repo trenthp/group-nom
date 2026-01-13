@@ -9,6 +9,8 @@ export default function HomePage() {
   const [sessionCode, setSessionCode] = useState('')
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [isSpinning, setIsSpinning] = useState(false)
+  const [joinError, setJoinError] = useState('')
+  const [isJoining, setIsJoining] = useState(false)
 
   const handleLogoTap = () => {
     if (!isSpinning) {
@@ -21,10 +23,30 @@ export default function HomePage() {
     window.location.href = '/setup'
   }
 
-  const joinSession = (e: React.FormEvent) => {
+  const joinSession = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (sessionCode.trim()) {
-      window.location.href = `/session/${sessionCode.toUpperCase()}`
+    const code = sessionCode.trim().toUpperCase()
+    if (!code) return
+
+    setJoinError('')
+    setIsJoining(true)
+
+    try {
+      const response = await fetch(`/api/session/${code}/status`)
+      if (response.status === 404) {
+        setJoinError('Group not found. Check your code and try again.')
+        setIsJoining(false)
+        return
+      }
+      if (!response.ok) {
+        setJoinError('Something went wrong. Try again.')
+        setIsJoining(false)
+        return
+      }
+      window.location.href = `/session/${code}`
+    } catch {
+      setJoinError('Connection failed. Check your internet and try again.')
+      setIsJoining(false)
     }
   }
 
@@ -90,27 +112,39 @@ export default function HomePage() {
                   type="text"
                   placeholder="Enter group code"
                   value={sessionCode}
-                  onChange={(e) => setSessionCode(e.target.value)}
+                  onChange={(e) => {
+                    setSessionCode(e.target.value)
+                    setJoinError('')
+                  }}
                   className="w-full px-4 py-3 rounded-lg text-center text-lg uppercase tracking-widest bg-orange-600 text-white placeholder-orange-300 focus:outline-none focus:ring-2 focus:ring-white"
                   maxLength={6}
                   autoFocus
+                  disabled={isJoining}
                 />
+                {joinError && (
+                  <p className="text-white text-sm text-center bg-red-500 bg-opacity-50 rounded py-2 px-3">
+                    {joinError}
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       setShowJoinForm(false)
                       setSessionCode('')
+                      setJoinError('')
                     }}
-                    className="flex-1 bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-500 transition"
+                    className="flex-1 bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-500 transition disabled:opacity-50"
+                    disabled={isJoining}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-white text-orange-700 font-semibold py-3 rounded-lg hover:bg-orange-50 transition"
+                    className="flex-1 bg-white text-orange-700 font-semibold py-3 rounded-lg hover:bg-orange-50 transition disabled:opacity-50"
+                    disabled={isJoining}
                   >
-                    Join
+                    {isJoining ? 'Joining...' : 'Join'}
                   </button>
                 </div>
               </form>

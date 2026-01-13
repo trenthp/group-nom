@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
+import { setReconfiguringSchema, parseBody } from '@/lib/validation'
 
 export async function POST(
   request: NextRequest,
@@ -7,14 +8,15 @@ export async function POST(
 ) {
   try {
     const { code } = await params
-    const { userId } = await request.json()
 
-    if (!userId) {
+    const parsed = await parseBody(request, setReconfiguringSchema)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing userId' },
+        { error: parsed.error },
         { status: 400 }
       )
     }
+    const { userId } = parsed.data
 
     const session = await sessionStore.getSession(code)
 

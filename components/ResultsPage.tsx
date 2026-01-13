@@ -260,9 +260,11 @@ export default function ResultsPage({
   const handleCloseVoting = async () => {
     setClosingVoting(true)
     try {
+      const userId = localStorage.getItem(`user-${sessionCode}`)
       const response = await fetch(`/api/session/${sessionCode}/close-voting`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
       })
       if (response.ok) {
         setAllFinished(true)
@@ -558,7 +560,10 @@ export default function ResultsPage({
             <div className="space-y-3 mb-4">
               {winner && (
                 <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(winner.address)}`}
+                  href={winner.id.startsWith('ChIJ')
+                    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(winner.name)}&destination_place_id=${winner.id}`
+                    : `https://www.google.com/maps/dir/?api=1&destination=${winner.lat},${winner.lng}`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-700 transition"
@@ -570,7 +575,10 @@ export default function ResultsPage({
 
               {winner && (
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name + ' ' + winner.address)}`}
+                  href={winner.id.startsWith('ChIJ')
+                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.id}`
+                    : `https://www.google.com/maps/search/?api=1&query=${winner.lat},${winner.lng}`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition text-center"

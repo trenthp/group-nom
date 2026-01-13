@@ -129,7 +129,10 @@ export default function RestaurantCard({
                 <p className="text-gray-600 text-xs w-1/2">{restaurant.address}</p>
               )}
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name + ' ' + restaurant.address)}`}
+                href={restaurant.id.startsWith('ChIJ')
+                  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name)}&query_place_id=${restaurant.id}`
+                  : `https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}`
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-600 hover:text-blue-700 font-medium w-1/2 pt-[0.5rem] pb-[0.4rem] px-[0.75rem] bg-blue-50 rounded hover:bg-blue-100 transition flex flex-col justify-center text-left border border-blue-200 leading-[0.8rem]"

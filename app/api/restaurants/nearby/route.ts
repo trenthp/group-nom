@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
           lng: place.geometry?.location.lng || 0,
           priceLevel,
           imageUrl: place.photos?.[0]?.photo_reference
-            ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${place.photos[0].photo_reference}&key=${apiKey}`
+            ? `/api/places/photo?ref=${place.photos[0].photo_reference}&maxwidth=400`
             : undefined,
         }
       })

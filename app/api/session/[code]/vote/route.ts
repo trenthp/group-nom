@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
+import { voteSchema, parseBody } from '@/lib/validation'
 
 export async function POST(
   request: NextRequest,
@@ -7,14 +8,15 @@ export async function POST(
 ) {
   try {
     const { code } = await params
-    const { userId, restaurantId, liked } = await request.json()
 
-    if (!userId || !restaurantId || liked === undefined) {
+    const parsed = await parseBody(request, voteSchema)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: parsed.error },
         { status: 400 }
       )
     }
+    const { userId, restaurantId, liked } = parsed.data
 
     const session = await sessionStore.getSession(code)
     if (!session) {

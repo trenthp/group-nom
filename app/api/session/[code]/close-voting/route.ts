@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
+import { closeVotingSchema, parseBody } from '@/lib/validation'
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const { code } = await params
+
+    const parsed = await parseBody(request, closeVotingSchema)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error },
+        { status: 400 }
+      )
+    }
+    const { userId } = parsed.data
 
     const session = await sessionStore.getSession(code)
 
@@ -14,6 +24,14 @@ export async function POST(
       return NextResponse.json(
         { error: 'Session not found' },
         { status: 404 }
+      )
+    }
+
+    // Only host can close voting
+    if (session.hostId !== userId) {
+      return NextResponse.json(
+        { error: 'Only the host can close voting' },
+        { status: 403 }
       )
     }
 

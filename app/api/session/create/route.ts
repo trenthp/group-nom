@@ -1,28 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
+import { createSessionSchema, parseBody } from '@/lib/validation'
 
 function generateSessionCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
+  // Use crypto for better randomness and check for collisions
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // Removed confusing chars (0/O, 1/I/L)
+  let code = ''
+  const array = new Uint8Array(6)
+  crypto.getRandomValues(array)
+  for (let i = 0; i < 6; i++) {
+    code += chars[array[i] % chars.length]
+  }
+  return code
 }
 
 function generateUserId(): string {
-  return `user-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+  const array = new Uint8Array(16)
+  crypto.getRandomValues(array)
+  return `user-${Array.from(array, b => b.toString(16).padStart(2, '0')).join('')}`
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { filters, location } = await request.json()
-
-    // Validate inputs
-    if (!filters || !location) {
+    const parsed = await parseBody(request, createSessionSchema)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: parsed.error },
         { status: 400 }
       )
     }
+    const { filters, location } = parsed.data
 
-    // Generate session code and user ID server-side
-    const code = generateSessionCode()
+    // Generate session code with collision detection
+    let code = generateSessionCode()
+    let attempts = 0
+    while (attempts < 10) {
+      const existing = await sessionStore.getSession(code)
+      if (!existing) break
+      code = generateSessionCode()
+      attempts++
+    }
+    if (attempts >= 10) {
+      return NextResponse.json(
+        { error: 'Unable to generate unique session code. Please try again.' },
+        { status: 503 }
+      )
+    }
+
     const userId = generateUserId()
 
     // Fetch restaurants with filters
