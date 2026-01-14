@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Restaurant } from '@/lib/types'
@@ -22,6 +22,8 @@ export default function SessionPage() {
   const [showingResults, setShowingResults] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sessionStatus, setSessionStatus] = useState<'pending' | 'active' | 'finished' | 'reconfiguring' | null>(null)
+  const [showInitialShareModal, setShowInitialShareModal] = useState(false)
+  const hasShownShareModal = useRef(false)
 
   // Initialize user and fetch session
   useEffect(() => {
@@ -243,6 +245,14 @@ export default function SessionPage() {
 
   const isHost = userId === hostId
 
+  // Auto-open share modal for host on first load
+  useEffect(() => {
+    if (isHost && !loading && sessionStatus === 'active' && !hasShownShareModal.current) {
+      hasShownShareModal.current = true
+      setShowInitialShareModal(true)
+    }
+  }, [isHost, loading, sessionStatus])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
@@ -305,7 +315,7 @@ export default function SessionPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
-      <Header sessionCode={sessionCode} />
+      <Header sessionCode={sessionCode} autoOpenShare={showInitialShareModal} />
       <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
         {currentRestaurant ? (
           <div className="w-full max-w-md">

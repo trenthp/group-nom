@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -9,12 +9,20 @@ import UserMenu from './auth/UserMenu'
 
 interface HeaderProps {
   sessionCode?: string
+  autoOpenShare?: boolean
 }
 
-export default function Header({ sessionCode }: HeaderProps) {
+export default function Header({ sessionCode, autoOpenShare = false }: HeaderProps) {
   const { isSignedIn, isLoaded } = useUser()
   const [showOverlay, setShowOverlay] = useState(false)
   const [showLeaveModal, setShowLeaveModal] = useState(false)
+
+  // Open overlay when autoOpenShare prop becomes true
+  useEffect(() => {
+    if (autoOpenShare) {
+      setShowOverlay(true)
+    }
+  }, [autoOpenShare])
 
   const handleLogoClick = () => {
     if (sessionCode) {
@@ -53,11 +61,14 @@ export default function Header({ sessionCode }: HeaderProps) {
             {sessionCode && (
               <button
                 onClick={() => setShowOverlay(true)}
-                aria-label={`View and share session code ${sessionCode}`}
-                className="bg-white bg-opacity-20 hover:bg-opacity-30 transition px-3 py-1.5 rounded-lg flex items-center gap-2"
+                aria-label={`Invite friends with session code ${sessionCode}`}
+                className="bg-white text-orange-600 hover:bg-orange-50 transition px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-md"
               >
-                <span className="text-white text-sm font-medium">Code:</span>
-                <code className="text-white font-mono font-bold tracking-wider" aria-hidden="true">{sessionCode}</code>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                <span className="text-sm font-semibold">Invite</span>
+                <code className="font-mono font-bold tracking-wider text-xs bg-orange-100 px-1.5 py-0.5 rounded" aria-hidden="true">{sessionCode}</code>
               </button>
             )}
 
