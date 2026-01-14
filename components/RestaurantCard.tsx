@@ -30,35 +30,53 @@ export default function RestaurantCard({
   }, [restaurant.id])
 
   const handleYes = useCallback(() => {
-    setSwipeOffset(0)
+    // Don't reset offset - let the animation continue from current position
     setIsSwiping(false)
     setAnimatingClass('swipe-right')
-    setTimeout(onYes, 300)
+    setTimeout(() => {
+      setSwipeOffset(0)
+      onYes()
+    }, 250)
   }, [onYes])
 
   const handleNo = useCallback(() => {
-    setSwipeOffset(0)
+    // Don't reset offset - let the animation continue from current position
     setIsSwiping(false)
     setAnimatingClass('swipe-left')
-    setTimeout(onNo, 300)
+    setTimeout(() => {
+      setSwipeOffset(0)
+      onNo()
+    }, 250)
   }, [onNo])
 
   const handleSwipe = (e: React.TouchEvent) => {
-    const touch = e.changedTouches[0]
-    const startX = e.touches[0]?.clientX || touch.clientX
-    const startY = e.touches[0]?.clientY || touch.clientY
+    const touch = e.touches[0]
+    if (!touch) return
 
+    const startX = touch.clientX
+    const startY = touch.clientY
     let currentX = startX
     let currentY = startY
-    setIsSwiping(true)
+    let hasMoved = false
 
     const moveHandler = (moveEvent: TouchEvent) => {
-      currentX = moveEvent.touches[0].clientX
-      currentY = moveEvent.touches[0].clientY
-      const diffX = currentX - startX
+      const moveTouch = moveEvent.touches[0]
+      if (!moveTouch) return
 
-      // Only update offset for horizontal swipes
-      if (Math.abs(diffX) > Math.abs(currentY - startY)) {
+      currentX = moveTouch.clientX
+      currentY = moveTouch.clientY
+      const diffX = currentX - startX
+      const diffY = currentY - startY
+
+      // Only start tracking as swipe if horizontal movement dominates
+      if (!hasMoved && Math.abs(diffX) > 10) {
+        hasMoved = true
+        setIsSwiping(true)
+      }
+
+      // Update offset for horizontal swipes
+      if (hasMoved && Math.abs(diffX) > Math.abs(diffY)) {
+        moveEvent.preventDefault() // Prevent scroll when swiping
         setSwipeOffset(diffX)
       }
     }
@@ -67,7 +85,7 @@ export default function RestaurantCard({
       const diffX = currentX - startX
       const diffY = currentY - startY
 
-      // Determine swipe direction
+      // Determine swipe direction - need sufficient horizontal movement
       if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
         if (diffX > 0) {
           handleYes()
@@ -82,10 +100,12 @@ export default function RestaurantCard({
 
       document.removeEventListener('touchmove', moveHandler)
       document.removeEventListener('touchend', endHandler)
+      document.removeEventListener('touchcancel', endHandler)
     }
 
-    document.addEventListener('touchmove', moveHandler)
+    document.addEventListener('touchmove', moveHandler, { passive: false })
     document.addEventListener('touchend', endHandler)
+    document.addEventListener('touchcancel', endHandler)
   }
 
   // Calculate visual feedback based on swipe offset
@@ -95,13 +115,39 @@ export default function RestaurantCard({
 
   const priceDisplay = restaurant.priceLevel || '$'
 
+  // Determine transform based on state
+  const getTransform = () => {
+    if (animatingClass === 'swipe-right') {
+      return `translateX(${swipeOffset + 400}px) rotate(${rotation + 20}deg)`
+    }
+    if (animatingClass === 'swipe-left') {
+      return `translateX(${swipeOffset - 400}px) rotate(${rotation - 20}deg)`
+    }
+    if (isSwiping || swipeOffset !== 0) {
+      return `translateX(${swipeOffset}px) rotate(${rotation}deg)`
+    }
+    return undefined
+  }
+
+  // Determine transition based on state
+  const getTransition = () => {
+    if (animatingClass) {
+      return 'transform 0.25s ease-out, opacity 0.25s ease-out'
+    }
+    if (isSwiping) {
+      return 'none'
+    }
+    return 'transform 0.2s ease-out'
+  }
+
   return (
     <div
       ref={cardRef}
-      className={`relative w-full ${animatingClass}`}
+      className="relative w-full"
       style={{
-        transform: isSwiping ? `translateX(${swipeOffset}px) rotate(${rotation}deg)` : undefined,
-        transition: isSwiping ? 'none' : 'transform 0.3s ease-out',
+        transform: getTransform(),
+        transition: getTransition(),
+        opacity: animatingClass ? 0 : 1,
       }}
       onTouchStart={handleSwipe}
     >
@@ -148,7 +194,7 @@ export default function RestaurantCard({
         </div>
 
         {/* Content */}
-        <div className="px-6 pt-6 pb-6 flex-shrink-0">
+        <div className="px-6 pt-6 pb-4 flex-shrink-0">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
               {restaurant.name}
@@ -203,6 +249,13 @@ export default function RestaurantCard({
               </a>
             </div>
           </div>
+        </div>
+
+        {/* Google Attribution - Required by Google Maps Platform ToS */}
+        <div className="px-6 pb-4 pt-0">
+          <p className="text-[10px] text-gray-400 text-center">
+            Powered by Google
+          </p>
         </div>
       </div>
 

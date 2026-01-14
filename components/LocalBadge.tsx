@@ -1,0 +1,98 @@
+'use client'
+
+interface LocalBadgeProps {
+  likeCount: number
+  pickRate?: number
+  size?: 'sm' | 'md' | 'lg'
+  className?: string
+}
+
+/**
+ * Badge showing community engagement signals:
+ * - "Liked by X locals" when likeCount > 0
+ * - "Local favorite" when likeCount >= 10
+ * - Pick rate indicator for group voting performance
+ */
+export default function LocalBadge({
+  likeCount,
+  pickRate,
+  size = 'md',
+  className = '',
+}: LocalBadgeProps) {
+  if (likeCount === 0 && !pickRate) {
+    return null
+  }
+
+  const sizeClasses = {
+    sm: 'text-xs px-2 py-0.5',
+    md: 'text-sm px-2.5 py-1',
+    lg: 'text-base px-3 py-1.5',
+  }
+
+  const badgeClass = sizeClasses[size]
+
+  // Determine badge type based on engagement
+  const isLocalFavorite = likeCount >= 10
+  const hasHighPickRate = pickRate && pickRate >= 0.6
+
+  return (
+    <div className={`flex flex-wrap gap-1.5 ${className}`}>
+      {/* Like count badge */}
+      {likeCount > 0 && (
+        <span
+          className={`inline-flex items-center gap-1 rounded-full font-medium ${badgeClass} ${
+            isLocalFavorite
+              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+              : 'bg-blue-50 text-blue-700 border border-blue-100'
+          }`}
+        >
+          <HeartIcon size={size === 'sm' ? 10 : size === 'md' ? 12 : 14} />
+          {isLocalFavorite ? (
+            <span>Local favorite</span>
+          ) : (
+            <span>Liked by {likeCount} local{likeCount !== 1 ? 's' : ''}</span>
+          )}
+        </span>
+      )}
+
+      {/* Pick rate badge (only show if significant) */}
+      {hasHighPickRate && (
+        <span
+          className={`inline-flex items-center gap-1 rounded-full font-medium bg-green-50 text-green-700 border border-green-100 ${badgeClass}`}
+        >
+          <TrophyIcon size={size === 'sm' ? 10 : size === 'md' ? 12 : 14} />
+          <span>Group pick {Math.round(pickRate * 100)}%</span>
+        </span>
+      )}
+    </div>
+  )
+}
+
+// Simple inline icons
+function HeartIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="flex-shrink-0"
+    >
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  )
+}
+
+function TrophyIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="flex-shrink-0"
+    >
+      <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" />
+    </svg>
+  )
+}

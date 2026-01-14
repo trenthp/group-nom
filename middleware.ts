@@ -8,27 +8,50 @@ import { kv } from '@vercel/kv'
 const isAdminRoute = createRouteMatcher(['/admin(.*)'])
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
 
-// Create rate limiters for different endpoints
-const rateLimiters = {
+// Create tiered rate limiters: stricter for anonymous, generous for authenticated
+const anonRateLimiters = {
   createSession: new Ratelimit({
     redis: kv,
-    limiter: Ratelimit.slidingWindow(5, '60 s'),
-    prefix: 'ratelimit:create',
+    limiter: Ratelimit.slidingWindow(3, '86400 s'), // 3 per day
+    prefix: 'ratelimit:anon:create',
   }),
   vote: new Ratelimit({
     redis: kv,
     limiter: Ratelimit.slidingWindow(30, '60 s'),
-    prefix: 'ratelimit:vote',
+    prefix: 'ratelimit:anon:vote',
+  }),
+  general: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(60, '60 s'),
+    prefix: 'ratelimit:anon:general',
+  }),
+  restaurants: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(5, '60 s'),
+    prefix: 'ratelimit:anon:restaurants',
+  }),
+}
+
+const authRateLimiters = {
+  createSession: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(10, '86400 s'), // 10 per day
+    prefix: 'ratelimit:auth:create',
+  }),
+  vote: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(60, '60 s'),
+    prefix: 'ratelimit:auth:vote',
   }),
   general: new Ratelimit({
     redis: kv,
     limiter: Ratelimit.slidingWindow(120, '60 s'),
-    prefix: 'ratelimit:general',
+    prefix: 'ratelimit:auth:general',
   }),
   restaurants: new Ratelimit({
     redis: kv,
-    limiter: Ratelimit.slidingWindow(10, '60 s'),
-    prefix: 'ratelimit:restaurants',
+    limiter: Ratelimit.slidingWindow(20, '60 s'),
+    prefix: 'ratelimit:auth:restaurants',
   }),
 }
 
@@ -46,7 +69,10 @@ function getClientIP(request: NextRequest): string {
   return '127.0.0.1'
 }
 
-async function handleRateLimit(request: NextRequest): Promise<NextResponse | null> {
+async function handleRateLimit(
+  request: NextRequest,
+  userId: string | null
+): Promise<NextResponse | null> {
   const { pathname } = request.nextUrl
 
   if (!pathname.startsWith('/api/')) {
@@ -58,7 +84,13 @@ async function handleRateLimit(request: NextRequest): Promise<NextResponse | nul
     return null
   }
 
+  // Use userId for authenticated users (more accurate), IP for anonymous
   const ip = getClientIP(request)
+  const baseIdentifier = userId || ip
+  const isAuthenticated = !!userId
+
+  // Select appropriate tier of rate limiters
+  const rateLimiters = isAuthenticated ? authRateLimiters : anonRateLimiters
 
   try {
     let limiter: Ratelimit
@@ -66,25 +98,25 @@ async function handleRateLimit(request: NextRequest): Promise<NextResponse | nul
 
     if (pathname === '/api/session/create') {
       limiter = rateLimiters.createSession
-      identifier = `create:${ip}`
+      identifier = `create:${baseIdentifier}`
     } else if (pathname.includes('/vote') || pathname.includes('/close-voting')) {
       limiter = rateLimiters.vote
-      identifier = `vote:${ip}`
+      identifier = `vote:${baseIdentifier}`
     } else if (pathname === '/api/restaurants/nearby' || pathname === '/api/geocode') {
       limiter = rateLimiters.restaurants
-      identifier = `restaurants:${ip}`
+      identifier = `restaurants:${baseIdentifier}`
     } else {
       limiter = rateLimiters.general
-      identifier = `general:${ip}`
+      identifier = `general:${baseIdentifier}`
     }
 
     const { success, limit, reset, remaining } = await limiter.limit(identifier)
 
     if (!success) {
-      const response = NextResponse.json(
-        { error: 'Too many requests. Please slow down.' },
-        { status: 429 }
-      )
+      const tierMessage = isAuthenticated
+        ? 'Too many requests. Please slow down.'
+        : 'Too many requests. Sign in for higher limits.'
+      const response = NextResponse.json({ error: tierMessage }, { status: 429 })
       response.headers.set('X-RateLimit-Limit', limit.toString())
       response.headers.set('X-RateLimit-Remaining', remaining.toString())
       response.headers.set('X-RateLimit-Reset', reset.toString())
@@ -98,13 +130,14 @@ async function handleRateLimit(request: NextRequest): Promise<NextResponse | nul
 }
 
 export default clerkMiddleware(async (auth, request) => {
-  // Handle rate limiting for API routes
-  const rateLimitResponse = await handleRateLimit(request)
+  // Get auth status first for tiered rate limiting
+  const { userId } = await auth()
+
+  // Handle rate limiting for API routes (uses auth status for tier selection)
+  const rateLimitResponse = await handleRateLimit(request, userId)
   if (rateLimitResponse) {
     return rateLimitResponse
   }
-
-  const { userId } = await auth()
 
   // Redirect signed-in users away from auth pages to home
   if (userId && isAuthRoute(request)) {
