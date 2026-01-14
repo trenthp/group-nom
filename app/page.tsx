@@ -649,9 +649,6 @@ function LandingPage() {
           >
             Create free account
           </Link>
-          <p className="text-white/30 text-xs text-center mt-3">
-            No credit card required
-          </p>
 
           <Footer />
         </div>

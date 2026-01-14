@@ -745,9 +745,6 @@ export default function ResultsPage({
               >
                 Create Free Account
               </Link>
-              <p className="text-white/40 text-xs text-center mt-2">
-                No credit card required
-              </p>
             </div>
           )}
 
