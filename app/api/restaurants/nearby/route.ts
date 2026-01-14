@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { Client } from '@googlemaps/google-maps-services-js'
 import { getRandomRestaurants } from '@/lib/googleMaps'
+import { getRestaurantLimit } from '@/lib/userTiers'
 import { Restaurant } from '@/lib/types'
 
 const client = new Client({})
 
 export async function POST(request: NextRequest) {
   try {
-    const { lat, lng, radius = 5000, limit = 8, filters } = await request.json()
+    // Get auth status to enforce tier-appropriate limits
+    const { userId } = await auth()
+    const isAuthenticated = !!userId
+    const maxAllowedLimit = getRestaurantLimit(isAuthenticated)
+
+    const { lat, lng, radius = 5000, limit = 8, filters, excludeIds = [] } = await request.json()
+
+    // Enforce tier-based maximum limit
+    const effectiveLimit = Math.min(limit, maxAllowedLimit)
+    // Convert excludeIds to a Set for fast lookup
+    const excludeSet = new Set<string>(excludeIds)
     const minRating = filters?.minRating || 0
     const openNow = filters?.openNow || false
     const maxReviews = filters?.maxReviews || 0
@@ -19,11 +31,16 @@ export async function POST(request: NextRequest) {
 
     if (!apiKey || apiKey === 'your_api_key_here') {
       console.warn('Google Maps API key not configured, using mock data')
-      const restaurants = getRandomRestaurants(limit)
+      const restaurants = getRandomRestaurants(effectiveLimit)
       return NextResponse.json({
         success: true,
         restaurants,
         usingMockData: true,
+        meta: {
+          limit: effectiveLimit,
+          maxAllowed: maxAllowedLimit,
+          isLimited: limit > effectiveLimit,
+        },
       })
     }
 
@@ -80,9 +97,9 @@ export async function POST(request: NextRequest) {
       // Make separate API calls for each cuisine to ensure we get results for each
       for (const cuisine of cuisines) {
         const results = await fetchForKeyword(cuisine)
-        // Deduplicate by place_id
+        // Deduplicate by place_id and exclude already-seen IDs
         for (const place of results) {
-          if (place.place_id && !seenPlaceIds.has(place.place_id)) {
+          if (place.place_id && !seenPlaceIds.has(place.place_id) && !excludeSet.has(place.place_id)) {
             seenPlaceIds.add(place.place_id)
             allResults.push(place)
           }
@@ -90,16 +107,23 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // No cuisine filter - fetch normally with pagination
-      allResults = await fetchForKeyword(undefined)
+      const results = await fetchForKeyword(undefined)
+      // Filter out excluded IDs
+      allResults = results.filter((place: any) => !excludeSet.has(place.place_id))
     }
 
     // Handle case where first call fails completely
     if (allResults.length === 0 && cuisines.length === 0) {
-      const restaurants = getRandomRestaurants(limit)
+      const restaurants = getRandomRestaurants(effectiveLimit)
       return NextResponse.json({
         success: true,
         restaurants,
         usingMockData: true,
+        meta: {
+          limit: effectiveLimit,
+          maxAllowed: maxAllowedLimit,
+          isLimited: limit > effectiveLimit,
+        },
       })
     }
 
@@ -143,7 +167,7 @@ export async function POST(request: NextRequest) {
     const shuffled = fisherYatesShuffle(results)
 
     const restaurants: Restaurant[] = shuffled
-      .slice(0, limit)
+      .slice(0, effectiveLimit)
       .map((place, index) => {
         // Map price_level (0-4) to our display format
         let priceLevel = '$'
@@ -177,15 +201,25 @@ export async function POST(request: NextRequest) {
       success: true,
       restaurants,
       usingMockData: false,
+      meta: {
+        limit: effectiveLimit,
+        maxAllowed: maxAllowedLimit,
+        isLimited: limit > effectiveLimit,
+      },
     })
   } catch (error) {
     console.error('Error fetching restaurants:', error)
-    // Fallback to mock data on error
-    const restaurants = getRandomRestaurants(8)
+    // Fallback to mock data on error (use default limit of 5 for safety)
+    const restaurants = getRandomRestaurants(5)
     return NextResponse.json({
       success: true,
       restaurants,
       usingMockData: true,
+      meta: {
+        limit: 5,
+        maxAllowed: 5,
+        isLimited: false,
+      },
     })
   }
 }

@@ -1,5 +1,9 @@
+// ==============================================
+// GOOGLE PLACES TYPES (Discovery Layer)
+// ==============================================
+
 export interface Restaurant {
-  id: string
+  id: string // Google place_id
   name: string
   address: string
   rating: number
@@ -11,6 +15,74 @@ export interface Restaurant {
   priceLevel?: string
   phone?: string
   website?: string
+  // Local database enrichment (added after matching)
+  localId?: string // Our gers_id if matched
+  likeCount?: number // Community likes
+  pickRate?: number // Group vote win rate
+  nominationCount?: number // Times nominated
+}
+
+// ==============================================
+// LOCAL DATABASE TYPES (Data Ownership Layer)
+// ==============================================
+
+export interface LocalRestaurant {
+  gersId: string // Primary key (Overture ID or 'gpl_' + place_id)
+  name: string
+  address: string | null
+  city: string | null
+  state: string | null
+  lat: number
+  lng: number
+  categories: string[]
+  source: 'overture' | 'google'
+  // Community signals
+  likeCount: number
+  nominationCount: number
+  groupWinCount: number
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface RestaurantMapping {
+  googlePlaceId: string
+  localId: string
+  source: 'overture' | 'google'
+  timesShown: number
+  timesPicked: number
+  pickRate: number | null // null if timesShown < 5
+  createdAt: Date
+}
+
+// ==============================================
+// SCORING TYPES (Selection Algorithm)
+// ==============================================
+
+export interface ScoredRestaurant extends Restaurant {
+  score: number
+  scores: {
+    pickRate: number // 25% - historical group vote performance
+    discovery: number // 20% - favor less-shown restaurants
+    nominationBoost: number // 20% - boost from user likes
+    random: number // 20% - variety
+    distance: number // 15% - proximity
+  }
+}
+
+export interface SelectionFilters extends Filters {
+  chainSizeLimit?: number // 1-5, where 5 = allow all chains
+}
+
+// ==============================================
+// CHAIN DETECTION
+// ==============================================
+
+export interface ChainInfo {
+  name: string
+  locationCount: number
+  isChain: boolean // true if locationCount >= 5
+  firstSeen: Date
+  lastUpdated: Date
 }
 
 export interface Vote {
@@ -39,6 +111,7 @@ export interface Session {
   filters?: Filters
   restaurants: Restaurant[]
   location?: { lat: number; lng: number }
+  metadata?: SessionMetadata
 }
 
 export interface AggregatedVote {
@@ -48,6 +121,19 @@ export interface AggregatedVote {
   noCount: number
   totalVotes: number
   userIds: { [userId: string]: boolean } // userId -> liked
+}
+
+// ==============================================
+// USER TIER TYPES
+// ==============================================
+
+export type UserTier = 'anonymous' | 'authenticated'
+
+export interface SessionMetadata {
+  creatorTier: UserTier
+  creatorClerkId: string | null
+  restaurantLimit: number
+  createdAt: number
 }
 
 // Auth types

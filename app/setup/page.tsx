@@ -3,15 +3,30 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useUser } from '@clerk/nextjs'
 import RestaurantFilters from '@/components/RestaurantFilters'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { getUserLocation } from '@/lib/googleMaps'
+import { USER_TIERS } from '@/lib/userTiers'
+
+type SetupMode = 'prompt' | 'auto' | 'favorites'
 
 function SetupPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const reconfigureCode = searchParams.get('reconfigure')
+  const { isSignedIn, isLoaded } = useUser()
+
+  // Get restaurant limits for display
+  const anonLimit = USER_TIERS.anonymous.maxRestaurantsPerSession
+  const authLimit = USER_TIERS.authenticated.maxRestaurantsPerSession
+
+  // Setup mode: prompt (initial screen), auto (filter-based), favorites (pick from saved)
+  // Skip prompt if reconfiguring or if user came from sign-in redirect
+  const skipPrompt = !!reconfigureCode || searchParams.get('mode') === 'auto'
+  const [setupMode, setSetupMode] = useState<SetupMode>(skipPrompt ? 'auto' : 'prompt')
 
   const [filters, setFilters] = useState<{
     minRating: number
@@ -215,6 +230,165 @@ function SetupPageContent() {
           <p className="text-xs text-white text-opacity-60 mt-6">
             This may take a few seconds...
           </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show initial prompt screen for mode selection
+  if (setupMode === 'prompt' && isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+        <Header />
+        <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <Image
+                src="/logo_groupNom.svg"
+                alt="Group Nom"
+                width={64}
+                height={64}
+                className="mx-auto rounded-xl mb-4"
+              />
+              <h1 className="text-2xl font-bold text-white mb-2">Start a Group Session</h1>
+            </div>
+
+            {/* Anonymous User View */}
+            {!isSignedIn && (
+              <div className="space-y-4">
+                {/* Quick Session Option */}
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-5 border border-white/30">
+                  <h2 className="text-white font-bold text-lg mb-1">Quick Group Session</h2>
+                  <p className="text-orange-100 text-sm mb-4">
+                    {anonLimit} restaurants - Perfect for fast decisions
+                  </p>
+                  <button
+                    onClick={() => setSetupMode('auto')}
+                    className="w-full bg-white text-orange-600 font-semibold py-3 rounded-lg hover:bg-orange-50 transition"
+                  >
+                    Continue with {anonLimit}
+                  </button>
+                </div>
+
+                {/* Sign In Option */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/30"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="bg-gradient-to-br from-orange-500 to-red-600 px-3 text-orange-100">or</span>
+                  </div>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20">
+                  <h2 className="text-white font-bold text-lg mb-1">Get More Options</h2>
+                  <p className="text-orange-100 text-sm mb-4">
+                    Sign in for {authLimit} restaurants + pick from your favorites
+                  </p>
+                  <div className="flex gap-2">
+                    <Link
+                      href="/sign-in?redirect_url=/setup?mode=auto"
+                      className="flex-1 bg-white/20 text-white font-semibold py-3 rounded-lg text-center hover:bg-white/30 transition"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/sign-up?redirect_url=/setup?mode=auto"
+                      className="flex-1 bg-white text-orange-600 font-semibold py-3 rounded-lg text-center hover:bg-orange-50 transition"
+                    >
+                      Create Account
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Authenticated User View - Mode Selection */}
+            {isSignedIn && (
+              <div className="space-y-4">
+                <p className="text-orange-100 text-center mb-2">
+                  How do you want to create your session?
+                </p>
+
+                {/* Auto-Generate Option */}
+                <button
+                  onClick={() => setSetupMode('auto')}
+                  className="w-full bg-white/20 backdrop-blur-sm rounded-xl p-5 border border-white/30 text-left hover:bg-white/30 transition group"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-white/30 transition">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-white font-bold text-lg">Auto-Generate</h2>
+                      <p className="text-orange-100 text-sm">
+                        Set filters and we'll find {authLimit} restaurants for you
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Pick from Favorites Option */}
+                <button
+                  onClick={() => setSetupMode('favorites')}
+                  className="w-full bg-white/20 backdrop-blur-sm rounded-xl p-5 border border-white/30 text-left hover:bg-white/30 transition group"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-white/30 transition">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-white font-bold text-lg">Pick from Favorites</h2>
+                      <p className="text-orange-100 text-sm">
+                        Choose specific restaurants from your saved list
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            <Footer />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show favorites picker mode (placeholder - will implement FavoritesPicker component)
+  if (setupMode === 'favorites') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
+        <Header />
+        <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+          <div className="w-full max-w-md text-center">
+            <h1 className="text-2xl font-bold text-white mb-4">Pick from Favorites</h1>
+            <p className="text-orange-100 mb-6">Select restaurants from your saved list to add to this session.</p>
+
+            {/* TODO: Replace with FavoritesPicker component */}
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 mb-4">
+              <p className="text-orange-100 text-sm">Favorites picker coming soon!</p>
+              <p className="text-orange-200 text-xs mt-2">For now, use auto-generate mode.</p>
+            </div>
+
+            <button
+              onClick={() => setSetupMode('auto')}
+              className="w-full bg-white text-orange-600 font-semibold py-3 rounded-lg hover:bg-orange-50 transition"
+            >
+              Use Auto-Generate Instead
+            </button>
+            <button
+              onClick={() => setSetupMode('prompt')}
+              className="w-full mt-3 text-white/80 font-medium py-2 hover:text-white transition"
+            >
+              Back
+            </button>
+            <Footer />
+          </div>
         </div>
       </div>
     )

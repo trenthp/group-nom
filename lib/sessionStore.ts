@@ -1,5 +1,5 @@
 import { kv } from '@vercel/kv'
-import { Session, Restaurant, Filters } from './types'
+import { Session, Restaurant, Filters, SessionMetadata } from './types'
 
 // Session expiration: 24 hours in seconds
 const SESSION_EXPIRY_SECONDS = 24 * 60 * 60
@@ -17,7 +17,8 @@ export const sessionStore = {
     userId: string,
     filters: Filters,
     restaurants: Restaurant[],
-    location: { lat: number; lng: number }
+    location: { lat: number; lng: number },
+    metadata?: SessionMetadata
   ): Promise<Session> => {
     const session: Session = {
       code,
@@ -30,6 +31,7 @@ export const sessionStore = {
       filters,
       restaurants,
       location,
+      metadata,
     }
     await kv.set(getSessionKey(code), session, { ex: SESSION_EXPIRY_SECONDS })
     return session

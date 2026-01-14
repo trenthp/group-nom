@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"C:\\\\Users\\\\bette\\\\Documents\\\\GitHub\\\\group-nom\\\\app\\\\discover\"\" 2>/dev/null || echo \"Directory not found \")",
+      "Bash(npm run build:*)",
+      "Bash(ls -la \"C:\\\\Users\\\\bette\\\\Documents\\\\GitHub\\\\group-nom\\\\public\"\" 2>/dev/null || dir \"C:UsersbetteDocumentsGitHubgroup-nompublic \")"
+    ]
+  }
+}

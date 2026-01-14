@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useUser } from '@clerk/nextjs'
 import { Restaurant } from '@/lib/types'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -52,6 +54,7 @@ export default function ResultsPage({
   onLeaveSession,
   onSessionReconfigured,
 }: ResultsPageProps) {
+  const { isSignedIn, isLoaded } = useUser()
   const [winner, setWinner] = useState<Restaurant | null>(null)
   const [voteDetails, setVoteDetails] = useState<VoteCount[]>([])
   const [resultType, setResultType] = useState<string>('')
@@ -700,21 +703,71 @@ export default function ResultsPage({
           </nav>
         )}
 
-          {/* Actions */}
-          {isHost ? (
-            <button
-              onClick={onNewSession}
-              className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-            >
-              Start New Group
-            </button>
-          ) : (
-            <button
-              onClick={onLeaveSession}
-              className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-            >
-              Leave Group
-            </button>
+          {/* Conversion Prompt for Anonymous Users */}
+          {isLoaded && !isSignedIn && (
+            <div className="bg-[#333333] rounded-xl p-5 mb-6 border border-white/10">
+              <div className="mb-4">
+                <h4 className="font-bold text-white text-lg mb-1">
+                  Want more from Group Nom?
+                </h4>
+                <p className="text-white/60 text-sm">
+                  Create a free account to unlock the full experience
+                </p>
+              </div>
+
+              {/* Benefits list */}
+              <ul className="space-y-2 mb-4">
+                <li className="flex items-center gap-2 text-white/80 text-sm">
+                  <span className="text-[#EA4D19]">✓</span>
+                  Save your favorite restaurants
+                </li>
+                <li className="flex items-center gap-2 text-white/80 text-sm">
+                  <span className="text-[#EA4D19]">✓</span>
+                  Discover new spots on your own
+                </li>
+                <li className="flex items-center gap-2 text-white/80 text-sm">
+                  <span className="text-[#EA4D19]">✓</span>
+                  Create & manage your own groups
+                </li>
+                <li className="flex items-center gap-2 text-white/80 text-sm">
+                  <span className="text-[#EA4D19]">✓</span>
+                  See what locals love near you
+                </li>
+                <li className="flex items-center gap-2 text-white/80 text-sm">
+                  <span className="text-[#EA4D19]">✓</span>
+                  Boost your local favorites for others to discover
+                </li>
+              </ul>
+
+              <Link
+                href="/sign-up"
+                className="block w-full bg-[#EA4D19] text-white font-semibold py-3 rounded-lg text-center hover:bg-orange-600 transition"
+              >
+                Create Free Account
+              </Link>
+              <p className="text-white/40 text-xs text-center mt-2">
+                No credit card required
+              </p>
+            </div>
+          )}
+
+          {/* Actions - only for signed in users */}
+          {isSignedIn && (
+            isHost ? (
+              <button
+                onClick={onNewSession}
+                className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+              >
+                Start New Group
+              </button>
+            ) : (
+              <button
+                onClick={onLeaveSession}
+                className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+              >
+                Leave Group
+              </button>
+            )
           )}
 
           <Footer />
