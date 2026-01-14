@@ -265,7 +265,7 @@ export default function SessionPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
         <Header sessionCode={sessionCode} />
-        <WaitingScreen code={sessionCode} />
+        <WaitingScreen code={sessionCode} isHost={isHost} />
       </div>
     )
   }

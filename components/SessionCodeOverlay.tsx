@@ -59,11 +59,17 @@ export default function SessionCodeOverlay({ code, isOpen, onClose }: SessionCod
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="share-modal-title"
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Modal */}
@@ -71,6 +77,7 @@ export default function SessionCodeOverlay({ code, isOpen, onClose }: SessionCod
         {/* Close button */}
         <button
           onClick={onClose}
+          aria-label="Close share dialog"
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,7 +87,7 @@ export default function SessionCodeOverlay({ code, isOpen, onClose }: SessionCod
 
         {/* Content */}
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Share Group</h2>
+          <h2 id="share-modal-title" className="text-xl font-bold text-gray-800 mb-2">Share Group</h2>
           <p className="text-gray-600 text-sm mb-6">Invite friends to vote on restaurants together</p>
 
           {/* Session Code Display */}

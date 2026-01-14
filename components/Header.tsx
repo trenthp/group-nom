@@ -35,11 +35,12 @@ export default function Header({ sessionCode }: HeaderProps) {
           {/* Left: Logo + Title */}
           <button
             onClick={handleLogoClick}
+            aria-label={sessionCode ? "Leave session and go home" : "Go to home page"}
             className="flex items-center gap-2 hover:opacity-80 transition"
           >
             <Image
               src="/logo_groupNom.svg"
-              alt="Group Nom"
+              alt=""
               width={32}
               height={32}
               className="rounded-lg"
@@ -52,10 +53,11 @@ export default function Header({ sessionCode }: HeaderProps) {
             {sessionCode && (
               <button
                 onClick={() => setShowOverlay(true)}
+                aria-label={`View and share session code ${sessionCode}`}
                 className="bg-white bg-opacity-20 hover:bg-opacity-30 transition px-3 py-1.5 rounded-lg flex items-center gap-2"
               >
                 <span className="text-white text-sm font-medium">Code:</span>
-                <code className="text-white font-mono font-bold tracking-wider">{sessionCode}</code>
+                <code className="text-white font-mono font-bold tracking-wider" aria-hidden="true">{sessionCode}</code>
               </button>
             )}
 
@@ -101,18 +103,24 @@ export default function Header({ sessionCode }: HeaderProps) {
 
       {/* Leave Session Confirmation Modal */}
       {showLeaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="leave-modal-title"
+        >
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
             onClick={() => setShowLeaveModal(false)}
+            aria-hidden="true"
           />
 
           {/* Modal */}
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
             <div className="text-center">
-              <div className="text-5xl mb-4">👻</div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Ghosting?</h2>
+              <div className="text-5xl mb-4" aria-hidden="true">👻</div>
+              <h2 id="leave-modal-title" className="text-xl font-bold text-gray-800 mb-2">Ghosting?</h2>
               <p className="text-gray-600 text-sm mb-6">
                 Your votes are saved, but you&apos;ll need the code to come back.
               </p>

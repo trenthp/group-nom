@@ -625,17 +625,18 @@ export default function ResultsPage({
 
         {/* Match Navigation */}
         {totalMatches > 1 && (
-          <div className="bg-white bg-opacity-20 backdrop-blur rounded-xl p-4 mb-6 text-white">
+          <nav className="bg-white bg-opacity-20 backdrop-blur rounded-xl p-4 mb-6 text-white" aria-label="Match navigation">
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={handlePreviousMatch}
                 disabled={!hasPrevious}
+                aria-label="View previous match"
                 className="bg-white bg-opacity-20 hover:bg-opacity-30 disabled:opacity-30 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-semibold transition"
               >
                 ← Previous
               </button>
 
-              <div className="text-center">
+              <div className="text-center" aria-live="polite">
                 <p className="text-sm opacity-80">Match</p>
                 <p className="text-2xl font-bold">
                   {currentMatchIndex + 1} / {totalMatches}
@@ -650,6 +651,7 @@ export default function ResultsPage({
               <button
                 onClick={handleNextMatch}
                 disabled={!hasNext}
+                aria-label="View next match"
                 className="bg-white bg-opacity-20 hover:bg-opacity-30 disabled:opacity-30 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-semibold transition"
               >
                 Next →
@@ -660,14 +662,16 @@ export default function ResultsPage({
             <div className="border-t border-white border-opacity-20 pt-4">
               <button
                 onClick={() => setShowVoteBreakdown(!showVoteBreakdown)}
+                aria-expanded={showVoteBreakdown}
+                aria-controls="vote-breakdown-content"
                 className="w-full flex items-center justify-between text-sm font-semibold hover:opacity-80 transition"
               >
                 <span>Vote Breakdown</span>
-                <span className="text-lg">{showVoteBreakdown ? '▲' : '▼'}</span>
+                <span className="text-lg" aria-hidden="true">{showVoteBreakdown ? '▲' : '▼'}</span>
               </button>
 
               {showVoteBreakdown && (
-                <div className="mt-3 space-y-2">
+                <div id="vote-breakdown-content" className="mt-3 space-y-2">
                   {voteDetails
                     .filter((v) => Object.keys(v.votes).length > 0)
                     .sort((a, b) => b.yesCount - a.yesCount)
@@ -693,7 +697,7 @@ export default function ResultsPage({
                 </div>
               )}
             </div>
-          </div>
+          </nav>
         )}
 
           {/* Actions */}
