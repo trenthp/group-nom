@@ -7,37 +7,27 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-orange-500 to-red-600">
       {/* Header */}
-      <header className="w-full">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
-            <Image
-              src="/logo_groupNom.svg"
-              alt="Group Nom"
-              width={32}
-              height={32}
-              className="rounded-lg"
-            />
-            <span className="text-white font-bold text-lg">Group Nom</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/about"
-              className="text-white text-sm font-medium hover:text-orange-100 transition"
-            >
-              About
-            </Link>
-            <Link
-              href="/sign-in"
-              className="bg-white text-orange-600 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-orange-50 transition"
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
+      <header className="w-full px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
+          <Image
+            src="/logo_groupNom.svg"
+            alt="Group Nom"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
+          <span className="text-white font-bold text-lg">Group Nom</span>
+        </Link>
+        <Link
+          href="/sign-in"
+          className="bg-white/20 text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-white/30 transition"
+        >
+          Sign In
+        </Link>
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
+      <div className="flex-1 flex flex-col items-center p-4 pt-8">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-white mb-2">Join the crew!</h1>
           <p className="text-orange-100">Save your favorites & never forget a gem</p>

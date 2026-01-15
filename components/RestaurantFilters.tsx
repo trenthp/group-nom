@@ -24,7 +24,6 @@ interface RestaurantFiltersProps {
   locationError?: string
 }
 
-// Helper to check if arrays are equal (for priceLevel and cuisines)
 function arraysEqual(a: unknown[], b: unknown[]): boolean {
   if (a.length !== b.length) return false
   const sortedA = [...a].sort()
@@ -43,8 +42,8 @@ export default function RestaurantFilters({
 }: RestaurantFiltersProps) {
   const [isEditingLocation, setIsEditingLocation] = useState(false)
   const [locationInput, setLocationInput] = useState('')
+  const [expandedFilter, setExpandedFilter] = useState<string | null>(null)
 
-  // Check if a specific filter has been edited from default
   const isEdited = {
     distance: filters.distance !== DEFAULT_FILTERS.distance,
     minRating: filters.minRating !== DEFAULT_FILTERS.minRating,
@@ -53,57 +52,6 @@ export default function RestaurantFilters({
     priceLevel: !arraysEqual(filters.priceLevel, DEFAULT_FILTERS.priceLevel),
     cuisines: !arraysEqual(filters.cuisines, DEFAULT_FILTERS.cuisines),
     preferLocal: filters.preferLocal !== DEFAULT_FILTERS.preferLocal,
-  }
-
-  // Check if any filter is edited
-  const hasAnyEdits = Object.values(isEdited).some(Boolean)
-
-  // Reset a specific filter to default
-  const resetFilter = (key: keyof typeof DEFAULT_FILTERS) => {
-    onFiltersChange({ ...filters, [key]: DEFAULT_FILTERS[key] })
-  }
-
-  // Reset all filters to default
-  const resetAllFilters = () => {
-    onFiltersChange({ ...DEFAULT_FILTERS })
-  }
-
-  const getPopularityLabel = (value: number) => {
-    if (value === 100) return 'Hidden Gems'
-    if (value === 300) return 'Lesser-known'
-    if (value === 500) return 'Moderate'
-    if (value === 1000) return 'Popular'
-    if (value === 5000) return 'Very Popular'
-    return 'Any'
-  }
-
-  const getDistanceLabel = (km: number) => {
-    const miles = (km * 0.621371).toFixed(1)
-    return `${km} km (${miles} mi)`
-  }
-
-  const cuisineOptions = [
-    'American', 'Italian', 'Mexican', 'Japanese', 'Chinese',
-    'Indian', 'Thai', 'Korean', 'Vietnamese', 'Mediterranean',
-    'French', 'Greek', 'Spanish', 'Caribbean', 'BBQ'
-  ]
-
-  const togglePriceLevel = (level: number) => {
-    const current = filters.priceLevel || []
-    if (current.includes(level)) {
-      onFiltersChange({ ...filters, priceLevel: current.filter(l => l !== level) })
-    } else {
-      onFiltersChange({ ...filters, priceLevel: [...current, level].sort() })
-    }
-  }
-
-  const toggleCuisine = (cuisine: string) => {
-    const current = filters.cuisines || []
-    if (current.includes(cuisine)) {
-      onFiltersChange({ ...filters, cuisines: current.filter(c => c !== cuisine) })
-    } else {
-      onFiltersChange({ ...filters, cuisines: [...current, cuisine] })
-    }
   }
 
   const handleLocationSubmit = async () => {
@@ -120,317 +68,468 @@ export default function RestaurantFilters({
     setIsEditingLocation(false)
   }
 
-  // Reusable filter section wrapper with edited state styling
-  const FilterSection = ({
-    children,
+  // Distance snap points: miles with km equivalents
+  const distanceOptions = [
+    { miles: 0.5, km: 0.8 },
+    { miles: 1, km: 1.6 },
+    { miles: 2, km: 3.2 },
+    { miles: 3, km: 4.8 },
+    { miles: 5, km: 8 },
+    { miles: 10, km: 16 },
+    { miles: 15, km: 24 },
+    { miles: 25, km: 40 },
+    { miles: 35, km: 56 },
+    { miles: 50, km: 80 },
+  ]
+
+  const getDistanceIndex = (km: number): number => {
+    let closestIndex = 0
+    let closestDiff = Math.abs(distanceOptions[0].km - km)
+    for (let i = 1; i < distanceOptions.length; i++) {
+      const diff = Math.abs(distanceOptions[i].km - km)
+      if (diff < closestDiff) {
+        closestDiff = diff
+        closestIndex = i
+      }
+    }
+    return closestIndex
+  }
+
+  const getDistanceLabel = (km: number) => {
+    const opt = distanceOptions[getDistanceIndex(km)]
+    return `${opt.miles} mi (${opt.km} km)`
+  }
+
+  const getRatingLabel = (rating: number) => {
+    if (rating === 0) return 'any'
+    return `${rating.toFixed(1)}+`
+  }
+
+  const getPopularityLabel = (value: number) => {
+    if (value === 0) return 'any'
+    if (value === 100) return 'hidden gems'
+    if (value === 300) return 'lesser-known'
+    if (value === 500) return 'moderate'
+    if (value === 1000) return 'popular'
+    return 'very popular'
+  }
+
+  const getPriceLabel = () => {
+    const levels = filters.priceLevel || []
+    if (levels.length === 0 || levels.length === 4) return 'any'
+    return levels.map(l => '$'.repeat(l)).join(' ')
+  }
+
+  const getCuisineLabel = () => {
+    const cuisines = filters.cuisines || []
+    if (cuisines.length === 0) return 'any'
+    if (cuisines.length === 1) return cuisines[0]
+    if (cuisines.length === 2) return cuisines.join(' & ')
+    return `${cuisines.length} selected`
+  }
+
+  const cuisineOptions = [
+    'American', 'Italian', 'Mexican', 'Japanese', 'Chinese',
+    'Indian', 'Thai', 'Korean', 'Vietnamese', 'Mediterranean',
+    'French', 'Greek', 'Spanish', 'Caribbean', 'BBQ'
+  ]
+
+  const toggleCuisine = (cuisine: string) => {
+    const current = filters.cuisines || []
+    if (current.includes(cuisine)) {
+      onFiltersChange({ ...filters, cuisines: current.filter(c => c !== cuisine) })
+    } else {
+      onFiltersChange({ ...filters, cuisines: [...current, cuisine] })
+    }
+  }
+
+  const togglePriceLevel = (level: number) => {
+    const current = filters.priceLevel || []
+    if (current.includes(level)) {
+      onFiltersChange({ ...filters, priceLevel: current.filter(l => l !== level) })
+    } else {
+      onFiltersChange({ ...filters, priceLevel: [...current, level].sort() })
+    }
+  }
+
+  const Chip = ({
+    value,
     edited,
-    onReset,
-    className = ''
+    onClick,
+    expanded,
+    hasDropdown = true,
   }: {
-    children: React.ReactNode
+    value: string
     edited: boolean
-    onReset: () => void
-    className?: string
+    onClick: () => void
+    expanded?: boolean
+    hasDropdown?: boolean
   }) => (
-    <div className={`relative rounded-xl p-4 transition-all ${
-      edited
-        ? 'bg-orange-50 ring-2 ring-orange-200'
-        : 'bg-gray-50'
-    } ${className}`}>
-      {edited && (
-        <button
-          onClick={onReset}
-          className="absolute top-2 right-2 text-xs text-orange-600 hover:text-orange-700 font-medium flex items-center gap-1 transition"
-          aria-label="Reset to default"
+    <button
+      onClick={onClick}
+      className={`
+        relative inline-flex items-center gap-1.5
+        px-4 py-2 rounded-full
+        text-base font-semibold tracking-tight
+        transition-all duration-200 ease-out
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50
+        ${edited
+          ? 'bg-white text-orange-600 shadow-md shadow-orange-900/25'
+          : 'bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm border border-white/15'
+        }
+        ${expanded
+          ? 'ring-2 ring-white/50 scale-[1.02]'
+          : 'hover:scale-[1.02]'
+        }
+        active:scale-[0.98]
+      `}
+    >
+      {value}
+      {hasDropdown && (
+        <svg
+          className={`w-3.5 h-3.5 opacity-50 transition-transform duration-200 ease-out ${expanded ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Reset
-        </button>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+        </svg>
       )}
-      {children}
+      {edited && (
+        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-400 rounded-full border border-white" />
+      )}
+    </button>
+  )
+
+  const FilterRow = ({
+    label,
+    children,
+    expandedContent,
+  }: {
+    label: string
+    children: React.ReactNode
+    expandedContent?: React.ReactNode
+  }) => (
+    <div className="mb-5">
+      <div className="flex items-center justify-center gap-4">
+        <span className="w-24 text-right text-white/70 text-base font-semibold shrink-0">
+          {label}
+        </span>
+        <div className="w-48">{children}</div>
+      </div>
+      {expandedContent && (
+        <div className="mt-3 p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 shadow-lg shadow-black/10">
+          {expandedContent}
+        </div>
+      )}
     </div>
   )
 
+  const PanelButton = ({
+    selected,
+    onClick,
+    children,
+    className = '',
+  }: {
+    selected: boolean
+    onClick: () => void
+    children: React.ReactNode
+    className?: string
+  }) => (
+    <button
+      onClick={onClick}
+      className={`
+        px-4 py-2 rounded-full text-sm font-semibold
+        transition-all duration-150
+        ${selected
+          ? 'bg-white text-orange-600 shadow-sm'
+          : 'bg-white/15 text-white hover:bg-white/25 border border-white/10'
+        }
+        hover:scale-[1.03] active:scale-[0.97]
+        ${className}
+      `}
+    >
+      {children}
+    </button>
+  )
+
   return (
-    <div className="bg-white rounded-2xl shadow-2xl p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-2xl font-bold text-gray-800">Restaurant Filters</h3>
-        {hasAnyEdits && (
+    <div className="text-white py-2">
+      <style jsx global>{`
+        .slider-thumb::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: white;
+          cursor: grab;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+          border: none;
+        }
+        .slider-thumb::-webkit-slider-thumb:active {
+          cursor: grabbing;
+          transform: scale(1.1);
+        }
+        .slider-thumb::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: white;
+          cursor: grab;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+          border: none;
+        }
+        .slider-thumb::-moz-range-thumb:active {
+          cursor: grabbing;
+          transform: scale(1.1);
+        }
+      `}</style>
+      {/* Type */}
+      <FilterRow label="Find">
+        <Chip
+          value={filters.preferLocal ? 'local spots' : 'any restaurant'}
+          edited={isEdited.preferLocal}
+          onClick={() => onFiltersChange({ ...filters, preferLocal: !filters.preferLocal })}
+          hasDropdown={false}
+        />
+      </FilterRow>
+
+      {/* Location */}
+      <FilterRow label="near">
+        {!isEditingLocation ? (
           <button
-            onClick={resetAllFilters}
-            className="text-sm text-gray-500 hover:text-orange-600 font-medium flex items-center gap-1 transition"
+            onClick={() => setIsEditingLocation(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-base font-semibold bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm border border-white/15 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Reset All
+            <LocationIcon size={16} />
+            <span className="max-w-[180px] truncate">
+              {locationLoading ? 'Finding...' : (locationName || 'Current Location')}
+            </span>
           </button>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={locationInput}
+                onChange={(e) => setLocationInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleLocationSubmit()
+                  if (e.key === 'Escape') setIsEditingLocation(false)
+                }}
+                placeholder="City or zip..."
+                className="w-44 px-4 py-2 rounded-full bg-white/95 text-gray-800 text-base font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-inner transition-all duration-150"
+                autoFocus
+              />
+              <button
+                onClick={handleLocationSubmit}
+                disabled={!locationInput.trim()}
+                className="text-white font-semibold text-base px-4 py-2 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
+              >
+                Go
+              </button>
+              <button
+                onClick={() => setIsEditingLocation(false)}
+                className="text-white/50 hover:text-white text-base transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+            <button
+              onClick={handleUseCurrentLocation}
+              className="text-sm text-white/50 hover:text-white/80 mt-2 block underline underline-offset-2 transition-colors duration-150"
+            >
+              Use my current location
+            </button>
+            {locationError && <span className="text-red-300 text-sm block mt-1">{locationError}</span>}
+          </div>
         )}
-      </div>
+      </FilterRow>
 
-      <div className="space-y-4">
-        {/* Location - special case, not resettable */}
-        <div className="rounded-xl p-4 bg-gray-50">
-          {!isEditingLocation ? (
-            <div className="flex justify-between items-center">
-              <label className="text-gray-700 font-semibold">Location</label>
-              <button
-                onClick={() => setIsEditingLocation(true)}
-                className="flex items-center gap-1 text-orange-600 font-bold hover:text-orange-700 transition"
-              >
-                <LocationIcon size={16} />
-                {locationLoading ? 'Finding...' : (locationName || 'Current Location')}
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <label className="text-gray-700 font-semibold">Location</label>
-                <button
-                  onClick={() => setIsEditingLocation(false)}
-                  className="text-gray-400 hover:text-gray-600 text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={locationInput}
-                  onChange={(e) => setLocationInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleLocationSubmit()}
-                  placeholder="Enter zip code or city..."
-                  className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-800"
-                  disabled={locationLoading}
-                  autoFocus
-                />
-                <button
-                  onClick={handleLocationSubmit}
-                  disabled={locationLoading || !locationInput.trim()}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {locationLoading ? '...' : 'Go'}
-                </button>
-              </div>
-              <button
-                onClick={handleUseCurrentLocation}
-                disabled={locationLoading}
-                className="w-full py-2 text-sm text-orange-600 hover:text-orange-700 font-medium disabled:opacity-50"
-              >
-                Use current location
-              </button>
-              {locationError && (
-                <p className="text-red-500 text-sm">{locationError}</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Prefer Local (Chain Filter) */}
-        <FilterSection edited={isEdited.preferLocal} onReset={() => resetFilter('preferLocal')}>
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-gray-700 font-semibold block">Prefer Local</label>
-              <span className="text-xs text-gray-500">
-                {filters.preferLocal ? 'Prioritizing local restaurants' : 'Including all chains'}
+      {/* Distance */}
+      <FilterRow
+        label="within"
+        expandedContent={expandedFilter === 'distance' ? (
+          <>
+            <input
+              type="range"
+              min={0}
+              max={distanceOptions.length - 1}
+              step={1}
+              value={getDistanceIndex(filters.distance)}
+              onChange={(e) => {
+                const idx = Number(e.target.value)
+                onFiltersChange({ ...filters, distance: distanceOptions[idx].km })
+              }}
+              className="slider-thumb w-full h-2 rounded-full cursor-grab active:cursor-grabbing accent-white bg-white/40"
+            />
+            <div className="flex justify-between text-sm text-white/70 mt-2">
+              <span>0.5 mi</span>
+              <span className="font-semibold text-white">
+                {distanceOptions[getDistanceIndex(filters.distance)].miles} mi ({distanceOptions[getDistanceIndex(filters.distance)].km} km)
               </span>
+              <span>50 mi</span>
             </div>
-            <button
-              onClick={() => onFiltersChange({ ...filters, preferLocal: !filters.preferLocal })}
-              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-                filters.preferLocal ? 'bg-orange-600' : 'bg-gray-300'
-              }`}
-              aria-label={filters.preferLocal ? 'Prefer local restaurants (on)' : 'Prefer local restaurants (off)'}
-            >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform ${
-                  filters.preferLocal ? 'translate-x-7' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-          {!isEdited.preferLocal && (
-            <div className="mt-2 text-xs text-gray-400 flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-full bg-gray-300"></span>
-              Default
+          </>
+        ) : undefined}
+      >
+        <Chip
+          value={getDistanceLabel(filters.distance)}
+          edited={isEdited.distance}
+          onClick={() => setExpandedFilter(expandedFilter === 'distance' ? null : 'distance')}
+          expanded={expandedFilter === 'distance'}
+        />
+      </FilterRow>
+
+      {/* Rating */}
+      <FilterRow
+        label="rating"
+        expandedContent={expandedFilter === 'rating' ? (
+          <>
+            <input
+              type="range"
+              min={0}
+              max={4.5}
+              step={0.5}
+              value={filters.minRating}
+              onChange={(e) => onFiltersChange({ ...filters, minRating: Number(e.target.value) })}
+              className="slider-thumb w-full h-2 rounded-full cursor-grab active:cursor-grabbing accent-white bg-white/40"
+            />
+            <div className="flex justify-between text-sm text-white/70 mt-2">
+              <span>Any</span>
+              <span className="font-semibold text-white flex items-center gap-1">
+                {filters.minRating === 0 ? 'Any' : `${filters.minRating}+`}
+                {filters.minRating > 0 && <StarIcon size={12} className="text-yellow-400" />}
+              </span>
+              <span className="flex items-center gap-1">4.5 <StarIcon size={12} className="text-yellow-400" /></span>
             </div>
-          )}
-        </FilterSection>
+          </>
+        ) : undefined}
+      >
+        <Chip
+          value={getRatingLabel(filters.minRating)}
+          edited={isEdited.minRating}
+          onClick={() => setExpandedFilter(expandedFilter === 'rating' ? null : 'rating')}
+          expanded={expandedFilter === 'rating'}
+        />
+      </FilterRow>
 
-        {/* Distance Filter */}
-        <FilterSection edited={isEdited.distance} onReset={() => resetFilter('distance')}>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-gray-700 font-semibold">Search Distance</label>
-            <span className={`font-bold ${isEdited.distance ? 'text-orange-600' : 'text-gray-600'}`}>
-              {getDistanceLabel(filters.distance)}
-            </span>
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="25"
-            step="1"
-            value={filters.distance}
-            onChange={(e) =>
-              onFiltersChange({ ...filters, distance: parseInt(e.target.value) })
-            }
-            className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>1 km</span>
-            <span className={isEdited.distance ? '' : 'font-medium text-gray-600'}>
-              {!isEdited.distance && '← Default: 5 km'}
-            </span>
-            <span>25 km</span>
-          </div>
-        </FilterSection>
-
-        {/* Minimum Rating Filter */}
-        <FilterSection edited={isEdited.minRating} onReset={() => resetFilter('minRating')}>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-gray-700 font-semibold">Minimum Rating</label>
-            <span className={`flex items-center gap-1 font-bold ${isEdited.minRating ? 'text-orange-600' : 'text-gray-600'}`}>
-              {filters.minRating === 0 ? 'Any' : (
-                <>
-                  {(filters.minRating || 0).toFixed(1)}+
-                  <StarIcon size={14} className="text-yellow-400" />
-                </>
-              )}
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="4.5"
-            step="0.5"
-            value={filters.minRating}
-            onChange={(e) =>
-              onFiltersChange({ ...filters, minRating: parseFloat(e.target.value) })
-            }
-            className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span className={!isEdited.minRating ? 'font-medium text-gray-600' : ''}>
-              Any {!isEdited.minRating && '← Default'}
-            </span>
-            <span>4.5★</span>
-          </div>
-        </FilterSection>
-
-        {/* Popularity Filter */}
-        <FilterSection edited={isEdited.maxReviews} onReset={() => resetFilter('maxReviews')}>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-gray-700 font-semibold">Popularity</label>
-            <span className={`font-bold text-sm ${isEdited.maxReviews ? 'text-orange-600' : 'text-gray-600'}`}>
-              {getPopularityLabel(filters.maxReviews)}
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="5"
-            step="1"
-            value={
-              filters.maxReviews === 0 ? 0 :
-              filters.maxReviews === 100 ? 1 :
-              filters.maxReviews === 300 ? 2 :
-              filters.maxReviews === 500 ? 3 :
-              filters.maxReviews === 1000 ? 4 : 5
-            }
-            onChange={(e) => {
-              const sliderValue = parseInt(e.target.value)
-              const reviewValues = [0, 100, 300, 500, 1000, 5000]
-              onFiltersChange({ ...filters, maxReviews: reviewValues[sliderValue] })
-            }}
-            className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span className={!isEdited.maxReviews ? 'font-medium text-gray-600' : ''}>
-              Any {!isEdited.maxReviews && '← Default'}
-            </span>
-            <span>Very Popular</span>
-          </div>
-        </FilterSection>
-
-        {/* Open Now Toggle */}
-        <FilterSection edited={isEdited.openNow} onReset={() => resetFilter('openNow')}>
-          <div className="flex items-center justify-between">
-            <label className="text-gray-700 font-semibold">Open Now</label>
-            <button
-              onClick={() =>
-                onFiltersChange({ ...filters, openNow: !filters.openNow })
-              }
-              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-                filters.openNow ? 'bg-orange-600' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform ${
-                  filters.openNow ? 'translate-x-7' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-          {!isEdited.openNow && (
-            <div className="mt-2 text-xs text-gray-400 flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-full bg-gray-300"></span>
-              Default: Off
+      {/* Popularity */}
+      <FilterRow
+        label="popularity"
+        expandedContent={expandedFilter === 'popularity' ? (
+          <>
+            <p className="text-white/70 mb-3 leading-relaxed">
+              {filters.maxReviews === 0 && 'Any amount of reviews'}
+              {filters.maxReviews === 100 && 'Under 100 reviews — undiscovered'}
+              {filters.maxReviews === 300 && 'Under 300 reviews — off the beaten path'}
+              {filters.maxReviews === 500 && 'Under 500 reviews — known but not crowded'}
+              {filters.maxReviews === 1000 && 'Under 1,000 reviews — local favorites'}
+              {filters.maxReviews === 5000 && '1,000+ reviews — crowd pleasers'}
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {[
+                { value: 0, label: 'Any' },
+                { value: 100, label: 'Hidden gems' },
+                { value: 300, label: 'Lesser-known' },
+                { value: 500, label: 'Moderate' },
+                { value: 1000, label: 'Popular' },
+                { value: 5000, label: 'Very popular' },
+              ].map(opt => (
+                <PanelButton
+                  key={opt.value}
+                  selected={filters.maxReviews === opt.value}
+                  onClick={() => onFiltersChange({ ...filters, maxReviews: opt.value })}
+                >
+                  {opt.label}
+                </PanelButton>
+              ))}
             </div>
-          )}
-        </FilterSection>
+          </>
+        ) : undefined}
+      >
+        <Chip
+          value={getPopularityLabel(filters.maxReviews)}
+          edited={isEdited.maxReviews}
+          onClick={() => setExpandedFilter(expandedFilter === 'popularity' ? null : 'popularity')}
+          expanded={expandedFilter === 'popularity'}
+        />
+      </FilterRow>
 
-        {/* Price Level */}
-        <FilterSection edited={isEdited.priceLevel} onReset={() => resetFilter('priceLevel')}>
-          <label className="text-gray-700 font-semibold block mb-3">Price Level</label>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4].map((level) => (
-              <button
-                key={level}
-                onClick={() => togglePriceLevel(level)}
-                className={`flex-1 py-2 px-3 rounded-lg font-bold text-sm transition ${
-                  (filters.priceLevel || []).includes(level)
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                }`}
-              >
-                {'$'.repeat(level)}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            {(filters.priceLevel || []).length === 0
-              ? (isEdited.priceLevel ? 'None selected' : 'All prices (Default)')
-              : `${(filters.priceLevel || []).length} selected`}
-          </p>
-        </FilterSection>
+      {/* Hours */}
+      <FilterRow label="hours">
+        <Chip
+          value={filters.openNow ? 'open now' : 'any'}
+          edited={isEdited.openNow}
+          onClick={() => onFiltersChange({ ...filters, openNow: !filters.openNow })}
+          hasDropdown={false}
+        />
+      </FilterRow>
 
-        {/* Cuisine Type */}
-        <FilterSection edited={isEdited.cuisines} onReset={() => resetFilter('cuisines')}>
-          <label className="text-gray-700 font-semibold block mb-3">Cuisine Type</label>
-          <div className="flex flex-wrap gap-2">
-            {cuisineOptions.map((cuisine) => (
-              <button
-                key={cuisine}
-                onClick={() => toggleCuisine(cuisine)}
-                className={`py-1.5 px-3 rounded-full text-sm font-medium transition ${
-                  (filters.cuisines || []).includes(cuisine)
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                }`}
-              >
-                {cuisine}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            {(filters.cuisines || []).length === 0
-              ? (isEdited.cuisines ? 'None selected' : 'All cuisines (Default)')
-              : `${(filters.cuisines || []).length} selected`}
-          </p>
-        </FilterSection>
-      </div>
+      {/* Price */}
+      <FilterRow
+        label="price"
+        expandedContent={expandedFilter === 'price' ? (
+          <>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map((level) => (
+                <button
+                  key={level}
+                  onClick={() => togglePriceLevel(level)}
+                  className={`
+                    flex-1 py-3 rounded-xl font-bold text-base
+                    transition-all duration-150
+                    ${(filters.priceLevel || []).includes(level)
+                      ? 'bg-white text-orange-600 shadow-sm'
+                      : 'bg-white/15 text-white hover:bg-white/25 border border-white/10'
+                    }
+                    hover:scale-[1.03] active:scale-[0.97]
+                  `}
+                >
+                  {'$'.repeat(level)}
+                </button>
+              ))}
+            </div>
+            <p className="text-sm text-white/50 mt-3 text-center">Tap multiple or none for any</p>
+          </>
+        ) : undefined}
+      >
+        <Chip
+          value={getPriceLabel()}
+          edited={isEdited.priceLevel}
+          onClick={() => setExpandedFilter(expandedFilter === 'price' ? null : 'price')}
+          expanded={expandedFilter === 'price'}
+        />
+      </FilterRow>
+
+      {/* Cuisine */}
+      <FilterRow
+        label="cuisine"
+        expandedContent={expandedFilter === 'cuisine' ? (
+          <>
+            <div className="flex flex-wrap justify-center gap-2">
+              {cuisineOptions.map((cuisine) => (
+                <PanelButton
+                  key={cuisine}
+                  selected={(filters.cuisines || []).includes(cuisine)}
+                  onClick={() => toggleCuisine(cuisine)}
+                >
+                  {cuisine}
+                </PanelButton>
+              ))}
+            </div>
+            <p className="text-sm text-white/50 mt-3 text-center">Tap multiple or none for any</p>
+          </>
+        ) : undefined}
+      >
+        <Chip
+          value={getCuisineLabel()}
+          edited={isEdited.cuisines}
+          onClick={() => setExpandedFilter(expandedFilter === 'cuisine' ? null : 'cuisine')}
+          expanded={expandedFilter === 'cuisine'}
+        />
+      </FilterRow>
     </div>
   )
 }

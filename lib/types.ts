@@ -106,7 +106,7 @@ export const DEFAULT_FILTERS: Filters = {
   minRating: 0,
   openNow: false,
   maxReviews: 0,
-  distance: 5,
+  distance: 8, // 5 miles - matches snap point in RestaurantFilters
   priceLevel: [],
   cuisines: [],
   preferLocal: true, // Default to preferring local restaurants

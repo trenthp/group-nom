@@ -10,6 +10,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { getUserLocation } from '@/lib/googleMaps'
 import { USER_TIERS } from '@/lib/userTiers'
+import { DEFAULT_FILTERS } from '@/lib/types'
 
 type SetupMode = 'prompt' | 'auto' | 'favorites'
 
@@ -28,23 +29,7 @@ function SetupPageContent() {
   const skipPrompt = !!reconfigureCode || searchParams.get('mode') === 'auto'
   const [setupMode, setSetupMode] = useState<SetupMode>(skipPrompt ? 'auto' : 'prompt')
 
-  const [filters, setFilters] = useState<{
-    minRating: number
-    openNow: boolean
-    maxReviews: number
-    distance: number
-    priceLevel: number[]
-    cuisines: string[]
-    preferLocal: boolean
-  }>({
-    minRating: 0,
-    openNow: false,
-    maxReviews: 0,
-    distance: 5,
-    priceLevel: [],
-    cuisines: [],
-    preferLocal: true,
-  })
+  const [filters, setFilters] = useState({ ...DEFAULT_FILTERS })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -242,7 +227,7 @@ function SetupPageContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
         <Header />
-        <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+        <div className="flex flex-col items-center p-4 pt-8" style={{ minHeight: 'calc(100vh - 56px)' }}>
           <div className="w-full max-w-md">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Start a Group Session</h1>
@@ -351,7 +336,7 @@ function SetupPageContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
         <Header />
-        <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+        <div className="flex flex-col items-center p-4 pt-8" style={{ minHeight: 'calc(100vh - 56px)' }}>
           <div className="w-full max-w-md text-center">
             <h1 className="text-2xl font-bold text-white mb-4">Pick from Favorites</h1>
             <p className="text-orange-100 mb-6">Select restaurants from your saved list to add to this session.</p>
@@ -384,7 +369,7 @@ function SetupPageContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
       <Header />
-      <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+      <div className="flex flex-col items-center p-4 pt-8" style={{ minHeight: 'calc(100vh - 56px)' }}>
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">
