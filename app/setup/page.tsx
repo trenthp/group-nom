@@ -35,6 +35,7 @@ function SetupPageContent() {
     distance: number
     priceLevel: number[]
     cuisines: string[]
+    preferLocal: boolean
   }>({
     minRating: 0,
     openNow: false,
@@ -42,6 +43,7 @@ function SetupPageContent() {
     distance: 5,
     priceLevel: [],
     cuisines: [],
+    preferLocal: true,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -243,63 +245,48 @@ function SetupPageContent() {
         <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
           <div className="w-full max-w-md">
             <div className="text-center mb-8">
-              <Image
-                src="/logo_groupNom.svg"
-                alt="Group Nom"
-                width={64}
-                height={64}
-                className="mx-auto rounded-xl mb-4"
-              />
-              <h1 className="text-2xl font-bold text-white mb-2">Start a Group Session</h1>
+              <h1 className="text-3xl font-bold text-white mb-2">Start a Group Session</h1>
+              <p className="text-orange-100 mb-2">Pick your path</p>
+              <p className="text-orange-100 text-sm opacity-80">How should we find restaurants?</p>
             </div>
 
             {/* Anonymous User View */}
             {!isSignedIn && (
-              <div className="space-y-4">
-                {/* Quick Session Option */}
-                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-5 border border-white/30">
-                  <h2 className="text-white font-bold text-lg mb-1">Quick Group Session</h2>
-                  <p className="text-orange-100 text-sm mb-4">
-                    {anonLimit} restaurants - Perfect for fast decisions
-                  </p>
+              <div className="space-y-3">
+                {/* Side-by-side comparison */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Quick Start - 5 restaurants */}
                   <button
                     onClick={() => setSetupMode('auto')}
-                    className="w-full bg-white text-orange-600 font-semibold py-3 rounded-lg hover:bg-orange-50 transition"
+                    className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30 text-center hover:bg-white/30 transition group"
                   >
-                    Continue with {anonLimit}
+                    <div className="text-5xl font-bold text-white mb-1">{anonLimit}</div>
+                    <div className="text-white/90 text-sm font-medium">restaurants</div>
+                    <div className="mt-3 bg-white text-orange-600 font-semibold py-2.5 rounded-lg group-hover:bg-orange-50 transition text-sm">
+                      Quick Start
+                    </div>
                   </button>
-                </div>
 
-                {/* Sign In Option */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/30"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="bg-gradient-to-br from-orange-500 to-red-600 px-3 text-orange-100">or</span>
-                  </div>
-                </div>
-
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20">
-                  <h2 className="text-white font-bold text-lg mb-1">Get More Options</h2>
-                  <p className="text-orange-100 text-sm mb-4">
-                    Sign in for {authLimit} restaurants + pick from your favorites
-                  </p>
-                  <div className="flex gap-2">
-                    <Link
-                      href="/sign-in?redirect_url=/setup?mode=auto"
-                      className="flex-1 bg-white/20 text-white font-semibold py-3 rounded-lg text-center hover:bg-white/30 transition"
-                    >
+                  {/* Sign In - 10 restaurants */}
+                  <Link
+                    href="/sign-in?redirect_url=/setup?mode=auto"
+                    className="bg-white rounded-xl p-4 text-center hover:bg-orange-50 transition group"
+                  >
+                    <div className="text-5xl font-bold text-orange-600 mb-1">{authLimit}</div>
+                    <div className="text-orange-600/80 text-sm font-medium">restaurants</div>
+                    <div className="mt-3 bg-orange-600 text-white font-semibold py-2.5 rounded-lg group-hover:bg-orange-700 transition text-sm">
                       Sign In
-                    </Link>
-                    <Link
-                      href="/sign-up?redirect_url=/setup?mode=auto"
-                      className="flex-1 bg-white text-orange-600 font-semibold py-3 rounded-lg text-center hover:bg-orange-50 transition"
-                    >
-                      Create Account
-                    </Link>
-                  </div>
+                    </div>
+                  </Link>
                 </div>
+
+                {/* Create account link */}
+                <p className="text-center text-white/80 text-sm">
+                  New here?{' '}
+                  <Link href="/sign-up?redirect_url=/setup?mode=auto" className="underline font-medium hover:text-white">
+                    Create free account
+                  </Link>
+                </p>
               </div>
             )}
 

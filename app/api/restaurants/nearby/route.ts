@@ -7,6 +7,44 @@ import { Restaurant } from '@/lib/types'
 
 const client = new Client({})
 
+// Common chain restaurant names/keywords for deprioritization
+const CHAIN_KEYWORDS = [
+  // Fast food
+  'mcdonald', 'burger king', 'wendy', 'taco bell', 'kfc', 'popeyes',
+  'chick-fil-a', 'sonic', 'jack in the box', 'carl\'s jr', 'hardee',
+  'whataburger', 'in-n-out', 'five guys', 'shake shack', 'white castle',
+  'arby\'s', 'checkers', 'rally\'s', 'del taco', 'wingstop',
+  // Fast casual
+  'chipotle', 'panera', 'qdoba', 'moe\'s', 'firehouse subs', 'jersey mike',
+  'jimmy john', 'subway', 'potbelly', 'panda express', 'noodles & company',
+  'blaze pizza', 'mod pizza', 'sweetgreen', 'cava', 'zoe\'s kitchen',
+  // Casual dining
+  'applebee', 'chili\'s', 'olive garden', 'red lobster', 'outback',
+  'texas roadhouse', 'longhorn', 'red robin', 'buffalo wild wings', 'bww',
+  'cheesecake factory', 'p.f. chang', 'benihana', 'hooters', 'twin peaks',
+  'ihop', 'denny\'s', 'waffle house', 'cracker barrel', 'bob evans',
+  'golden corral', 'hometown buffet', 'old country buffet',
+  // Coffee & dessert
+  'starbucks', 'dunkin', 'caribou coffee', 'peet\'s coffee', 'tim hortons',
+  'baskin-robbins', 'dairy queen', 'coldstone', 'krispy kreme',
+  // Pizza chains
+  'domino\'s', 'pizza hut', 'papa john', 'little caesars', 'marco\'s pizza',
+  'papa murphy', 'cicis', 'round table', 'mountain mike',
+  // Other chains
+  'yard house', 'bj\'s restaurant', 'dave & buster',
+  'topgolf', 'main event', 'cheddar\'s', 'carrabba', 'maggiano',
+  'bonefish grill', 'seasons 52', 'the capital grille', 'eddie v',
+  'ruth\'s chris', 'morton\'s', 'flemings', 'fogo de chao',
+  'nando\'s', 'raising cane', 'zaxby', 'culver\'s',
+  'portillo\'s', 'jason\'s deli', 'mcalister\'s', 'corner bakery',
+]
+
+// Check if a restaurant name matches known chains
+function isChainRestaurant(name: string): boolean {
+  const lowerName = name.toLowerCase()
+  return CHAIN_KEYWORDS.some(chain => lowerName.includes(chain))
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Get auth status to enforce tier-appropriate limits
@@ -25,6 +63,7 @@ export async function POST(request: NextRequest) {
     const maxReviews = filters?.maxReviews || 0
     const priceLevel = filters?.priceLevel || [] // [1, 2, 3, 4] for $, $$, $$$, $$$$
     const cuisines = filters?.cuisines || [] // ['Italian', 'Mexican', etc.]
+    const preferLocal = filters?.preferLocal !== false // Default to true if not specified
 
     // Check if API key is configured
     const apiKey = process.env.GOOGLE_MAPS_API_KEY
@@ -54,31 +93,56 @@ export async function POST(request: NextRequest) {
       return shuffled
     }
 
+    // Variety: randomly decide search strategy for this request
+    // This helps show different restaurants across sessions
+    const useDistanceRanking = Math.random() < 0.4 // 40% chance to rank by distance
+    const skipFirstPage = Math.random() < 0.3 // 30% chance to skip first page results
+
     // Fetch restaurants - if cuisines selected, make separate calls per cuisine for better results
     let allResults: any[] = []
     const seenPlaceIds = new Set<string>()
 
-    // Helper to fetch results for a keyword
+    // Helper to fetch results for a keyword with variety mechanisms
     const fetchForKeyword = async (keyword?: string) => {
       let pageToken: string | undefined = undefined
-      const maxPages = cuisines.length > 1 ? 1 : 3 // Fewer pages per cuisine when multiple selected
+      // Fetch more pages to have a larger pool to sample from
+      const maxPages = cuisines.length > 1 ? 2 : 4
       const results: any[] = []
+      let pagesSkipped = 0
 
       for (let page = 0; page < maxPages; page++) {
+        // Build params - use rankby:distance sometimes for variety
+        // Note: rankby and radius are mutually exclusive in Google API
+        const params: Record<string, unknown> = {
+          location: { lat, lng },
+          type: 'restaurant',
+          key: apiKey,
+          ...(openNow && { opennow: true }),
+          ...(pageToken && { pagetoken: pageToken }),
+          ...(keyword && { keyword }),
+        }
+
+        // Use distance ranking for variety (only on first page, can't combine with pagetoken)
+        if (useDistanceRanking && !pageToken && !keyword) {
+          params.rankby = 'distance'
+        } else {
+          params.radius = radius
+        }
+
         const response = await client.placesNearby({
-          params: {
-            location: { lat, lng },
-            radius,
-            type: 'restaurant',
-            key: apiKey,
-            ...(openNow && { opennow: true }),
-            ...(pageToken && { pagetoken: pageToken }),
-            ...(keyword && { keyword }),
-          },
+          params: params as any,
         })
 
         if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
           break
+        }
+
+        // Skip first page sometimes for variety (more unique results)
+        if (skipFirstPage && page === 0 && pagesSkipped === 0 && response.data.next_page_token) {
+          pagesSkipped++
+          pageToken = response.data.next_page_token
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          continue
         }
 
         results.push(...(response.data.results || []))
@@ -163,8 +227,31 @@ export async function POST(request: NextRequest) {
     // Note: Cuisine filtering is now done at the API level (separate calls per cuisine)
     // so we don't need to filter locally anymore
 
-    // Use Fisher-Yates shuffle for true randomization
-    const shuffled = fisherYatesShuffle(results)
+    // Apply chain prioritization based on preferLocal filter
+    let prioritized: typeof results
+    if (preferLocal) {
+      // Separate local restaurants from chains - prioritize local/independent places
+      const localRestaurants = results.filter(place => !isChainRestaurant(place.name || ''))
+      const chainRestaurants = results.filter(place => isChainRestaurant(place.name || ''))
+
+      // Shuffle both groups separately
+      const shuffledLocal = fisherYatesShuffle(localRestaurants)
+      const shuffledChains = fisherYatesShuffle(chainRestaurants)
+
+      // Combine: locals first, then chains as fallback
+      prioritized = [...shuffledLocal, ...shuffledChains]
+    } else {
+      // No chain preference - just shuffle everything together
+      prioritized = fisherYatesShuffle(results)
+    }
+
+    // Take a larger sample than needed for final random selection
+    // This adds another layer of variety
+    const sampleSize = Math.min(prioritized.length, effectiveLimit * 3)
+    const sample = prioritized.slice(0, sampleSize)
+
+    // Final shuffle of the sample for good measure
+    const shuffled = fisherYatesShuffle(sample)
 
     const restaurants: Restaurant[] = shuffled
       .slice(0, effectiveLimit)

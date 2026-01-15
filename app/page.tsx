@@ -318,6 +318,15 @@ function LandingPage() {
   const anonLimit = USER_TIERS.anonymous.maxRestaurantsPerSession
   const authLimit = USER_TIERS.authenticated.maxRestaurantsPerSession
 
+  // Trigger hero logo spin animation once on page load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsSpinning(true)
+      setTimeout(() => setIsSpinning(false), 1200)
+    }, 300) // Small delay for smoother UX after page renders
+    return () => clearTimeout(timer)
+  }, [])
+
   const handleLogoTap = () => {
     if (!isSpinning) {
       setIsSpinning(true)
@@ -354,8 +363,18 @@ function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316] to-[#DC2626]">
-      {/* Minimal header */}
-      <header className="w-full px-4 py-3 flex justify-end">
+      {/* Header with logo */}
+      <header className="w-full px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/logo_groupNom.svg"
+            alt=""
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
+          <span className="text-white font-bold text-lg">Group Nom</span>
+        </Link>
         <div className="flex items-center gap-4">
           <Link
             href="/sign-in"

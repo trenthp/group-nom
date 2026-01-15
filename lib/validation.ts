@@ -31,6 +31,7 @@ export const filtersSchema = z.object({
   distance: z.number().min(0).max(50), // km
   priceLevel: z.array(z.number().min(1).max(4)),
   cuisines: z.array(z.string()),
+  preferLocal: z.boolean().default(true), // Prefer local restaurants over chains
 })
 
 // Create session request validation

@@ -98,6 +98,18 @@ export interface Filters {
   distance: number
   priceLevel: number[] // [1, 2, 3, 4] for $, $$, $$$, $$$$
   cuisines: string[]
+  preferLocal: boolean // true = prioritize local restaurants over chains
+}
+
+// Default filter values
+export const DEFAULT_FILTERS: Filters = {
+  minRating: 0,
+  openNow: false,
+  maxReviews: 0,
+  distance: 5,
+  priceLevel: [],
+  cuisines: [],
+  preferLocal: true, // Default to preferring local restaurants
 }
 
 export interface Session {

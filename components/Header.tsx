@@ -109,14 +109,6 @@ export default function Header({ sessionCode, autoOpenShare = false }: HeaderPro
                   {showMobileMenu && (
                     <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl py-2 z-50">
                       <Link
-                        href="/about"
-                        className="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition"
-                        onClick={() => setShowMobileMenu(false)}
-                      >
-                        About
-                      </Link>
-                      <div className="border-t border-gray-100 my-1" />
-                      <Link
                         href="/sign-in"
                         className="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition"
                         onClick={() => setShowMobileMenu(false)}
@@ -137,20 +129,14 @@ export default function Header({ sessionCode, autoOpenShare = false }: HeaderPro
                 // Desktop layout for unauthenticated users (no session)
                 <div className="flex items-center gap-4">
                   <Link
-                    href="/about"
-                    className="text-white text-sm font-medium hover:text-orange-100 transition"
-                  >
-                    About
-                  </Link>
-                  <Link
                     href="/sign-in"
-                    className="text-white text-sm font-medium hover:text-orange-100 transition"
+                    className="text-white/90 text-sm font-medium hover:text-white transition"
                   >
                     Sign In
                   </Link>
                   <Link
                     href="/sign-up"
-                    className="bg-white text-orange-600 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-orange-50 transition"
+                    className="bg-white/20 text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-white/30 transition"
                   >
                     Sign Up
                   </Link>
