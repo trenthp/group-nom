@@ -3,29 +3,56 @@ import { Client } from '@googlemaps/google-maps-services-js'
 
 const client = new Client({})
 
-// Extract city and state from address components
-function extractCityState(addressComponents: any[]): string {
-  let city = ''
+// Extract city, state, and zip from address components
+// Returns format: "City, State, zip" (e.g., "Austin, Texas, 78701")
+function extractLocationParts(addressComponents: any[]): string {
+  let locality = ''        // City/town (preferred)
+  let sublocality = ''     // District within city
+  let neighborhood = ''    // Neighborhood
+  let county = ''          // County (fallback)
   let state = ''
+  let zip = ''
 
+  // Collect all relevant components
   for (const component of addressComponents) {
     if (component.types.includes('locality')) {
-      city = component.long_name
-    } else if (component.types.includes('sublocality_level_1') && !city) {
-      city = component.long_name
-    } else if (component.types.includes('administrative_area_level_1')) {
-      state = component.short_name
+      locality = component.long_name
+    }
+    if (component.types.includes('sublocality_level_1') || component.types.includes('sublocality')) {
+      sublocality = component.long_name
+    }
+    if (component.types.includes('neighborhood')) {
+      neighborhood = component.long_name
+    }
+    if (component.types.includes('administrative_area_level_2')) {
+      county = component.long_name
+    }
+    if (component.types.includes('administrative_area_level_1')) {
+      state = component.long_name // Full state name (e.g., "Texas" not "TX")
+    }
+    if (component.types.includes('postal_code')) {
+      zip = component.long_name
     }
   }
 
-  if (city && state) {
-    return `${city}, ${state}`
-  } else if (city) {
-    return city
-  } else if (state) {
-    return state
+  // Prioritize: locality > sublocality > neighborhood > county (keep "County" label)
+  let city = locality || sublocality || neighborhood || county
+
+  // Build formatted string: "City, State, zip"
+  const parts: string[] = []
+  if (city) parts.push(city)
+  if (state) parts.push(state)
+
+  if (parts.length === 0) {
+    return 'Unknown Location'
   }
-  return 'Unknown Location'
+
+  let result = parts.join(', ')
+  if (zip) {
+    result += `, ${zip}`
+  }
+
+  return result
 }
 
 export async function POST(request: NextRequest) {
@@ -60,11 +87,11 @@ export async function POST(request: NextRequest) {
         }
 
         const result = response.data.results[0]
-        const cityState = extractCityState(result.address_components)
+        const formattedLocation = extractLocationParts(result.address_components)
 
         return NextResponse.json({
           success: true,
-          formattedAddress: cityState,
+          formattedAddress: formattedLocation,
         })
       } catch (apiError: any) {
         console.error('Reverse geocoding error:', apiError.message)
@@ -117,11 +144,12 @@ export async function POST(request: NextRequest) {
         lat: result.geometry.location.lat,
         lng: result.geometry.location.lng,
       }
+      const formattedLocation = extractLocationParts(result.address_components)
 
       return NextResponse.json({
         success: true,
         location,
-        formattedAddress: result.formatted_address,
+        formattedAddress: formattedLocation,
       })
     } catch (apiError: any) {
       console.error('Google Geocoding API error:', apiError.message)

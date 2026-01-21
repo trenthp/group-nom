@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
+import { getLocalDataForPlaces, incrementTimesShown, ensureMappingsExist, type GooglePlace } from '@/lib/restaurantMatcher'
+import { getRestaurantLimit } from '@/lib/userTiers'
+import type { Restaurant } from '@/lib/types'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
+    // Get auth status for tier-appropriate limits
+    const { userId: clerkUserId } = await auth()
+    const isAuthenticated = !!clerkUserId
+    const restaurantLimit = getRestaurantLimit(isAuthenticated)
+
     const { code } = await params
     const { userId, filters, location } = await request.json()
 
@@ -43,7 +52,7 @@ export async function POST(
           lat: location.lat,
           lng: location.lng,
           radius: filters.distance * 1000,
-          limit: 10,
+          limit: restaurantLimit,
           filters,
         }),
       }
@@ -57,7 +66,48 @@ export async function POST(
     }
 
     const data = await response.json()
-    const restaurants = data.restaurants || []
+    let restaurants: Restaurant[] = data.restaurants || []
+
+    // Enrich restaurants with local database data (like counts, pick rates)
+    if (restaurants.length > 0) {
+      try {
+        // First, ensure all restaurants have mappings in our database
+        // This tracks ALL restaurants shown, not just ones users interact with
+        const placesForMapping: GooglePlace[] = restaurants.map(r => ({
+          place_id: r.id,
+          name: r.name,
+          address: r.address,
+          lat: r.lat,
+          lng: r.lng,
+          categories: r.cuisines,
+        }))
+        await ensureMappingsExist(placesForMapping)
+
+        // Now fetch local data (all restaurants should have mappings)
+        const placeIds = restaurants.map(r => r.id)
+        const localData = await getLocalDataForPlaces(placeIds)
+
+        // Add local data to each restaurant
+        restaurants = restaurants.map(r => {
+          const local = localData.get(r.id)
+          if (local) {
+            return {
+              ...r,
+              localId: local.local_id,
+              likeCount: local.like_count,
+              pickRate: local.pick_rate ?? undefined,
+            }
+          }
+          return r
+        })
+
+        // Track that these restaurants were shown (for discovery scoring)
+        await incrementTimesShown(placeIds)
+      } catch (enrichError) {
+        // Non-fatal: continue without local enrichment
+        console.warn('[API] Failed to enrich with local data:', enrichError)
+      }
+    }
 
     // Reconfigure the session
     const updatedSession = await sessionStore.reconfigureSession(

@@ -3,9 +3,14 @@ import { auth } from '@clerk/nextjs/server'
 import { Client } from '@googlemaps/google-maps-services-js'
 import { getRandomRestaurants } from '@/lib/googleMaps'
 import { getRestaurantLimit } from '@/lib/userTiers'
+import { getChainNames } from '@/lib/restaurantMatcher'
 import { Restaurant } from '@/lib/types'
 
 const client = new Client({})
+
+// Module-level cache for database-driven chain names
+let cachedChainNames: Set<string> | null = null
+let cacheExpiry = 0
 
 // Common chain restaurant names/keywords for deprioritization
 const CHAIN_KEYWORDS = [
@@ -39,10 +44,36 @@ const CHAIN_KEYWORDS = [
   'portillo\'s', 'jason\'s deli', 'mcalister\'s', 'corner bakery',
 ]
 
-// Check if a restaurant name matches known chains
-function isChainRestaurant(name: string): boolean {
+// Get chain keywords from database with fallback to hardcoded list
+async function getChainKeywords(): Promise<Set<string>> {
+  const now = Date.now()
+  if (cachedChainNames && now < cacheExpiry) {
+    return cachedChainNames
+  }
+  try {
+    cachedChainNames = await getChainNames()
+    cacheExpiry = now + 60 * 60 * 1000 // 1 hour cache
+    // If DB returned empty set, merge with hardcoded fallback
+    if (cachedChainNames.size === 0) {
+      cachedChainNames = new Set(CHAIN_KEYWORDS)
+    }
+    return cachedChainNames
+  } catch {
+    // Fallback to hardcoded list if DB fails
+    return new Set(CHAIN_KEYWORDS)
+  }
+}
+
+// Check if a restaurant name matches known chains (sync version using cached data)
+function isChainRestaurant(name: string, chainKeywords: Set<string>): boolean {
   const lowerName = name.toLowerCase()
-  return CHAIN_KEYWORDS.some(chain => lowerName.includes(chain))
+  // Check if name contains any chain keyword
+  for (const chain of chainKeywords) {
+    if (lowerName.includes(chain)) {
+      return true
+    }
+  }
+  return false
 }
 
 export async function POST(request: NextRequest) {
@@ -227,12 +258,35 @@ export async function POST(request: NextRequest) {
     // Note: Cuisine filtering is now done at the API level (separate calls per cuisine)
     // so we don't need to filter locally anymore
 
+    // Filter out non-restaurant place types (gas stations, convenience stores, etc.)
+    // These get included because they technically serve food, but aren't real restaurants
+    const EXCLUDED_PLACE_TYPES = [
+      'gas_station',
+      'convenience_store',
+      'grocery_or_supermarket',
+      'supermarket',
+      'liquor_store',
+      'drugstore',
+      'pharmacy',
+      'department_store',
+      'shopping_mall',
+    ]
+
+    results = results.filter((place) => {
+      const types: string[] = place.types || []
+      // Exclude if place has any of the excluded types
+      return !types.some((type: string) => EXCLUDED_PLACE_TYPES.includes(type))
+    })
+
     // Apply chain prioritization based on preferLocal filter
     let prioritized: typeof results
     if (preferLocal) {
+      // Fetch chain keywords from database (with fallback to hardcoded list)
+      const chainKeywords = await getChainKeywords()
+
       // Separate local restaurants from chains - prioritize local/independent places
-      const localRestaurants = results.filter(place => !isChainRestaurant(place.name || ''))
-      const chainRestaurants = results.filter(place => isChainRestaurant(place.name || ''))
+      const localRestaurants = results.filter(place => !isChainRestaurant(place.name || '', chainKeywords))
+      const chainRestaurants = results.filter(place => isChainRestaurant(place.name || '', chainKeywords))
 
       // Shuffle both groups separately
       const shuffledLocal = fisherYatesShuffle(localRestaurants)

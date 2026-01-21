@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -8,7 +8,8 @@ import { useUser } from '@clerk/nextjs'
 import RestaurantFilters from '@/components/RestaurantFilters'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { getUserLocation } from '@/lib/googleMaps'
+import { LocationPermissionModal, LocationPicker } from '@/components/location'
+import { useLocation } from '@/lib/useLocation'
 import { USER_TIERS } from '@/lib/userTiers'
 import { DEFAULT_FILTERS } from '@/lib/types'
 
@@ -32,92 +33,43 @@ function SetupPageContent() {
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [locationAddress, setLocationAddress] = useState<string>('')
-  const [locationLoading, setLocationLoading] = useState(false)
-  const [locationError, setLocationError] = useState<string>('')
 
-  // Store the current location so we can switch back to it
-  const currentLocationRef = useRef<{ coords: { lat: number; lng: number } | null; name: string }>({
-    coords: null,
-    name: '',
-  })
+  // Location management via hook
+  const location = useLocation()
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [startLocationInEditMode, setStartLocationInEditMode] = useState(false)
 
-  // Auto-fetch current location on mount - triggers browser's native location prompt
-  useEffect(() => {
-    const fetchCurrentLocation = async () => {
-      setLocationLoading(true)
-      const loc = await getUserLocation()
-      if (loc) {
-        setLocation(loc)
-        setLocationAddress('Current Location')
-        currentLocationRef.current = { coords: loc, name: 'Current Location' }
-
-        // Reverse geocode to get city/state
-        try {
-          const response = await fetch('/api/geocode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lat: loc.lat, lng: loc.lng }),
-          })
-          if (response.ok) {
-            const data = await response.json()
-            if (data.formattedAddress) {
-              setLocationAddress(data.formattedAddress)
-              currentLocationRef.current.name = data.formattedAddress
-            }
-          }
-        } catch (err) {
-          console.error('Error reverse geocoding:', err)
-        }
-      } else {
-        // Fallback to NYC if location denied
-        setLocation({ lat: 40.7128, lng: -74.006 })
-        setLocationAddress('New York, NY')
-        currentLocationRef.current = { coords: { lat: 40.7128, lng: -74.006 }, name: 'New York, NY' }
-      }
-      setLocationLoading(false)
-    }
-    fetchCurrentLocation()
-  }, [])
-
-  const handleUseCurrentLocation = () => {
-    setLocationError('')
-    if (currentLocationRef.current.coords) {
-      setLocation(currentLocationRef.current.coords)
-      setLocationAddress(currentLocationRef.current.name)
+  // Handle proceeding to filters - show location modal if permission needed
+  const handleProceedToFilters = (mode: SetupMode) => {
+    if (location.permissionState === 'prompt') {
+      // Need to ask for permission - show our modal first
+      setShowLocationModal(true)
+      setSetupMode(mode) // Will show filters after permission granted
+    } else {
+      // Permission already granted or denied - proceed directly
+      setSetupMode(mode)
     }
   }
 
-  const handleCustomLocationSubmit = async (query: string) => {
-    setLocationLoading(true)
-    setLocationError('')
-
-    try {
-      const response = await fetch('/api/geocode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: query }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok || !data.location) {
-        throw new Error(data.error || 'Location not found')
-      }
-
-      setLocation(data.location)
-      setLocationAddress(data.formattedAddress || query)
-    } catch (err) {
-      setLocationError(err instanceof Error ? err.message : 'Could not find that location')
-    } finally {
-      setLocationLoading(false)
+  // Handle location permission granted from modal
+  const handleLocationPermissionGranted = async (): Promise<boolean> => {
+    const success = await location.requestPermission()
+    if (success) {
+      setShowLocationModal(false)
     }
+    return success
+  }
+
+  // Skip location modal and proceed with manual entry
+  const handleSkipLocationPermission = () => {
+    setShowLocationModal(false)
+    // Start LocationPicker in edit mode so user can immediately enter location
+    setStartLocationInEditMode(true)
   }
 
   const handleStartSession = async () => {
     // Validate location
-    if (!location) {
+    if (!location.coordinates) {
       setError('Please select a location to search for restaurants')
       return
     }
@@ -136,7 +88,7 @@ function SetupPageContent() {
           body: JSON.stringify({
             userId,
             filters,
-            location,
+            location: location.coordinates,
           }),
         })
 
@@ -154,7 +106,7 @@ function SetupPageContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             filters,
-            location,
+            location: location.coordinates,
           }),
         })
 
@@ -242,7 +194,7 @@ function SetupPageContent() {
                 <div className="grid grid-cols-2 gap-3">
                   {/* Quick Start - 5 restaurants */}
                   <button
-                    onClick={() => setSetupMode('auto')}
+                    onClick={() => handleProceedToFilters('auto')}
                     className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30 text-center hover:bg-white/30 transition group"
                   >
                     <div className="text-5xl font-bold text-white mb-1">{anonLimit}</div>
@@ -284,7 +236,7 @@ function SetupPageContent() {
 
                 {/* Auto-Generate Option */}
                 <button
-                  onClick={() => setSetupMode('auto')}
+                  onClick={() => handleProceedToFilters('auto')}
                   className="w-full bg-white/20 backdrop-blur-sm rounded-xl p-5 border border-white/30 text-left hover:bg-white/30 transition group"
                 >
                   <div className="flex items-start gap-3">
@@ -304,7 +256,7 @@ function SetupPageContent() {
 
                 {/* Pick from Favorites Option */}
                 <button
-                  onClick={() => setSetupMode('favorites')}
+                  onClick={() => handleProceedToFilters('favorites')}
                   className="w-full bg-white/20 backdrop-blur-sm rounded-xl p-5 border border-white/30 text-left hover:bg-white/30 transition group"
                 >
                   <div className="flex items-start gap-3">
@@ -386,11 +338,18 @@ function SetupPageContent() {
           <RestaurantFilters
             filters={filters}
             onFiltersChange={setFilters}
-            locationName={locationAddress}
-            onCustomLocationSubmit={handleCustomLocationSubmit}
-            onUseCurrentLocation={handleUseCurrentLocation}
-            locationLoading={locationLoading}
-            locationError={locationError}
+            locationSlot={
+              <LocationPicker
+                permissionState={location.permissionState}
+                locationName={location.locationName}
+                locationSource={location.locationSource}
+                isLoading={location.isLoading}
+                error={location.error}
+                onRefreshLocation={location.refreshCurrentLocation}
+                onGeocodeAddress={location.geocodeAddress}
+                startInEditMode={startLocationInEditMode}
+              />
+            }
           />
 
           {error && (
@@ -401,7 +360,7 @@ function SetupPageContent() {
 
           <button
             onClick={handleStartSession}
-            disabled={loading}
+            disabled={loading || !location.coordinates}
             className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
             {reconfigureCode ? 'Try Again' : 'Start Group'}
@@ -410,6 +369,14 @@ function SetupPageContent() {
           <Footer />
         </div>
       </div>
+
+      {/* Location Permission Modal */}
+      <LocationPermissionModal
+        isOpen={showLocationModal}
+        onRequestPermission={handleLocationPermissionGranted}
+        onSkip={handleSkipLocationPermission}
+        onClose={() => setShowLocationModal(false)}
+      />
     </div>
   )
 }

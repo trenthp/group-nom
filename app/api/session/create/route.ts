@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
 import { createSessionSchema, parseBody } from '@/lib/validation'
-import { getLocalDataForPlaces, incrementTimesShown } from '@/lib/restaurantMatcher'
+import { getLocalDataForPlaces, incrementTimesShown, ensureMappingsExist, type GooglePlace } from '@/lib/restaurantMatcher'
 import { getRestaurantLimit, getUserTier } from '@/lib/userTiers'
 import type { Restaurant, SessionMetadata } from '@/lib/types'
 
@@ -88,6 +88,19 @@ export async function POST(request: NextRequest) {
     // Enrich restaurants with local database data (like counts, pick rates)
     if (restaurants.length > 0) {
       try {
+        // First, ensure all restaurants have mappings in our database
+        // This tracks ALL restaurants shown, not just ones users interact with
+        const placesForMapping: GooglePlace[] = restaurants.map(r => ({
+          place_id: r.id,
+          name: r.name,
+          address: r.address,
+          lat: r.lat,
+          lng: r.lng,
+          categories: r.cuisines,
+        }))
+        await ensureMappingsExist(placesForMapping)
+
+        // Now fetch local data (all restaurants should have mappings)
         const placeIds = restaurants.map(r => r.id)
         const localData = await getLocalDataForPlaces(placeIds)
 

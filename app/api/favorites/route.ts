@@ -1,5 +1,6 @@
 /**
  * GET /api/favorites - Get user's favorites
+ * POST /api/favorites - Add a favorite
  * DELETE /api/favorites - Remove a favorite
  */
 
@@ -9,6 +10,7 @@ import {
   getFavorites,
   removeFavorite,
   getFavoriteCount,
+  addFavoriteByLocalId,
 } from '@/lib/favorites'
 
 export async function GET(request: NextRequest) {
@@ -66,6 +68,44 @@ export async function GET(request: NextRequest) {
         hasMore: false,
       },
     })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { localId, googlePlaceId, source = 'swipe' } = body
+
+    if (!localId) {
+      return NextResponse.json(
+        { error: 'Missing localId in request body' },
+        { status: 400 }
+      )
+    }
+
+    const favorite = await addFavoriteByLocalId(
+      userId,
+      localId,
+      googlePlaceId || null,
+      source
+    )
+
+    return NextResponse.json({ success: true, favorite })
+  } catch (error) {
+    console.error('Error adding favorite:', error)
+    return NextResponse.json(
+      { error: 'Failed to add favorite' },
+      { status: 500 }
+    )
   }
 }
 

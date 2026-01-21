@@ -30,6 +30,11 @@ const anonRateLimiters = {
     limiter: Ratelimit.slidingWindow(5, '60 s'),
     prefix: 'ratelimit:anon:restaurants',
   }),
+  geocode: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(20, '60 s'), // More generous for location lookups
+    prefix: 'ratelimit:anon:geocode',
+  }),
 }
 
 const authRateLimiters = {
@@ -52,6 +57,11 @@ const authRateLimiters = {
     redis: kv,
     limiter: Ratelimit.slidingWindow(20, '60 s'),
     prefix: 'ratelimit:auth:restaurants',
+  }),
+  geocode: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(30, '60 s'), // More generous for location lookups
+    prefix: 'ratelimit:auth:geocode',
   }),
 }
 
@@ -102,9 +112,12 @@ async function handleRateLimit(
     } else if (pathname.includes('/vote') || pathname.includes('/close-voting')) {
       limiter = rateLimiters.vote
       identifier = `vote:${baseIdentifier}`
-    } else if (pathname === '/api/restaurants/nearby' || pathname === '/api/geocode') {
+    } else if (pathname === '/api/restaurants/nearby') {
       limiter = rateLimiters.restaurants
       identifier = `restaurants:${baseIdentifier}`
+    } else if (pathname === '/api/geocode') {
+      limiter = rateLimiters.geocode
+      identifier = `geocode:${baseIdentifier}`
     } else {
       limiter = rateLimiters.general
       identifier = `general:${baseIdentifier}`

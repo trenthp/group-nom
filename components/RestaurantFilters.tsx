@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { LocationIcon, StarIcon } from '@/components/icons'
+import { useState, ReactNode } from 'react'
+import { LocationIcon, StarOutlineIcon } from '@/components/icons'
 import { DEFAULT_FILTERS } from '@/lib/types'
+import { Chip, PanelButton } from '@/components/ui'
 
 interface FilterValues {
   minRating: number
@@ -17,11 +18,16 @@ interface FilterValues {
 interface RestaurantFiltersProps {
   filters: FilterValues
   onFiltersChange: (filters: FilterValues) => void
+  // Location can be provided as a render prop OR via legacy props
+  locationSlot?: ReactNode
+  // Legacy location props (deprecated - use locationSlot instead)
   locationName?: string
-  onCustomLocationSubmit: (query: string) => Promise<void>
-  onUseCurrentLocation: () => void
+  onCustomLocationSubmit?: (query: string) => Promise<void>
+  onUseCurrentLocation?: () => void
   locationLoading?: boolean
   locationError?: string
+  // Option to hide location row entirely (for contexts where location is handled elsewhere)
+  hideLocation?: boolean
 }
 
 function arraysEqual(a: unknown[], b: unknown[]): boolean {
@@ -31,14 +37,168 @@ function arraysEqual(a: unknown[], b: unknown[]): boolean {
   return sortedA.every((val, idx) => val === sortedB[idx])
 }
 
+// Journey Mode distance zones
+const journeyZones = [
+  {
+    id: 'walk',
+    icon: '🚶',
+    label: 'Stroll',
+    description: 'Walking distance',
+    indices: [0, 1, 2, 3], // 0.5, 1, 2, 3 mi
+  },
+  {
+    id: 'drive',
+    icon: '🚗',
+    label: 'Quick Drive',
+    description: 'Short drive away',
+    indices: [4, 5, 6], // 5, 10, 15 mi
+  },
+  {
+    id: 'adventure',
+    icon: '🚀',
+    label: 'Adventure',
+    description: 'Worth the trip',
+    indices: [7, 8, 9], // 25, 35, 50 mi
+  },
+]
+
+function JourneyModeSelector({
+  distanceOptions,
+  currentDistance,
+  onDistanceChange,
+  getDistanceIndex,
+}: {
+  distanceOptions: { miles: number; km: number }[]
+  currentDistance: number
+  onDistanceChange: (km: number) => void
+  getDistanceIndex: (km: number) => number
+}) {
+  const currentIdx = getDistanceIndex(currentDistance)
+  const currentZone = journeyZones.find(z => z.indices.includes(currentIdx)) || journeyZones[0]
+
+  return (
+    <div className="space-y-3">
+      {/* Active zone description */}
+      <p className="text-center text-white/70 text-sm">{currentZone.description}</p>
+
+      {/* Zone selector with transport icons */}
+      <div className="flex justify-center items-center gap-2">
+        {journeyZones.map((zone) => {
+          const isActive = zone.id === currentZone.id
+          const defaultIdx = zone.indices[Math.floor(zone.indices.length / 2)]
+
+          return (
+            <button
+              key={zone.id}
+              onClick={() => onDistanceChange(distanceOptions[defaultIdx].km)}
+              className={`
+                flex flex-col items-center gap-1 px-4 py-2 rounded-full
+                transition-all duration-150
+                ${isActive
+                  ? 'bg-white text-orange-600 shadow-sm'
+                  : 'bg-white/15 text-white hover:bg-white/25 border border-white/10'
+                }
+                hover:scale-[1.03] active:scale-[0.97]
+              `}
+            >
+              <span className="text-lg">{zone.icon}</span>
+              <span className="text-xs font-semibold">{zone.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Sub-options within selected zone */}
+      <div className="flex justify-center gap-2">
+        {currentZone.indices.map((idx) => {
+          const opt = distanceOptions[idx]
+          const isSelected = currentIdx === idx
+
+          return (
+            <button
+              key={idx}
+              onClick={() => onDistanceChange(opt.km)}
+              className={`
+                px-4 py-2 rounded-full text-sm font-semibold
+                transition-all duration-150
+                ${isSelected
+                  ? 'bg-white text-orange-600 shadow-sm'
+                  : 'bg-white/15 text-white hover:bg-white/25 border border-white/10'
+                }
+                hover:scale-[1.03] active:scale-[0.97]
+              `}
+            >
+              {opt.miles} mi
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// Rating options with labels
+const ratingOptions = [
+  { value: 0, label: 'Any', stars: 0, vibe: "We'll eat anywhere!" },
+  { value: 3.0, label: '3+', stars: 3, vibe: 'Keep it decent' },
+  { value: 4.0, label: '4+', stars: 4, vibe: 'Quality matters!' },
+  { value: 4.5, label: '4.5+', stars: 5, vibe: 'Only the best!' },
+]
+
+function RatingSelector({
+  currentRating,
+  onRatingChange,
+}: {
+  currentRating: number
+  onRatingChange: (rating: number) => void
+}) {
+  const currentOption = ratingOptions.find(o => o.value === currentRating) || ratingOptions[0]
+
+  return (
+    <div className="space-y-3">
+      {/* Vibe text */}
+      <p className="text-center text-white/70 text-sm">
+        {currentOption.vibe}
+      </p>
+
+      {/* Rating buttons */}
+      <div className="flex justify-center gap-2">
+        {ratingOptions.map((opt) => {
+          const isSelected = currentRating === opt.value
+
+          return (
+            <button
+              key={opt.value}
+              onClick={() => onRatingChange(opt.value)}
+              className={`
+                px-4 py-2 rounded-full text-sm font-semibold
+                transition-all duration-150
+                ${isSelected
+                  ? 'bg-white text-orange-600 shadow-sm'
+                  : 'bg-white/15 text-white hover:bg-white/25 border border-white/10'
+                }
+                hover:scale-[1.03] active:scale-[0.97]
+              `}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function RestaurantFilters({
   filters,
   onFiltersChange,
+  locationSlot,
   locationName,
   onCustomLocationSubmit,
   onUseCurrentLocation,
   locationLoading,
   locationError,
+  hideLocation = false,
 }: RestaurantFiltersProps) {
   const [isEditingLocation, setIsEditingLocation] = useState(false)
   const [locationInput, setLocationInput] = useState('')
@@ -55,7 +215,7 @@ export default function RestaurantFilters({
   }
 
   const handleLocationSubmit = async () => {
-    if (locationInput.trim()) {
+    if (locationInput.trim() && onCustomLocationSubmit) {
       await onCustomLocationSubmit(locationInput.trim())
       setLocationInput('')
       setIsEditingLocation(false)
@@ -63,9 +223,11 @@ export default function RestaurantFilters({
   }
 
   const handleUseCurrentLocation = () => {
-    onUseCurrentLocation()
-    setLocationInput('')
-    setIsEditingLocation(false)
+    if (onUseCurrentLocation) {
+      onUseCurrentLocation()
+      setLocationInput('')
+      setIsEditingLocation(false)
+    }
   }
 
   // Distance snap points: miles with km equivalents
@@ -152,54 +314,6 @@ export default function RestaurantFilters({
     }
   }
 
-  const Chip = ({
-    value,
-    edited,
-    onClick,
-    expanded,
-    hasDropdown = true,
-  }: {
-    value: string
-    edited: boolean
-    onClick: () => void
-    expanded?: boolean
-    hasDropdown?: boolean
-  }) => (
-    <button
-      onClick={onClick}
-      className={`
-        relative inline-flex items-center gap-1.5
-        px-4 py-2 rounded-full
-        text-base font-semibold tracking-tight
-        transition-all duration-200 ease-out
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50
-        ${edited
-          ? 'bg-white text-orange-600 shadow-md shadow-orange-900/25'
-          : 'bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm border border-white/15'
-        }
-        ${expanded
-          ? 'ring-2 ring-white/50 scale-[1.02]'
-          : 'hover:scale-[1.02]'
-        }
-        active:scale-[0.98]
-      `}
-    >
-      {value}
-      {hasDropdown && (
-        <svg
-          className={`w-3.5 h-3.5 opacity-50 transition-transform duration-200 ease-out ${expanded ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-        </svg>
-      )}
-      {edited && (
-        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-400 rounded-full border border-white" />
-      )}
-    </button>
-  )
 
   const FilterRow = ({
     label,
@@ -218,165 +332,109 @@ export default function RestaurantFilters({
         <div className="w-48">{children}</div>
       </div>
       {expandedContent && (
-        <div className="mt-3 p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 shadow-lg shadow-black/10">
+        <div className="mt-3 p-4 rounded-2xl bg-white/15 border border-white/10 shadow-lg shadow-black/10">
           {expandedContent}
         </div>
       )}
     </div>
   )
 
-  const PanelButton = ({
-    selected,
-    onClick,
-    children,
-    className = '',
-  }: {
-    selected: boolean
-    onClick: () => void
-    children: React.ReactNode
-    className?: string
-  }) => (
-    <button
-      onClick={onClick}
-      className={`
-        px-4 py-2 rounded-full text-sm font-semibold
-        transition-all duration-150
-        ${selected
-          ? 'bg-white text-orange-600 shadow-sm'
-          : 'bg-white/15 text-white hover:bg-white/25 border border-white/10'
-        }
-        hover:scale-[1.03] active:scale-[0.97]
-        ${className}
-      `}
-    >
-      {children}
-    </button>
-  )
 
   return (
     <div className="text-white py-2">
-      <style jsx global>{`
-        .slider-thumb::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: white;
-          cursor: grab;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-          border: none;
-        }
-        .slider-thumb::-webkit-slider-thumb:active {
-          cursor: grabbing;
-          transform: scale(1.1);
-        }
-        .slider-thumb::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: white;
-          cursor: grab;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-          border: none;
-        }
-        .slider-thumb::-moz-range-thumb:active {
-          cursor: grabbing;
-          transform: scale(1.1);
-        }
-      `}</style>
       {/* Type */}
       <FilterRow label="Find">
         <Chip
           value={filters.preferLocal ? 'local spots' : 'any restaurant'}
-          edited={isEdited.preferLocal}
+          edited={filters.preferLocal}
           onClick={() => onFiltersChange({ ...filters, preferLocal: !filters.preferLocal })}
           hasDropdown={false}
         />
       </FilterRow>
 
-      {/* Location */}
-      <FilterRow label="near">
-        {!isEditingLocation ? (
-          <button
-            onClick={() => setIsEditingLocation(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-base font-semibold bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm border border-white/15 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <LocationIcon size={16} />
-            <span className="max-w-[180px] truncate">
-              {locationLoading ? 'Finding...' : (locationName || 'Current Location')}
-            </span>
-          </button>
-        ) : (
-          <div>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={locationInput}
-                onChange={(e) => setLocationInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleLocationSubmit()
-                  if (e.key === 'Escape') setIsEditingLocation(false)
-                }}
-                placeholder="City or zip..."
-                className="w-44 px-4 py-2 rounded-full bg-white/95 text-gray-800 text-base font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-inner transition-all duration-150"
-                autoFocus
-              />
-              <button
-                onClick={handleLocationSubmit}
-                disabled={!locationInput.trim()}
-                className="text-white font-semibold text-base px-4 py-2 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
-              >
-                Go
-              </button>
-              <button
-                onClick={() => setIsEditingLocation(false)}
-                className="text-white/50 hover:text-white text-base transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
+      {/* Location - can be customized via locationSlot or hidden entirely */}
+      {!hideLocation && (
+        <FilterRow label="near">
+          {locationSlot ? (
+            // Use custom location component
+            locationSlot
+          ) : !isEditingLocation ? (
+            // Legacy: built-in location display/edit
             <button
-              onClick={handleUseCurrentLocation}
-              className="text-sm text-white/50 hover:text-white/80 mt-2 block underline underline-offset-2 transition-colors duration-150"
+              onClick={() => setIsEditingLocation(true)}
+              className={`
+                inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-base font-semibold
+                transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]
+                ${locationName
+                  ? 'bg-white text-orange-600 shadow-md shadow-orange-900/25'
+                  : 'bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm border border-white/15'
+                }
+              `}
             >
-              Use my current location
+              <LocationIcon size={16} />
+              <span className="max-w-[180px] truncate">
+                {locationLoading ? 'Finding...' : (locationName || 'Current Location')}
+              </span>
             </button>
-            {locationError && <span className="text-red-300 text-sm block mt-1">{locationError}</span>}
-          </div>
-        )}
-      </FilterRow>
+          ) : (
+            // Legacy: location editing mode
+            <div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={locationInput}
+                  onChange={(e) => setLocationInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleLocationSubmit()
+                    if (e.key === 'Escape') setIsEditingLocation(false)
+                  }}
+                  placeholder="City or zip..."
+                  className="w-44 px-4 py-2 rounded-full bg-white/95 text-gray-800 text-base font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-inner transition-all duration-150"
+                  autoFocus
+                />
+                <button
+                  onClick={handleLocationSubmit}
+                  disabled={!locationInput.trim()}
+                  className="text-white font-semibold text-base px-4 py-2 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
+                >
+                  Go
+                </button>
+                <button
+                  onClick={() => setIsEditingLocation(false)}
+                  className="text-white/50 hover:text-white text-base transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+              {onUseCurrentLocation && (
+                <button
+                  onClick={handleUseCurrentLocation}
+                  className="text-sm text-white/50 hover:text-white/80 mt-2 block underline underline-offset-2 transition-colors duration-150"
+                >
+                  Use my current location
+                </button>
+              )}
+              {locationError && <span className="text-red-300 text-sm block mt-1">{locationError}</span>}
+            </div>
+          )}
+        </FilterRow>
+      )}
 
-      {/* Distance */}
+      {/* Distance - Journey Mode */}
       <FilterRow
         label="within"
         expandedContent={expandedFilter === 'distance' ? (
-          <>
-            <input
-              type="range"
-              min={0}
-              max={distanceOptions.length - 1}
-              step={1}
-              value={getDistanceIndex(filters.distance)}
-              onChange={(e) => {
-                const idx = Number(e.target.value)
-                onFiltersChange({ ...filters, distance: distanceOptions[idx].km })
-              }}
-              className="slider-thumb w-full h-2 rounded-full cursor-grab active:cursor-grabbing accent-white bg-white/40"
-            />
-            <div className="flex justify-between text-sm text-white/70 mt-2">
-              <span>0.5 mi</span>
-              <span className="font-semibold text-white">
-                {distanceOptions[getDistanceIndex(filters.distance)].miles} mi ({distanceOptions[getDistanceIndex(filters.distance)].km} km)
-              </span>
-              <span>50 mi</span>
-            </div>
-          </>
+          <JourneyModeSelector
+            distanceOptions={distanceOptions}
+            currentDistance={filters.distance}
+            onDistanceChange={(km) => onFiltersChange({ ...filters, distance: km })}
+            getDistanceIndex={getDistanceIndex}
+          />
         ) : undefined}
       >
         <Chip
           value={getDistanceLabel(filters.distance)}
-          edited={isEdited.distance}
+          edited={true}
           onClick={() => setExpandedFilter(expandedFilter === 'distance' ? null : 'distance')}
           expanded={expandedFilter === 'distance'}
         />
@@ -386,25 +444,10 @@ export default function RestaurantFilters({
       <FilterRow
         label="rating"
         expandedContent={expandedFilter === 'rating' ? (
-          <>
-            <input
-              type="range"
-              min={0}
-              max={4.5}
-              step={0.5}
-              value={filters.minRating}
-              onChange={(e) => onFiltersChange({ ...filters, minRating: Number(e.target.value) })}
-              className="slider-thumb w-full h-2 rounded-full cursor-grab active:cursor-grabbing accent-white bg-white/40"
-            />
-            <div className="flex justify-between text-sm text-white/70 mt-2">
-              <span>Any</span>
-              <span className="font-semibold text-white flex items-center gap-1">
-                {filters.minRating === 0 ? 'Any' : `${filters.minRating}+`}
-                {filters.minRating > 0 && <StarIcon size={12} className="text-yellow-400" />}
-              </span>
-              <span className="flex items-center gap-1">4.5 <StarIcon size={12} className="text-yellow-400" /></span>
-            </div>
-          </>
+          <RatingSelector
+            currentRating={filters.minRating}
+            onRatingChange={(rating) => onFiltersChange({ ...filters, minRating: rating })}
+          />
         ) : undefined}
       >
         <Chip
@@ -412,15 +455,23 @@ export default function RestaurantFilters({
           edited={isEdited.minRating}
           onClick={() => setExpandedFilter(expandedFilter === 'rating' ? null : 'rating')}
           expanded={expandedFilter === 'rating'}
-        />
+        >
+          {filters.minRating > 0 && (
+            <span className="flex gap-0.5">
+              {Array.from({ length: Math.ceil(ratingOptions.find(o => o.value === filters.minRating)?.stars || 0) }).map((_, i) => (
+                <StarOutlineIcon key={i} size={12} className="opacity-70" />
+              ))}
+            </span>
+          )}
+        </Chip>
       </FilterRow>
 
       {/* Popularity */}
       <FilterRow
         label="popularity"
         expandedContent={expandedFilter === 'popularity' ? (
-          <>
-            <p className="text-white/70 mb-3 leading-relaxed">
+          <div className="space-y-3">
+            <p className="text-center text-white/70 text-sm">
               {filters.maxReviews === 0 && 'Any amount of reviews'}
               {filters.maxReviews === 100 && 'Under 100 reviews — undiscovered'}
               {filters.maxReviews === 300 && 'Under 300 reviews — off the beaten path'}
@@ -446,7 +497,7 @@ export default function RestaurantFilters({
                 </PanelButton>
               ))}
             </div>
-          </>
+          </div>
         ) : undefined}
       >
         <Chip
@@ -471,7 +522,8 @@ export default function RestaurantFilters({
       <FilterRow
         label="price"
         expandedContent={expandedFilter === 'price' ? (
-          <>
+          <div className="space-y-3">
+            <p className="text-center text-white/70 text-sm">Tap multiple or none for any</p>
             <div className="flex gap-2">
               {[1, 2, 3, 4].map((level) => (
                 <button
@@ -491,8 +543,7 @@ export default function RestaurantFilters({
                 </button>
               ))}
             </div>
-            <p className="text-sm text-white/50 mt-3 text-center">Tap multiple or none for any</p>
-          </>
+          </div>
         ) : undefined}
       >
         <Chip
@@ -507,7 +558,8 @@ export default function RestaurantFilters({
       <FilterRow
         label="cuisine"
         expandedContent={expandedFilter === 'cuisine' ? (
-          <>
+          <div className="space-y-3">
+            <p className="text-center text-white/70 text-sm">Tap multiple or none for any</p>
             <div className="flex flex-wrap justify-center gap-2">
               {cuisineOptions.map((cuisine) => (
                 <PanelButton
@@ -519,8 +571,7 @@ export default function RestaurantFilters({
                 </PanelButton>
               ))}
             </div>
-            <p className="text-sm text-white/50 mt-3 text-center">Tap multiple or none for any</p>
-          </>
+          </div>
         ) : undefined}
       >
         <Chip

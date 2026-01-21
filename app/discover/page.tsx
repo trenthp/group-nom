@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { Restaurant } from '@/lib/types'
 import RestaurantCard from '@/components/RestaurantCard'
 import LocalBadge from '@/components/LocalBadge'
 import { LocationIcon } from '@/components/icons'
+import { LocationPermissionModal } from '@/components/location'
+import { useLocation } from '@/lib/useLocation'
 
 type DiscoverPhase = 'intro' | 'swiping' | 'batch-complete' | 'all-done'
 
@@ -18,8 +20,6 @@ interface DiscoverState {
   loading: boolean
   loadingNext: boolean
   error: string | null
-  location: { lat: number; lng: number } | null
-  locationName: string
   likedCount: number
   seenCount: number
   batchCount: number // Count within current batch (0-9)
@@ -29,15 +29,18 @@ interface DiscoverState {
 
 export default function DiscoverPage() {
   const { isSignedIn, isLoaded } = useUser()
+
+  // Location via hook
+  const location = useLocation()
+  const [showLocationModal, setShowLocationModal] = useState(false)
+
   const [state, setState] = useState<DiscoverState>({
     phase: 'intro',
     currentRestaurant: null,
     nextRestaurant: null,
-    loading: true,
+    loading: false,
     loadingNext: false,
     error: null,
-    location: null,
-    locationName: '',
     likedCount: 0,
     seenCount: 0,
     batchCount: 0,
@@ -97,46 +100,35 @@ export default function DiscoverPage() {
     }
   }, [])
 
-  // Get user's location on mount (but don't fetch restaurants yet - wait for intro)
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setState(s => ({ ...s, error: 'Geolocation not supported', loading: false }))
-      return
+  // Handle clicking "Start Swiping" - may need to request permission first
+  const handleStartSwipingClick = async () => {
+    if (location.permissionState === 'prompt') {
+      // Need to ask for permission - show our modal first
+      setShowLocationModal(true)
+    } else if (location.coordinates) {
+      // Permission already granted - start swiping
+      handleStartSwiping()
     }
+    // If denied, LocationPicker in intro will show manual entry
+  }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude: lat, longitude: lng } = position.coords
-        setState(s => ({ ...s, location: { lat, lng }, loading: false }))
-
-        // Reverse geocode to get location name
-        try {
-          const response = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`)
-          if (response.ok) {
-            const data = await response.json()
-            setState(s => ({ ...s, locationName: data.city || data.area || 'your area' }))
-          }
-        } catch {
-          // Non-fatal
-        }
-      },
-      (error) => {
-        setState(s => ({
-          ...s,
-          error: 'Unable to get location. Please enable location services.',
-          loading: false,
-        }))
-        console.error('Geolocation error:', error)
-      }
-    )
-  }, [])
+  // Handle location permission granted from modal
+  const handleLocationPermissionGranted = async (): Promise<boolean> => {
+    const success = await location.requestPermission()
+    if (success) {
+      setShowLocationModal(false)
+      // Start swiping after permission granted
+      handleStartSwiping()
+    }
+    return success
+  }
 
   // Start swiping - fetch first restaurants
   const handleStartSwiping = useCallback(async () => {
-    if (!state.location) return
+    if (!location.coordinates) return
 
     setState(s => ({ ...s, loading: true }))
-    const { lat, lng } = state.location
+    const { lat, lng } = location.coordinates
 
     // Fetch first restaurant
     const first = await fetchNextRestaurant(lat, lng, [])
@@ -160,32 +152,52 @@ export default function DiscoverPage() {
         noMoreRestaurants: true,
       }))
     }
-  }, [state.location, fetchNextRestaurant])
+  }, [location.coordinates, fetchNextRestaurant])
 
   // Handle swipe (like or pass)
   const handleSwipe = useCallback(async (liked: boolean) => {
     const restaurant = state.currentRestaurant
-    if (!restaurant || !state.location) return
+    if (!restaurant || !location.coordinates) return
 
     const newBatchCount = state.batchCount + 1
     const batchComplete = newBatchCount >= BATCH_SIZE
     const next = state.nextRestaurant
 
     // Save the like in the background (only for signed-in users)
+    // Implements silent retry (up to 3 attempts) before giving up
     if (liked && isSignedIn) {
-      fetch('/api/restaurants/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          place_id: restaurant.id,
-          name: restaurant.name,
-          address: restaurant.address,
-          lat: restaurant.lat,
-          lng: restaurant.lng,
-          cuisines: restaurant.cuisines,
-          source: 'swipe',
-        }),
-      }).catch(error => console.error('Error saving like:', error))
+      const saveLikeWithRetry = async (retries = 3) => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            const response = await fetch('/api/restaurants/like', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                place_id: restaurant.id,
+                name: restaurant.name,
+                address: restaurant.address,
+                lat: restaurant.lat,
+                lng: restaurant.lng,
+                cuisines: restaurant.cuisines,
+                source: 'swipe',
+              }),
+            })
+            if (response.ok) return // Success
+            if (attempt === retries) {
+              console.error('Failed to save like after retries')
+            }
+          } catch (error) {
+            if (attempt === retries) {
+              console.error('Error saving like after retries:', error)
+            }
+          }
+          // Brief delay before retry
+          if (attempt < retries) {
+            await new Promise(r => setTimeout(r, 500 * attempt))
+          }
+        }
+      }
+      saveLikeWithRetry()
     }
 
     // If batch is complete, go to batch-complete screen
@@ -215,7 +227,7 @@ export default function DiscoverPage() {
       }))
 
       // Fetch the next restaurant in the background
-      const { lat, lng } = state.location
+      const { lat, lng } = location.coordinates!
       const excludeIds = Array.from(seenIds.current)
       const newNext = await fetchNextRestaurant(lat, lng, excludeIds)
       setState(s => ({
@@ -234,7 +246,7 @@ export default function DiscoverPage() {
         batchCount: newBatchCount,
       }))
 
-      const { lat, lng } = state.location
+      const { lat, lng } = location.coordinates!
       const excludeIds = Array.from(seenIds.current)
       const newCurrent = await fetchNextRestaurant(lat, lng, excludeIds)
 
@@ -257,14 +269,14 @@ export default function DiscoverPage() {
         }))
       }
     }
-  }, [state.currentRestaurant, state.nextRestaurant, state.location, state.batchCount, isSignedIn, fetchNextRestaurant])
+  }, [state.currentRestaurant, state.nextRestaurant, location.coordinates, state.batchCount, isSignedIn, fetchNextRestaurant])
 
   const handleLike = useCallback(() => handleSwipe(true), [handleSwipe])
   const handlePass = useCallback(() => handleSwipe(false), [handleSwipe])
 
   // Continue swiping after batch completion (keeps progress)
   const handleContinueSwiping = useCallback(async () => {
-    if (!state.location) return
+    if (!location.coordinates) return
 
     setState(s => ({
       ...s,
@@ -272,7 +284,7 @@ export default function DiscoverPage() {
       totalBatches: s.totalBatches + 1,
     }))
 
-    const { lat, lng } = state.location
+    const { lat, lng } = location.coordinates!
     const excludeIds = Array.from(seenIds.current)
 
     // Use the buffered next restaurant if available
@@ -298,7 +310,7 @@ export default function DiscoverPage() {
         noMoreRestaurants: true,
       }))
     }
-  }, [state.location, state.nextRestaurant, fetchNextRestaurant])
+  }, [location.coordinates, state.nextRestaurant, fetchNextRestaurant])
 
   // User is done - go to saved restaurants
   const handleDone = useCallback(() => {
@@ -401,10 +413,10 @@ export default function DiscoverPage() {
           <h1 className="text-3xl font-bold text-white mb-2">
             Discover Restaurants
           </h1>
-          {state.locationName && (
+          {location.locationName && (
             <p className="text-white/80 mb-6 flex items-center justify-center gap-1">
-              <LocationIcon size={14} />
-              {state.locationName}
+              {location.locationSource === 'gps' && <LocationIcon size={14} />}
+              {location.locationName}
             </p>
           )}
           <p className="text-white/60 mb-8 max-w-xs mx-auto">
@@ -412,19 +424,34 @@ export default function DiscoverPage() {
           </p>
 
           <button
-            onClick={handleStartSwiping}
-            disabled={!state.location}
+            onClick={handleStartSwipingClick}
+            disabled={!location.coordinates && location.permissionState !== 'prompt'}
             className={`
               px-8 py-4 rounded-2xl font-bold text-lg transition-all
-              ${state.location
+              ${location.coordinates || location.permissionState === 'prompt'
                 ? 'bg-[#EA4D19] text-white hover:scale-105 shadow-lg'
                 : 'bg-white/20 text-white/50 cursor-not-allowed'
               }
             `}
           >
-            {!state.location ? 'Getting location...' : 'Start Swiping'}
+            {location.isLoading ? 'Getting location...' : 'Start Swiping'}
           </button>
+
+          {/* Show manual entry option if location denied */}
+          {location.permissionState === 'denied' && !location.coordinates && (
+            <p className="text-white/50 text-sm mt-4">
+              Location access was denied. Enable it in browser settings to continue.
+            </p>
+          )}
         </div>
+
+        {/* Location Permission Modal */}
+        <LocationPermissionModal
+          isOpen={showLocationModal}
+          onRequestPermission={handleLocationPermissionGranted}
+          onSkip={() => setShowLocationModal(false)}
+          onClose={() => setShowLocationModal(false)}
+        />
       </div>
     )
   }
@@ -488,7 +515,7 @@ export default function DiscoverPage() {
           </h2>
           <p className="text-white/60 mb-4">
             You&apos;ve seen {state.seenCount} restaurant{state.seenCount !== 1 ? 's' : ''} and liked {state.likedCount}{' '}
-            in {state.locationName || 'your area'}.
+            in {location.locationName || 'your area'}.
           </p>
           {!isSignedIn && state.likedCount > 0 && (
             <div className="bg-amber-500/20 border border-amber-500/30 rounded-xl p-4 mb-4">
@@ -548,10 +575,10 @@ export default function DiscoverPage() {
       <header className="p-4 flex items-center justify-between">
         <div className="text-white">
           <h1 className="text-xl font-bold">Discover</h1>
-          {state.locationName && (
+          {location.locationName && (
             <p className="text-sm opacity-80 flex items-center gap-1">
-              <LocationIcon size={12} />
-              {state.locationName}
+              {location.locationSource === 'gps' && <LocationIcon size={12} />}
+              {location.locationName}
             </p>
           )}
         </div>

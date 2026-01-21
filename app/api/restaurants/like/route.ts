@@ -75,13 +75,13 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error liking restaurant:', error)
-    // Return success anyway to not break the swiping UX
-    // The like just won't be saved
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      // Still return a stub so the UI doesn't break
-      favorite: null,
-    })
+    // Return 500 so frontend can implement retry logic
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

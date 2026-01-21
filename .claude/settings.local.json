@@ -10,7 +10,12 @@
       "Bash(npm install:*)",
       "Skill(frontend-design)",
       "Bash(start chrome \"http://localhost:3000/\")",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx tsx:*)",
+      "Bash(dir \"C:\\\\Users\\\\bette\\\\Documents\\\\GitHub\\\\group-nom\\\\components\")",
+      "Bash(npx next lint:*)"
     ]
   }
 }

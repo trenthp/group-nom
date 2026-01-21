@@ -10,6 +10,17 @@
 
 import { sql, LocalRestaurantData } from './db'
 
+// ==============================================
+// FEATURE FLAGS
+// ==============================================
+
+/**
+ * When true, pickRate will influence restaurant selection scoring.
+ * Disabled by default to prevent early data from self-reinforcing.
+ * Enable once you have sufficient data across many restaurants.
+ */
+export const ENABLE_PICK_RATE_SCORING = false
+
 export interface GooglePlace {
   place_id: string
   name: string
@@ -135,6 +146,80 @@ export async function incrementTimesShown(placeIds: string[]): Promise<void> {
     SET times_shown = times_shown + 1
     WHERE google_place_id = ANY(${placeIds})
   `
+}
+
+/**
+ * Ensure mappings exist for all given Google Places.
+ * Creates minimal mappings for any places not yet tracked.
+ * This enables analytics tracking for ALL restaurants shown, not just liked ones.
+ */
+export async function ensureMappingsExist(
+  places: GooglePlace[]
+): Promise<void> {
+  if (places.length === 0) return
+
+  // Get existing mappings
+  const placeIds = places.map(p => p.place_id)
+  const existing = await sql`
+    SELECT google_place_id FROM restaurant_mappings
+    WHERE google_place_id = ANY(${placeIds})
+  `
+  const existingIds = new Set(existing.map(r => r.google_place_id))
+
+  // Filter to only new places
+  const newPlaces = places.filter(p => !existingIds.has(p.place_id))
+  if (newPlaces.length === 0) return
+
+  // Create mappings for new places (batch insert)
+  for (const place of newPlaces) {
+    try {
+      // Try to match to existing Overture data first
+      const match = await sql`
+        SELECT gers_id FROM restaurants
+        WHERE LOWER(name) = LOWER(${place.name})
+        AND ABS(lat - ${place.lat}) < 0.001
+        AND ABS(lng - ${place.lng}) < 0.001
+        LIMIT 1
+      `
+
+      if (match.length > 0) {
+        // Link to existing restaurant
+        await sql`
+          INSERT INTO restaurant_mappings (google_place_id, local_id, source)
+          VALUES (${place.place_id}, ${match[0].gers_id}, 'overture')
+          ON CONFLICT (google_place_id) DO NOTHING
+        `
+      } else {
+        // Create new restaurant record from Google data
+        const newId = `gpl_${place.place_id}`
+        await sql`
+          INSERT INTO restaurants (gers_id, name, address, city, state, lat, lng, categories, source)
+          VALUES (
+            ${newId},
+            ${place.name},
+            ${place.address},
+            ${place.city || null},
+            ${place.state || null},
+            ${place.lat},
+            ${place.lng},
+            ${place.categories || []},
+            'google'
+          )
+          ON CONFLICT (gers_id) DO NOTHING
+        `
+        await sql`
+          INSERT INTO restaurant_mappings (google_place_id, local_id, source)
+          VALUES (${place.place_id}, ${newId}, 'google')
+          ON CONFLICT (google_place_id) DO NOTHING
+        `
+        // Update chain detection
+        await sql`SELECT update_chain_detection(${place.name})`
+      }
+    } catch (err) {
+      // Log but don't fail - mapping creation is non-critical
+      console.warn(`[ensureMappingsExist] Failed to create mapping for ${place.place_id}:`, err)
+    }
+  }
 }
 
 /**

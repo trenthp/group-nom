@@ -136,11 +136,13 @@ CREATE TABLE IF NOT EXISTS voting_outcomes (
 );
 
 -- Chain detection (built over time)
+-- Note: location_count tracks how many times we've seen this restaurant name
+-- If location_count >= 5, it's considered a chain for filtering purposes
+-- The table is pre-seeded with known chain keywords (see scripts/db/seed-chains.sql)
 CREATE TABLE IF NOT EXISTS chain_names (
   name TEXT PRIMARY KEY,
   location_count INTEGER DEFAULT 1,
-  first_seen TIMESTAMP DEFAULT NOW(),
-  last_updated TIMESTAMP DEFAULT NOW()
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- ============================================
@@ -239,13 +241,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to update chain detection when we see a restaurant
+-- Note: This tracks all restaurant names. Chains naturally accumulate higher counts.
+-- Pre-seeded chains have location_count = 100 (see scripts/db/seed-chains.sql)
 CREATE OR REPLACE FUNCTION update_chain_detection(p_name TEXT)
 RETURNS VOID AS $$
 BEGIN
-  INSERT INTO chain_names (name, location_count, first_seen, last_updated)
-  VALUES (p_name, 1, NOW(), NOW())
+  INSERT INTO chain_names (name, location_count, updated_at)
+  VALUES (p_name, 1, NOW())
   ON CONFLICT (name) DO UPDATE
   SET location_count = chain_names.location_count + 1,
-      last_updated = NOW();
+      updated_at = NOW();
 END;
 $$ LANGUAGE plpgsql;
