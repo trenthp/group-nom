@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { usePollingWithVisibility } from '@/hooks/usePollingWithVisibility'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Restaurant } from '@/lib/types'
@@ -23,6 +24,7 @@ export default function SessionPage() {
   const [error, setError] = useState<string | null>(null)
   const [sessionStatus, setSessionStatus] = useState<'pending' | 'active' | 'finished' | 'reconfiguring' | null>(null)
   const [showInitialShareModal, setShowInitialShareModal] = useState(false)
+  const [sessionCreatedAt, setSessionCreatedAt] = useState<number | undefined>(undefined)
   const hasShownShareModal = useRef(false)
 
   // Initialize user and fetch session
@@ -58,6 +60,11 @@ export default function SessionPage() {
           setHostId(data.session.hostId)
         }
 
+        // Set session created time for 60-minute expiration
+        if (data.session.createdAt) {
+          setSessionCreatedAt(data.session.createdAt)
+        }
+
         // Check session status (default to 'active' for backward compatibility)
         const status = data.session.status || 'active'
         setSessionStatus(status)
@@ -87,63 +94,61 @@ export default function SessionPage() {
     initSession()
   }, [sessionCode])
 
-  // Poll for session status when pending
-  useEffect(() => {
-    if (sessionStatus !== 'pending' || !userId) return
+  // Poll for session status when pending (pauses when tab is hidden)
+  const pollSessionReady = useCallback(async () => {
+    if (!userId) return
+    try {
+      const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
+      if (response.ok) {
+        const data = await response.json()
 
-    const pollSessionReady = async () => {
-      try {
-        const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
-        if (response.ok) {
-          const data = await response.json()
-
-          if (data.session.status === 'active') {
-            // Session is now active, show restaurants
-            setSessionStatus('active')
-            setRestaurants(data.session.restaurants)
-            // If no restaurants found, go straight to results (shows "no matches" screen)
-            if (!data.session.restaurants || data.session.restaurants.length === 0) {
-              setShowingResults(true)
-            }
-          }
-        }
-      } catch {
-        // Silent retry on error
-      }
-    }
-
-    // Poll every 2 seconds
-    const interval = setInterval(pollSessionReady, 2000)
-
-    return () => clearInterval(interval)
-  }, [sessionStatus, sessionCode, userId])
-
-  // Poll for session status during active voting to detect if session becomes finished
-  useEffect(() => {
-    if (sessionStatus !== 'active' || !userId || showingResults) return
-
-    const pollForFinished = async () => {
-      try {
-        const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
-        if (response.ok) {
-          const data = await response.json()
-
-          // If session became finished, show results
-          if (data.session.status === 'finished') {
-            setSessionStatus('finished')
+        if (data.session.status === 'active') {
+          // Session is now active, show restaurants
+          setSessionStatus('active')
+          setRestaurants(data.session.restaurants)
+          // If no restaurants found, go straight to results (shows "no matches" screen)
+          if (!data.session.restaurants || data.session.restaurants.length === 0) {
             setShowingResults(true)
           }
         }
-      } catch {
-        // Silent retry on error
       }
+    } catch {
+      // Silent retry on error
     }
+  }, [sessionCode, userId])
 
-    // Poll every 3 seconds
-    const interval = setInterval(pollForFinished, 3000)
+  usePollingWithVisibility(pollSessionReady, {
+    intervalMs: 2000,
+    enabled: sessionStatus === 'pending' && !!userId,
+    immediate: true,
+    sessionStartTime: sessionCreatedAt,
+  })
 
-    return () => clearInterval(interval)
-  }, [sessionStatus, sessionCode, userId, showingResults])
+  // Poll for session status during active voting to detect if session becomes finished (pauses when tab is hidden)
+  const pollForFinished = useCallback(async () => {
+    if (!userId) return
+    try {
+      const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+
+        // If session became finished, show results
+        if (data.session.status === 'finished') {
+          setSessionStatus('finished')
+          setShowingResults(true)
+        }
+      }
+    } catch {
+      // Silent retry on error
+    }
+  }, [sessionCode, userId])
+
+  usePollingWithVisibility(pollForFinished, {
+    intervalMs: 3000,
+    enabled: sessionStatus === 'active' && !!userId && !showingResults,
+    immediate: true,
+    sessionStartTime: sessionCreatedAt,
+  })
 
 
   const handleVote = useCallback(
@@ -275,7 +280,7 @@ export default function SessionPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
         <Header sessionCode={sessionCode} />
-        <WaitingScreen code={sessionCode} isHost={isHost} />
+        <WaitingScreen code={sessionCode} isHost={isHost} sessionCreatedAt={sessionCreatedAt} />
       </div>
     )
   }
@@ -307,6 +312,7 @@ export default function SessionPage() {
         onReconfigure={handleReconfigure}
         onLeaveSession={handleLeaveSession}
         onSessionReconfigured={handleSessionReconfigured}
+        sessionCreatedAt={sessionCreatedAt}
       />
     )
   }

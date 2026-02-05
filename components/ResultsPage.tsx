@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { usePollingWithVisibility } from '@/hooks/usePollingWithVisibility'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
@@ -35,6 +36,7 @@ interface ResultsPageProps {
   onReconfigure: () => void
   onLeaveSession: () => void
   onSessionReconfigured: () => void
+  sessionCreatedAt?: number
 }
 
 interface VoteCount {
@@ -53,6 +55,7 @@ export default function ResultsPage({
   onReconfigure,
   onLeaveSession,
   onSessionReconfigured,
+  sessionCreatedAt,
 }: ResultsPageProps) {
   const { isSignedIn, isLoaded } = useUser()
   const [winner, setWinner] = useState<Restaurant | null>(null)
@@ -179,86 +182,67 @@ export default function ResultsPage({
     }
   }, [currentMatchIndex, voteDetails])
 
-  // Check if all users finished and poll for updates (also fetches userStatus for host)
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-
-    const checkAndPollStatus = async () => {
-      try {
-        // Fetch session data to get userStatus
-        const sessionResponse = await fetch(`/api/session/${sessionCode}`)
-        if (sessionResponse.ok) {
-          const sessionData = await sessionResponse.json()
-          if (sessionData.session?.userStatus) {
-            setUserStatus(sessionData.session.userStatus)
-            setTotalRestaurants(sessionData.session.totalRestaurants || 0)
-          }
+  // Check if all users finished and poll for updates (pauses when tab is hidden)
+  const checkAndPollStatus = useCallback(async () => {
+    try {
+      // Fetch session data to get userStatus
+      const sessionResponse = await fetch(`/api/session/${sessionCode}`)
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json()
+        if (sessionData.session?.userStatus) {
+          setUserStatus(sessionData.session.userStatus)
+          setTotalRestaurants(sessionData.session.totalRestaurants || 0)
         }
-
-        const response = await fetch(`/api/session/${sessionCode}/status`)
-        if (response.ok) {
-          const data = await response.json()
-          const wasFinished = allFinished
-          setAllFinished(data.allFinished)
-
-          // If just became finished (or first check shows finished), fetch results
-          if (data.allFinished && wasFinished !== true) {
-            await fetchResults()
-          }
-
-          // Only continue polling if not all finished
-          if (!data.allFinished) {
-            interval = setTimeout(checkAndPollStatus, 3000)
-          }
-        }
-      } catch {
-        // Retry on error
-        interval = setTimeout(checkAndPollStatus, 3000)
-      }
-    }
-
-    // Check immediately
-    checkAndPollStatus()
-
-    return () => {
-      if (interval) clearTimeout(interval)
-    }
-  }, [sessionCode, allFinished])
-
-  // Poll for reconfiguring status (non-host users)
-  useEffect(() => {
-    if (isHost) return // Host doesn't need to poll - they're doing the reconfiguring
-
-    let interval: NodeJS.Timeout
-
-    const checkForReconfigure = async () => {
-      try {
-        const response = await fetch(`/api/session/${sessionCode}/status`)
-        if (response.ok) {
-          const data = await response.json()
-
-          if (data.status === 'reconfiguring') {
-            setIsReconfiguring(true)
-          } else if (data.status === 'active' && isReconfiguring) {
-            // Session was reconfigured and is now active again
-            setIsReconfiguring(false)
-            onSessionReconfigured()
-            return // Stop polling
-          }
-        }
-      } catch {
-        // Silent retry
       }
 
-      interval = setTimeout(checkForReconfigure, 2000)
-    }
+      const response = await fetch(`/api/session/${sessionCode}/status`)
+      if (response.ok) {
+        const data = await response.json()
+        setAllFinished(data.allFinished)
 
-    checkForReconfigure()
-
-    return () => {
-      if (interval) clearTimeout(interval)
+        // If just became finished, fetch results
+        if (data.allFinished) {
+          await fetchResults()
+        }
+      }
+    } catch {
+      // Silent retry on next poll
     }
-  }, [sessionCode, isHost, isReconfiguring, onSessionReconfigured])
+  }, [sessionCode])
+
+  usePollingWithVisibility(checkAndPollStatus, {
+    intervalMs: 3000,
+    enabled: allFinished !== true,
+    immediate: true,
+    sessionStartTime: sessionCreatedAt,
+  })
+
+  // Poll for reconfiguring status (non-host users, pauses when tab is hidden)
+  const checkForReconfigure = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/session/${sessionCode}/status`)
+      if (response.ok) {
+        const data = await response.json()
+
+        if (data.status === 'reconfiguring') {
+          setIsReconfiguring(true)
+        } else if (data.status === 'active' && isReconfiguring) {
+          // Session was reconfigured and is now active again
+          setIsReconfiguring(false)
+          onSessionReconfigured()
+        }
+      }
+    } catch {
+      // Silent retry on next poll
+    }
+  }, [sessionCode, isReconfiguring, onSessionReconfigured])
+
+  usePollingWithVisibility(checkForReconfigure, {
+    intervalMs: 2000,
+    enabled: !isHost,
+    immediate: true,
+    sessionStartTime: sessionCreatedAt,
+  })
 
   const handleCloseVoting = async () => {
     setClosingVoting(true)

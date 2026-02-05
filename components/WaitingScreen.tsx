@@ -1,34 +1,36 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useCallback } from 'react'
 import ShareCode from './ShareCode'
 import { HourglassIcon, CheckIcon, LoaderIcon, UsersIcon } from '@/components/icons'
+import { usePollingWithVisibility } from '@/hooks/usePollingWithVisibility'
 
 interface WaitingScreenProps {
   code: string
   isHost?: boolean
+  sessionCreatedAt?: number
 }
 
-export default function WaitingScreen({ code, isHost = false }: WaitingScreenProps) {
+export default function WaitingScreen({ code, isHost = false, sessionCreatedAt }: WaitingScreenProps) {
   const [userCount, setUserCount] = useState<number>(1)
 
-  useEffect(() => {
-    const fetchUserCount = async () => {
-      try {
-        const response = await fetch(`/api/session/${code}/status`)
-        if (response.ok) {
-          const data = await response.json()
-          setUserCount(data.userCount || 1)
-        }
-      } catch {
-        // Silently fail
+  const fetchUserCount = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/session/${code}/status`)
+      if (response.ok) {
+        const data = await response.json()
+        setUserCount(data.userCount || 1)
       }
+    } catch {
+      // Silently fail
     }
-
-    fetchUserCount()
-    const interval = setInterval(fetchUserCount, 3000)
-    return () => clearInterval(interval)
   }, [code])
+
+  usePollingWithVisibility(fetchUserCount, {
+    intervalMs: 3000,
+    immediate: true,
+    sessionStartTime: sessionCreatedAt,
+  })
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
