@@ -20,6 +20,7 @@ export default function RestaurantCard({
   const [animatingClass, setAnimatingClass] = useState('')
   const [swipeOffset, setSwipeOffset] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
+  const [isEntering, setIsEntering] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
   // Reset animation and swipe state when restaurant changes
@@ -27,6 +28,13 @@ export default function RestaurantCard({
     setAnimatingClass('')
     setSwipeOffset(0)
     setIsSwiping(false)
+    // Start in "entering" state with no transition, then animate in from center
+    setIsEntering(true)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsEntering(false)
+      })
+    })
   }, [restaurant.id])
 
   const handleYes = useCallback(() => {
@@ -117,6 +125,9 @@ export default function RestaurantCard({
 
   // Determine transform based on state
   const getTransform = () => {
+    if (isEntering) {
+      return 'scale(0.9)'
+    }
     if (animatingClass === 'swipe-right') {
       return `translateX(${swipeOffset + 400}px) rotate(${rotation + 20}deg)`
     }
@@ -126,18 +137,21 @@ export default function RestaurantCard({
     if (isSwiping || swipeOffset !== 0) {
       return `translateX(${swipeOffset}px) rotate(${rotation}deg)`
     }
-    return undefined
+    return 'scale(1)'
   }
 
   // Determine transition based on state
   const getTransition = () => {
+    if (isEntering) {
+      return 'none'
+    }
     if (animatingClass) {
       return 'transform 0.25s ease-out, opacity 0.25s ease-out'
     }
     if (isSwiping) {
       return 'none'
     }
-    return 'transform 0.2s ease-out'
+    return 'transform 0.2s ease-out, opacity 0.2s ease-out'
   }
 
   return (
@@ -147,7 +161,7 @@ export default function RestaurantCard({
       style={{
         transform: getTransform(),
         transition: getTransition(),
-        opacity: animatingClass ? 0 : 1,
+        opacity: animatingClass || isEntering ? 0 : 1,
       }}
       onTouchStart={handleSwipe}
     >
