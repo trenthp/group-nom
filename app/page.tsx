@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useUser, useClerk } from '@clerk/nextjs'
 import Footer from '@/components/Footer'
+import SupportPage from '@/components/auth/SupportPage'
 import { USER_TIERS } from '@/lib/userTiers'
 
 export default function HomePage() {
@@ -46,6 +47,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   const [isJoining, setIsJoining] = useState(false)
   const [stats, setStats] = useState<{ likes: number; favorites: number } | null>(null)
   const [showAccountMenu, setShowAccountMenu] = useState(false)
+  const [showSupportModal, setShowSupportModal] = useState(false)
 
   const authLimit = USER_TIERS.authenticated.maxRestaurantsPerSession
 
@@ -154,10 +156,18 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
                         </div>
                       )}
 
-                      {/* Future: Add more menu items here */}
-                      {/* <button className="w-full px-4 py-2 text-left text-white hover:bg-white/5 transition">
-                        Settings
-                      </button> */}
+                      <button
+                        onClick={() => {
+                          setShowAccountMenu(false)
+                          setShowSupportModal(true)
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-white/70 hover:bg-white/5 transition text-sm flex items-center gap-2"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        Feedback
+                      </button>
                     </div>
 
                     {/* Sign Out */}
@@ -301,6 +311,28 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
 
         <Footer />
       </main>
+
+      {/* Feedback Modal */}
+      {showSupportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowSupportModal(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <button
+              onClick={() => setShowSupportModal(false)}
+              className="absolute top-3 right-3 z-10 p-1.5 text-gray-400 hover:text-gray-600 transition"
+              aria-label="Close"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+            <SupportPage onClose={() => setShowSupportModal(false)} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

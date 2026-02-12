@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { Restaurant } from '@/lib/types'
 import RestaurantCard from '@/components/RestaurantCard'
@@ -33,7 +33,7 @@ export default function DiscoverPage() {
     phase: 'intro',
     currentRestaurant: null,
     nextRestaurant: null,
-    loading: true,
+    loading: false,
     loadingNext: false,
     error: null,
     location: null,
@@ -97,46 +97,43 @@ export default function DiscoverPage() {
     }
   }, [])
 
-  // Get user's location on mount (but don't fetch restaurants yet - wait for intro)
-  useEffect(() => {
+  // Start swiping - get location first, then fetch restaurants
+  const handleStartSwiping = useCallback(async () => {
+    setState(s => ({ ...s, loading: true }))
+
     if (!navigator.geolocation) {
       setState(s => ({ ...s, error: 'Geolocation not supported', loading: false }))
       return
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude: lat, longitude: lng } = position.coords
-        setState(s => ({ ...s, location: { lat, lng }, loading: false }))
-
-        // Reverse geocode to get location name
-        try {
-          const response = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`)
-          if (response.ok) {
-            const data = await response.json()
-            setState(s => ({ ...s, locationName: data.city || data.area || 'your area' }))
-          }
-        } catch {
-          // Non-fatal
+    // Request location permission and get position
+    const position = await new Promise<GeolocationPosition | null>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos),
+        (error) => {
+          console.error('Geolocation error:', error)
+          setState(s => ({
+            ...s,
+            error: 'Unable to get location. Please enable location services.',
+            loading: false,
+          }))
+          resolve(null)
         }
-      },
-      (error) => {
-        setState(s => ({
-          ...s,
-          error: 'Unable to get location. Please enable location services.',
-          loading: false,
-        }))
-        console.error('Geolocation error:', error)
-      }
-    )
-  }, [])
+      )
+    })
 
-  // Start swiping - fetch first restaurants
-  const handleStartSwiping = useCallback(async () => {
-    if (!state.location) return
+    if (!position) return
 
-    setState(s => ({ ...s, loading: true }))
-    const { lat, lng } = state.location
+    const { latitude: lat, longitude: lng } = position.coords
+    setState(s => ({ ...s, location: { lat, lng } }))
+
+    // Reverse geocode in background
+    fetch(`/api/geocode?lat=${lat}&lng=${lng}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) setState(s => ({ ...s, locationName: data.city || data.area || 'your area' }))
+      })
+      .catch(() => {})
 
     // Fetch first restaurant
     const first = await fetchNextRestaurant(lat, lng, [])
@@ -160,7 +157,7 @@ export default function DiscoverPage() {
         noMoreRestaurants: true,
       }))
     }
-  }, [state.location, fetchNextRestaurant])
+  }, [fetchNextRestaurant])
 
   // Handle swipe (like or pass)
   const handleSwipe = useCallback(async (liked: boolean) => {
@@ -401,28 +398,15 @@ export default function DiscoverPage() {
           <h1 className="text-3xl font-bold text-white mb-2">
             Discover Restaurants
           </h1>
-          {state.locationName && (
-            <p className="text-white/80 mb-6 flex items-center justify-center gap-1">
-              <LocationIcon size={14} />
-              {state.locationName}
-            </p>
-          )}
           <p className="text-white/60 mb-8 max-w-xs mx-auto">
             Swipe right to like, left to pass. We&apos;ll remember your favorites.
           </p>
 
           <button
             onClick={handleStartSwiping}
-            disabled={!state.location}
-            className={`
-              px-8 py-4 rounded-2xl font-bold text-lg transition-all
-              ${state.location
-                ? 'bg-[#EA4D19] text-white hover:scale-105 shadow-lg'
-                : 'bg-white/20 text-white/50 cursor-not-allowed'
-              }
-            `}
+            className="px-8 py-4 rounded-2xl font-bold text-lg transition-all bg-[#EA4D19] text-white hover:scale-105 shadow-lg"
           >
-            {!state.location ? 'Getting location...' : 'Start Swiping'}
+            Start Swiping
           </button>
         </div>
       </div>
