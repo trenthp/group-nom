@@ -11,9 +11,9 @@ This audit reviewed the Group Nom codebase for security vulnerabilities across s
 
 | Severity | Count | Description |
 |----------|-------|-------------|
-| **CRITICAL** | 1 | Missing input validation on reconfigure endpoint |
-| **HIGH** | 4 | SSRF in internal API calls, insecure invite codes, race conditions in voting, dependency vulnerabilities |
-| **MEDIUM** | 10 | Rate limit bypass, missing security headers, error information disclosure, authorization gaps |
+| **CRITICAL** | 2 | Missing input validation on reconfigure endpoint, no session membership verification on vote |
+| **HIGH** | 5 | SSRF in internal API calls, insecure invite codes, race conditions in voting, dependency vulnerabilities, client-controlled userId for host authorization |
+| **MEDIUM** | 12 | Rate limit bypass, missing security headers, no CORS config, error information disclosure, authorization gaps, sensitive data in query params, unbounded pagination |
 | **LOW** | 4 | Minor hardening opportunities |
 
 ---
@@ -78,7 +78,40 @@ If `Host` or `X-Forwarded-Host` headers are manipulated, this could redirect the
 
 **Fix:** Call the restaurant search logic directly instead of making an HTTP request to self, or use a hardcoded internal URL.
 
-### 3.3 HIGH - Race Condition in Voting Completion
+### 3.3 CRITICAL - No Session Membership Verification on Vote
+
+**File:** `app/api/session/[code]/vote/route.ts:38`
+
+The voting endpoint does not verify that the `userId` is actually a member of `session.users` before recording the vote:
+
+```typescript
+await sessionStore.addVote(code, userId, restaurantId, liked)
+```
+
+An attacker who knows a session code can submit votes with arbitrary user IDs, skewing results without ever joining the session.
+
+**Fix:** Check `session.users.includes(userId)` before accepting any vote.
+
+### 3.4 HIGH - Host Authorization Relies on Client-Controlled userId
+
+**Files:**
+- `app/api/session/[code]/close-voting/route.ts:30-36`
+- `app/api/session/[code]/set-reconfiguring/route.ts:30-36`
+- `app/api/session/[code]/reconfigure/route.ts:28-34`
+
+Host-only operations compare `session.hostId` against a `userId` provided by the client in the request body:
+
+```typescript
+if (session.hostId !== userId) {
+  return NextResponse.json({ error: 'Only the host can close voting' }, { status: 403 })
+}
+```
+
+An attacker who learns the host's userId (exposed in the session response at `session.hostId`) can impersonate the host and close voting, reconfigure settings, etc.
+
+**Fix:** Derive the userId server-side from the authenticated Clerk session rather than trusting client input.
+
+### 3.5 HIGH - Race Condition in Voting Completion
 
 **File:** `app/api/session/[code]/vote/route.ts:41-47`
 
@@ -93,7 +126,7 @@ Classic check-then-act race: if two users finish voting simultaneously, both see
 
 **Fix:** Use a Redis transaction (MULTI/EXEC) or atomic compare-and-swap for state transitions.
 
-### 3.4 MEDIUM - Race Condition in User Addition
+### 3.6 MEDIUM - Race Condition in User Addition
 
 **File:** `lib/sessionStore.ts:52-60`
 
@@ -107,7 +140,7 @@ if (!session.users.includes(userId)) {
 
 Two concurrent join requests could both read the session, both see the user missing, and both add the user - resulting in duplicate entries.
 
-### 3.5 MEDIUM - Inconsistent Input Validation
+### 3.7 MEDIUM - Inconsistent Input Validation
 
 Several endpoints use manual type checking instead of Zod schemas:
 
@@ -117,7 +150,7 @@ Several endpoints use manual type checking instead of Zod schemas:
 - `app/api/user/profile/route.ts:76-94` - No URL format validation on `avatarUrl`
 - `app/api/places/photo/route.ts:6` - `maxwidth` param not validated as numeric
 
-### 3.6 MEDIUM - Error Information Disclosure
+### 3.8 MEDIUM - Error Information Disclosure
 
 **File:** `app/api/feedback/route.ts:54-60`
 
@@ -136,6 +169,37 @@ Returns raw `error.message` to clients, which may contain internal details.
 **File:** `app/api/groups/route.ts:24-32`
 
 Error response reveals database implementation ("relation does not exist").
+
+### 3.9 MEDIUM - Sensitive Data in URL Query Parameters
+
+**File:** `app/session/[code]/page.tsx:45`
+
+```typescript
+const response = await fetch(`/api/session/${sessionCode}?userId=${newUserId}`)
+```
+
+User IDs are passed as query parameters, which get logged by CDNs, proxies, browser history, and server access logs.
+
+**Fix:** Send user identifiers in request headers or POST body instead of query strings.
+
+### 3.10 MEDIUM - Unbounded Pagination Parameters
+
+**File:** `app/api/favorites/route.ts:40-41`
+
+```typescript
+const limit = parseInt(searchParams.get('limit') || '50', 10)
+const offset = parseInt(searchParams.get('offset') || '0', 10)
+```
+
+No bounds checking - `limit` could be set to an extremely large value causing memory exhaustion.
+
+**Fix:** Clamp `limit` to a maximum (e.g., 100) and validate `offset` is non-negative.
+
+### 3.11 MEDIUM - No CORS Configuration
+
+No explicit CORS headers are configured on any API route. Next.js defaults allow cross-origin requests for non-credentialed requests, meaning any website can call the API endpoints.
+
+**Fix:** Add explicit CORS headers restricting allowed origins to the application's domain.
 
 ---
 
@@ -250,20 +314,25 @@ The API key is included in URLs sent to Google. If request logs or intermediary 
 ## Priority Remediation Plan
 
 ### Immediate (before production)
-1. Add Zod validation to reconfigure endpoint
-2. Fix SSRF by calling restaurant search logic directly instead of via HTTP
-3. Run `npm audit fix` to patch dependency vulnerabilities
-4. Replace base64 invite codes with cryptographically random codes
+1. Verify session membership before accepting votes
+2. Derive userId server-side from Clerk auth instead of trusting client input for host checks
+3. Add Zod validation to reconfigure endpoint
+4. Fix SSRF by calling restaurant search logic directly instead of via HTTP
+5. Run `npm audit fix` to patch dependency vulnerabilities
+6. Replace base64 invite codes with cryptographically random codes
 
 ### Short-term
-5. Add security headers to `next.config.js`
-6. Make session state transitions atomic (Redis transactions)
-7. Standardize input validation across all API endpoints using Zod
-8. Remove debug code from feedback endpoint
-9. Return generic error messages instead of `error.message`
+7. Add security headers to `next.config.js`
+8. Configure explicit CORS headers on API routes
+9. Make session state transitions atomic (Redis transactions)
+10. Standardize input validation across all API endpoints using Zod
+11. Remove debug code from feedback endpoint
+12. Return generic error messages instead of `error.message`
+13. Move sensitive data (userId) from query params to headers/body
 
 ### Medium-term
-10. Fix IP-based rate limiting to use trusted proxy headers
-11. Add participant limits to sessions
-12. Restrict Google Maps API key in Cloud Console
-13. Add role-based access control for admin routes
+14. Fix IP-based rate limiting to use trusted proxy headers
+15. Add participant limits to sessions
+16. Add bounds checking to pagination parameters
+17. Restrict Google Maps API key in Cloud Console
+18. Add role-based access control for admin routes
