@@ -128,6 +128,17 @@ export async function getUserStats(clerkUserId: string): Promise<{
   }
 }
 
+/**
+ * Increment a user's enrichment contribution count
+ */
+export async function incrementEnrichmentCount(clerkUserId: string): Promise<void> {
+  await sql`
+    UPDATE user_profiles
+    SET enrichment_count = COALESCE(enrichment_count, 0) + 1
+    WHERE clerk_user_id = ${clerkUserId}
+  `
+}
+
 // Helper to map database record to profile interface
 function mapDbToProfile(db: Record<string, unknown>): UserProfile {
   return {

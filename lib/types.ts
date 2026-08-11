@@ -136,6 +136,60 @@ export interface AggregatedVote {
 }
 
 // ==============================================
+// NOMINATION LAYER TYPES (Community UGC)
+// ==============================================
+
+export interface Nomination {
+  id: string
+  gersId: string
+  clerkUserId: string
+  photoUrl: string
+  whyILoveIt: string
+  myFavoriteDishes: string[]
+  goodFor: GoodForTag[]
+  createdAt: Date
+  // Joined data (optional, populated when fetching)
+  user?: {
+    displayName?: string
+    avatarUrl?: string
+  }
+}
+
+export type GoodForTag = 'date_night' | 'family' | 'groups' | 'solo' | 'quick_bite' | 'late_night' | 'brunch'
+
+export interface RestaurantEnrichment {
+  gersId: string
+  hoursNotes?: string
+  hoursUpdatedAt?: Date
+  menuUrl?: string
+  menuUpdatedAt?: Date
+  parkingNotes?: string
+  parkingUpdatedAt?: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface NominationCompleteness {
+  hasNominations: boolean
+  nominationCount: number
+  hasHours: boolean
+  hasMenu: boolean
+  hasParking: boolean
+  hasFavoriteDishes: boolean
+  completenessScore: number // 0-100
+  missingFields: string[]
+}
+
+// Extended restaurant type with nomination data
+export interface RestaurantWithNominations extends Restaurant {
+  nominationCount: number
+  firstNominatedAt?: Date
+  completenessScore: number
+  enrichment?: RestaurantEnrichment
+  nominations?: Nomination[]
+}
+
+// ==============================================
 // USER TIER TYPES
 // ==============================================
 

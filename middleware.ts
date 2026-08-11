@@ -30,6 +30,11 @@ const anonRateLimiters = {
     limiter: Ratelimit.slidingWindow(5, '60 s'),
     prefix: 'ratelimit:anon:restaurants',
   }),
+  upload: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(5, '3600 s'), // uploads require auth; anon gets a token bucket anyway
+    prefix: 'ratelimit:anon:upload',
+  }),
 }
 
 const authRateLimiters = {
@@ -52,6 +57,11 @@ const authRateLimiters = {
     redis: kv,
     limiter: Ratelimit.slidingWindow(20, '60 s'),
     prefix: 'ratelimit:auth:restaurants',
+  }),
+  upload: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(30, '3600 s'), // 30 photo uploads per hour
+    prefix: 'ratelimit:auth:upload',
   }),
 }
 
@@ -102,6 +112,9 @@ async function handleRateLimit(
     } else if (pathname.includes('/vote') || pathname.includes('/close-voting')) {
       limiter = rateLimiters.vote
       identifier = `vote:${baseIdentifier}`
+    } else if (pathname.startsWith('/api/upload/')) {
+      limiter = rateLimiters.upload
+      identifier = `upload:${baseIdentifier}`
     } else if (pathname === '/api/restaurants/nearby' || pathname === '/api/geocode') {
       limiter = rateLimiters.restaurants
       identifier = `restaurants:${baseIdentifier}`
