@@ -8,7 +8,7 @@ import { useUser } from '@clerk/nextjs'
 import RestaurantFilters from '@/components/RestaurantFilters'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { getUserLocation } from '@/lib/googleMaps'
+import { getUserLocation } from '@/lib/geolocation'
 import { USER_TIERS } from '@/lib/userTiers'
 import { DEFAULT_FILTERS } from '@/lib/types'
 

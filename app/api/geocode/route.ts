@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Client } from '@googlemaps/google-maps-services-js'
 
-const client = new Client({})
+const LOCATIONIQ_BASE = 'https://us1.locationiq.com/v1'
 
-// Extract city and state from address components
-function extractCityState(addressComponents: any[]): string {
-  let city = ''
-  let state = ''
-
-  for (const component of addressComponents) {
-    if (component.types.includes('locality')) {
-      city = component.long_name
-    } else if (component.types.includes('sublocality_level_1') && !city) {
-      city = component.long_name
-    } else if (component.types.includes('administrative_area_level_1')) {
-      state = component.short_name
-    }
-  }
+// Extract city and state from LocationIQ address object
+function extractCityState(address: any): string {
+  const city = address.city || address.town || address.village || address.county || ''
+  const state = address.state || ''
 
   if (city && state) {
     return `${city}, ${state}`
@@ -33,11 +22,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { address, lat, lng } = body
 
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY
+    const apiKey = process.env.LOCATIONIQ_API_KEY
 
     // Reverse geocoding (lat/lng → address)
     if (lat !== undefined && lng !== undefined) {
-      if (!apiKey || apiKey === 'your_api_key_here') {
+      if (!apiKey) {
         return NextResponse.json({
           success: true,
           formattedAddress: 'Current Location',
@@ -45,22 +34,18 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const response = await client.reverseGeocode({
-          params: {
-            latlng: { lat, lng },
-            key: apiKey,
-          },
-        })
+        const url = `${LOCATIONIQ_BASE}/reverse?key=${apiKey}&lat=${lat}&lon=${lng}&format=json`
+        const response = await fetch(url)
 
-        if (response.data.status !== 'OK' || response.data.results.length === 0) {
+        if (!response.ok) {
           return NextResponse.json({
             success: true,
             formattedAddress: 'Current Location',
           })
         }
 
-        const result = response.data.results[0]
-        const cityState = extractCityState(result.address_components)
+        const data = await response.json()
+        const cityState = extractCityState(data.address || {})
 
         return NextResponse.json({
           success: true,
@@ -83,8 +68,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!apiKey || apiKey === 'your_api_key_here') {
-      console.warn('Google Maps API key not configured, using default location')
+    if (!apiKey) {
+      console.warn('LocationIQ API key not configured, using default location')
       return NextResponse.json({
         success: true,
         location: { lat: 40.7128, lng: -74.006 },
@@ -97,45 +82,41 @@ export async function POST(request: NextRequest) {
       const isZipCode = /^\d{5}(-\d{4})?$/.test(address.trim())
       const searchAddress = isZipCode ? `${address.trim()}, USA` : address
 
-      const response = await client.geocode({
-        params: {
-          address: searchAddress,
-          key: apiKey,
-        },
-      })
+      const url = `${LOCATIONIQ_BASE}/search?key=${apiKey}&q=${encodeURIComponent(searchAddress)}&format=json&countrycodes=us&limit=1`
+      const response = await fetch(url)
 
-      if (response.data.status !== 'OK' || response.data.results.length === 0) {
-        console.error('Geocoding error:', response.data.status)
+      if (!response.ok) {
+        if (response.status === 404) {
+          return NextResponse.json(
+            { error: 'Could not find that location. Try a different city or zip code.' },
+            { status: 404 }
+          )
+        }
+        throw new Error(`LocationIQ API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (!data || data.length === 0) {
         return NextResponse.json(
           { error: 'Could not find that location. Try a different city or zip code.' },
           { status: 404 }
         )
       }
 
-      const result = response.data.results[0]
+      const result = data[0]
       const location = {
-        lat: result.geometry.location.lat,
-        lng: result.geometry.location.lng,
+        lat: parseFloat(result.lat),
+        lng: parseFloat(result.lon),
       }
 
       return NextResponse.json({
         success: true,
         location,
-        formattedAddress: result.formatted_address,
+        formattedAddress: result.display_name,
       })
     } catch (apiError: any) {
-      console.error('Google Geocoding API error:', apiError.message)
-
-      if (apiError.response?.status === 403) {
-        console.warn('Geocoding API not enabled or restricted.')
-        return NextResponse.json(
-          {
-            error: 'Geocoding API not enabled. Please use current location or contact support.',
-            fallback: true
-          },
-          { status: 503 }
-        )
-      }
+      console.error('LocationIQ Geocoding API error:', apiError.message)
 
       return NextResponse.json(
         { error: 'Unable to geocode address. Please try current location instead.' },
