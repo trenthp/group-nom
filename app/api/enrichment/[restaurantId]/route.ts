@@ -78,7 +78,10 @@ export async function PATCH(
         )
       }
       try {
-        new URL(menuUrl)
+        const parsed = new URL(menuUrl)
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+          throw new Error('Invalid scheme')
+        }
       } catch {
         return NextResponse.json(
           { error: 'Invalid menu URL' },

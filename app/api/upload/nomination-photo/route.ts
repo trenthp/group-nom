@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { put } from '@vercel/blob'
+import { sql } from '@/lib/db'
+
+// No SVG: it can carry scripts and render inline (stored XSS)
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+}
+
+const GERS_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/
 
 /**
  * POST /api/upload/nomination-photo
@@ -28,17 +39,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!gersId) {
+    if (!gersId || !GERS_ID_PATTERN.test(gersId)) {
       return NextResponse.json(
-        { error: 'Restaurant ID is required' },
+        { error: 'Invalid restaurant ID' },
         { status: 400 }
       )
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
+    // Only upload photos for restaurants that actually exist
+    const restaurant = await sql`
+      SELECT 1 FROM restaurants WHERE gers_id = ${gersId}
+    `
+    if (restaurant.length === 0) {
       return NextResponse.json(
-        { error: 'File must be an image' },
+        { error: 'Restaurant not found' },
+        { status: 404 }
+      )
+    }
+
+    // Validate file type against an explicit allowlist
+    const extension = ALLOWED_IMAGE_TYPES[file.type]
+    if (!extension) {
+      return NextResponse.json(
+        { error: 'File must be a JPEG, PNG, WebP, or GIF image' },
         { status: 400 }
       )
     }
@@ -51,15 +74,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate unique filename
     const timestamp = Date.now()
-    const extension = file.type.split('/')[1] || 'jpg'
     const filename = `nominations/${gersId}/${userId}-${timestamp}.${extension}`
 
-    // Upload to Vercel Blob
+    // Upload to Vercel Blob; random suffix prevents predictable-path overwrites
     const blob = await put(filename, file, {
       access: 'public',
-      addRandomSuffix: false,
+      addRandomSuffix: true,
     })
 
     return NextResponse.json({

@@ -45,6 +45,19 @@ function serializeEnrichment(row: DbRestaurantEnrichment): RestaurantEnrichment 
   }
 }
 
+// Only http(s) URLs may be stored - anything else (javascript:, data:) is an XSS vector
+function validateMenuUrl(menuUrl: string): void {
+  let parsed: URL
+  try {
+    parsed = new URL(menuUrl)
+  } catch {
+    throw new Error('Invalid menu URL')
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('Invalid menu URL')
+  }
+}
+
 // ============================================================================
 // Enrichment CRUD
 // ============================================================================
@@ -96,12 +109,7 @@ export async function updateMenuUrl(
   menuUrl: string,
   clerkUserId: string
 ): Promise<RestaurantEnrichment> {
-  // Basic URL validation
-  try {
-    new URL(menuUrl)
-  } catch {
-    throw new Error('Invalid menu URL')
-  }
+  validateMenuUrl(menuUrl)
 
   const rows = await sql`
     INSERT INTO restaurant_enrichment (gers_id, menu_url, menu_updated_at)
@@ -157,11 +165,7 @@ export async function updateEnrichment(
 ): Promise<RestaurantEnrichment> {
   // Validate menu URL if provided
   if (updates.menuUrl) {
-    try {
-      new URL(updates.menuUrl)
-    } catch {
-      throw new Error('Invalid menu URL')
-    }
+    validateMenuUrl(updates.menuUrl)
   }
 
   // Count how many new fields are being added
