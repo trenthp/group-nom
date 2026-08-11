@@ -201,12 +201,6 @@ export default function SavedPage() {
           </div>
         )}
 
-        {/* Google Attribution - Required by Google Maps Platform ToS */}
-        <div className="text-center py-4">
-          <p className="text-white/30 text-xs">
-            Restaurant data powered by Google
-          </p>
-        </div>
       </main>
     </div>
   )
@@ -226,12 +220,8 @@ function FavoriteCard({
     favorite.restaurantName
   )}&query_place_id=${favorite.googlePlaceId || ''}`
 
-  // Mock data availability - in future, these would come from the database
+  // Photos come from community nominations - not wired into favorites yet
   const hasPhoto = false
-  const hasPriceLevel = false
-  const hasHours = false
-  const hasRating = false
-  const hasPhone = false
 
   return (
     <div className="bg-[#333333] rounded-xl overflow-hidden">
@@ -273,31 +263,14 @@ function FavoriteCard({
           )}
         </div>
 
-        {/* Quick Info Row - Real data + Skeletons */}
-        <div className="flex items-center gap-3 mb-3">
-          {/* Price Level */}
-          {hasPriceLevel ? (
-            <span className="text-white/70 text-sm">$$</span>
-          ) : (
-            <SkeletonPill label="$$$" />
-          )}
-
-          {/* Rating */}
-          {hasRating ? (
-            <span className="text-white/70 text-sm flex items-center gap-1">
-              <StarIcon className="text-yellow-500" size={14} />
-              4.5
-            </span>
-          ) : (
-            <SkeletonPill label="★ —" />
-          )}
-
-          {/* Hours */}
-          {hasHours ? (
-            <span className="text-green-400 text-sm">Open now</span>
-          ) : (
-            <SkeletonPill label="Hours" />
-          )}
+        {/* Nominate CTA - you saved it because you love it; tell the community why */}
+        <div className="mb-3">
+          <a
+            href={`/nominate/${favorite.localId}`}
+            className="inline-flex items-center gap-1.5 bg-green-500/20 text-green-300 hover:bg-green-500/30 px-3 py-1.5 rounded-full text-sm font-semibold transition"
+          >
+            ❤️ Nominate this spot
+          </a>
         </div>
 
         {/* Categories */}
@@ -333,26 +306,10 @@ function FavoriteCard({
               skeleton="123 Main Street"
             />
 
-            {/* Phone */}
-            <DetailRow
-              icon={<PhoneIcon />}
-              label="Phone"
-              value={hasPhone ? '(555) 123-4567' : null}
-              skeleton="(555) 123-4567"
-            />
-
-            {/* Hours - expanded */}
-            <DetailRow
-              icon={<ClockIcon />}
-              label="Hours"
-              value={hasHours ? 'Open until 10 PM' : null}
-              skeleton="Open · Closes 10 PM"
-            />
-
             {/* More data coming soon hint */}
             <div className="bg-[#2a2a2a] rounded-lg p-3 mt-3">
               <p className="text-white/40 text-xs text-center">
-                More details added as our community grows
+                Hours, menus, and parking tips get added as the community fills them in
               </p>
             </div>
           </div>
@@ -401,14 +358,6 @@ function FavoriteCard({
 }
 
 // Skeleton pill for missing data
-function SkeletonPill({ label }: { label: string }) {
-  return (
-    <span className="text-white/20 text-sm bg-white/5 px-2 py-0.5 rounded border border-dashed border-white/10">
-      {label}
-    </span>
-  )
-}
-
 // Detail row with skeleton support
 function DetailRow({
   icon,
@@ -452,14 +401,6 @@ function CameraIcon({ className = '' }: { className?: string }) {
   )
 }
 
-function StarIcon({ className = '', size = 16 }: { className?: string; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
-    </svg>
-  )
-}
-
 function ChevronIcon({ direction }: { direction: 'up' | 'down' }) {
   return (
     <svg
@@ -472,23 +413,6 @@ function ChevronIcon({ direction }: { direction: 'up' | 'down' }) {
       className={`transition-transform ${direction === 'up' ? 'rotate-180' : ''}`}
     >
       <polyline points="6,9 12,15 18,9" />
-    </svg>
-  )
-}
-
-function PhoneIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-    </svg>
-  )
-}
-
-function ClockIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12,6 12,12 16,14" />
     </svg>
   )
 }

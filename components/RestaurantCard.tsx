@@ -2,7 +2,7 @@
 
 import { Restaurant } from '@/lib/types'
 import { useCallback, useState, useEffect, useRef } from 'react'
-import { UtensilsIcon, StarIcon, LocationIcon } from '@/components/icons'
+import { UtensilsIcon, LocationIcon } from '@/components/icons'
 
 interface RestaurantCardProps {
   restaurant: Restaurant
@@ -121,8 +121,6 @@ export default function RestaurantCard({
   const likeOpacity = Math.min(Math.max(swipeOffset / 100, 0), 1)
   const nopeOpacity = Math.min(Math.max(-swipeOffset / 100, 0), 1)
 
-  const priceDisplay = restaurant.priceLevel || '$'
-
   // Determine transform based on state
   const getTransform = () => {
     if (isEntering) {
@@ -228,17 +226,21 @@ export default function RestaurantCard({
               </div>
             )}
 
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1">
-                <StarIcon size={16} className="text-yellow-400" />
-                <span className="font-semibold text-gray-800">
-                  {restaurant.rating}
+            {/* Community signals - the only signals we have, by design */}
+            <div className="mb-3">
+              {(restaurant.nominationCount ?? 0) > 0 ? (
+                <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
+                  ❤️ Nominated by {restaurant.nominationCount} local{restaurant.nominationCount === 1 ? '' : 's'}
                 </span>
-                <span className="text-gray-600 text-sm">
-                  ({restaurant.reviewCount} reviews)
+              ) : (restaurant.likeCount ?? 0) > 0 ? (
+                <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-semibold">
+                  👍 {restaurant.likeCount} community like{restaurant.likeCount === 1 ? '' : 's'}
                 </span>
-              </div>
-              <span className="text-lg">{priceDisplay}</span>
+              ) : (
+                <span className="text-gray-400 text-sm italic">
+                  Waiting to be discovered
+                </span>
+              )}
             </div>
 
             <div className="flex items-stretch justify-between gap-2">
@@ -246,30 +248,17 @@ export default function RestaurantCard({
                 <p className="text-gray-600 text-xs w-1/2">{restaurant.address}</p>
               )}
               <a
-                href={restaurant.id.startsWith('ChIJ')
-                  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name)}&query_place_id=${restaurant.id}`
-                  : `https://www.google.com/maps/search/?api=1&query=${restaurant.lat},${restaurant.lng}`
-                }
+                href={`https://www.openstreetmap.org/?mlat=${restaurant.lat}&mlon=${restaurant.lng}#map=17/${restaurant.lat}/${restaurant.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:text-blue-700 font-medium w-1/2 pt-[0.5rem] pb-[0.4rem] px-[0.75rem] bg-blue-50 rounded hover:bg-blue-100 transition flex flex-col justify-center text-left border border-blue-200 leading-[0.8rem]"
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium w-1/2 py-2 px-3 bg-blue-50 rounded hover:bg-blue-100 transition flex items-center justify-center gap-1 border border-blue-200"
                 onClick={(e) => e.stopPropagation()}
               >
-                <span className="flex items-center justify-center gap-1">
-                  <LocationIcon size={12} />
-                  View on Google
-                </span>
-                <span className="text-[10px] text-blue-500 font-normal text-right">see menu, photos, reviews, & more</span>
+                <LocationIcon size={12} />
+                View on map
               </a>
             </div>
           </div>
-        </div>
-
-        {/* Google Attribution - Required by Google Maps Platform ToS */}
-        <div className="px-6 pb-4 pt-0">
-          <p className="text-[10px] text-gray-400 text-center">
-            Powered by Google
-          </p>
         </div>
       </div>
 

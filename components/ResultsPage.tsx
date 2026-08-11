@@ -14,7 +14,6 @@ import {
   HourglassIcon,
   SadFaceIcon,
   ConfettiIcon,
-  StarIcon,
   CompassIcon,
   LocationIcon,
   PhoneIcon,
@@ -512,15 +511,12 @@ export default function ResultsPage({
             </div>
 
             <div className="space-y-3 mb-6">
-              {winner?.rating && (
+              {(winner?.nominationCount ?? 0) > 0 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-700">Rating</span>
-                  <div className="flex items-center gap-2">
-                    <StarIcon size={18} className="text-yellow-400" />
-                    <span className="font-bold text-gray-800">
-                      {winner.rating} ({winner.reviewCount} reviews)
-                    </span>
-                  </div>
+                  <span className="text-gray-700">Community</span>
+                  <span className="font-semibold text-green-700">
+                    ❤️ Nominated by {winner!.nominationCount} local{winner!.nominationCount === 1 ? '' : 's'}
+                  </span>
                 </div>
               )}
 
