@@ -115,8 +115,8 @@ npm run lint     # Run ESLint
 Required in `.env.local`:
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk public key
 - `CLERK_SECRET_KEY` - Clerk secret key
-- `KV_REST_API_URL` - Vercel KV URL
-- `KV_REST_API_TOKEN` - Vercel KV token
+- `db1_KV_REST_API_URL` - Upstash Redis URL (marketplace integration; legacy `KV_REST_API_URL` also accepted)
+- `db1_KV_REST_API_TOKEN` - Upstash Redis token (legacy `KV_REST_API_TOKEN` also accepted)
 - `DATABASE_URL` - Neon Postgres connection string
 - `LOCATIONIQ_API_KEY` - LocationIQ geocoding (free tier)
 - `BLOB_READ_WRITE_TOKEN` - Vercel Blob for nomination photos

@@ -2,7 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { Ratelimit } from '@upstash/ratelimit'
-import { kv } from '@vercel/kv'
+import { kv, isKvConfigured } from '@/lib/kv'
 
 // Define route matchers
 const isAdminRoute = createRouteMatcher(['/admin(.*)'])
@@ -90,7 +90,7 @@ async function handleRateLimit(
   }
 
   // Skip rate limiting in development if KV is not configured
-  if (process.env.NODE_ENV === 'development' && !process.env.KV_REST_API_URL) {
+  if (process.env.NODE_ENV === 'development' && !isKvConfigured()) {
     return null
   }
 

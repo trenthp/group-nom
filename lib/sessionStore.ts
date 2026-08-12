@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv'
+import { kv } from './kv'
 import { Session, Restaurant, Filters, SessionMetadata } from './types'
 
 // Session expiration: 24 hours in seconds
