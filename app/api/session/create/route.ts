@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
 import { createSessionSchema, parseBody } from '@/lib/validation'
-import { getLocalDataForPlaces, incrementTimesShown } from '@/lib/restaurantMatcher'
+import { getDiscoveryDeck } from '@/lib/restaurantDiscovery'
 import { getRestaurantLimit, getUserTier } from '@/lib/userTiers'
-import type { Restaurant, SessionMetadata } from '@/lib/types'
+import type { SessionMetadata } from '@/lib/types'
 
 function generateSessionCode(): string {
   // Use crypto for better randomness and check for collisions
@@ -59,59 +59,17 @@ export async function POST(request: NextRequest) {
     // Use Clerk userId if authenticated, otherwise generate anonymous userId
     const userId = clerkUserId || generateUserId()
 
-    // Fetch restaurants with tier-appropriate limit
-    const response = await fetch(
-      `${request.nextUrl.origin}/api/restaurants/nearby`,
+    // Build the deck directly from our own database (community signals included)
+    const restaurants = await getDiscoveryDeck(
+      location.lat,
+      location.lng,
+      filters.distance,
+      restaurantLimit, // Tier-based limit (5 for anon, 10 for auth)
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lat: location.lat,
-          lng: location.lng,
-          radius: filters.distance * 1000, // Convert km to meters
-          limit: restaurantLimit, // Use tier-based limit (5 for anon, 10 for auth)
-          filters,
-        }),
+        cuisines: filters.cuisines || [],
+        preferLocal: filters.preferLocal !== false,
       }
     )
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: 'Failed to fetch restaurants' },
-        { status: 500 }
-      )
-    }
-
-    const data = await response.json()
-    let restaurants: Restaurant[] = data.restaurants || []
-
-    // Enrich restaurants with local database data (like counts, pick rates)
-    if (restaurants.length > 0) {
-      try {
-        const placeIds = restaurants.map(r => r.id)
-        const localData = await getLocalDataForPlaces(placeIds)
-
-        // Add local data to each restaurant
-        restaurants = restaurants.map(r => {
-          const local = localData.get(r.id)
-          if (local) {
-            return {
-              ...r,
-              localId: local.local_id,
-              likeCount: local.like_count,
-              pickRate: local.pick_rate ?? undefined,
-            }
-          }
-          return r
-        })
-
-        // Track that these restaurants were shown (for discovery scoring)
-        await incrementTimesShown(placeIds)
-      } catch (enrichError) {
-        // Non-fatal: continue without local enrichment
-        console.warn('[API] Failed to enrich with local data:', enrichError)
-      }
-    }
 
     // Create session metadata for tracking user tier
     const metadata: SessionMetadata = {

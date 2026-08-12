@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
+import { getDiscoveryDeck } from '@/lib/restaurantDiscovery'
 
 export async function POST(
   request: NextRequest,
@@ -33,31 +34,17 @@ export async function POST(
       )
     }
 
-    // Fetch new restaurants with updated filters
-    const response = await fetch(
-      `${request.nextUrl.origin}/api/restaurants/nearby`,
+    // Build a fresh deck directly from our own database
+    const restaurants = await getDiscoveryDeck(
+      location.lat,
+      location.lng,
+      filters.distance,
+      10,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lat: location.lat,
-          lng: location.lng,
-          radius: filters.distance * 1000,
-          limit: 10,
-          filters,
-        }),
+        cuisines: filters.cuisines || [],
+        preferLocal: filters.preferLocal !== false,
       }
     )
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: 'Failed to fetch restaurants' },
-        { status: 500 }
-      )
-    }
-
-    const data = await response.json()
-    const restaurants = data.restaurants || []
 
     // Reconfigure the session
     const updatedSession = await sessionStore.reconfigureSession(
