@@ -15,7 +15,6 @@ import {
   SadFaceIcon,
   ConfettiIcon,
   CompassIcon,
-  LocationIcon,
   PhoneIcon,
   GlobeIcon,
 } from '@/components/icons'
@@ -543,10 +542,7 @@ export default function ResultsPage({
             <div className="space-y-3 mb-4">
               {winner && (
                 <a
-                  href={winner.id.startsWith('ChIJ')
-                    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(winner.name)}&destination_place_id=${winner.id}`
-                    : `https://www.google.com/maps/dir/?api=1&destination=${winner.lat},${winner.lng}`
-                  }
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${winner.lat},${winner.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-700 transition"
@@ -558,20 +554,14 @@ export default function ResultsPage({
 
               {winner && (
                 <a
-                  href={winner.id.startsWith('ChIJ')
-                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.id}`
-                    : `https://www.google.com/maps/search/?api=1&query=${winner.lat},${winner.lng}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition text-center"
+                  href={`/restaurant/${winner.id}`}
+                  className="block w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition text-center"
                 >
                   <span className="flex items-center justify-center gap-2">
-                    <LocationIcon size={20} />
-                    View on Google Maps
+                    ❤️ Loved it? Nominate this spot
                   </span>
                   <div className="text-xs font-normal mt-1 opacity-90">
-                    See menu, photos, reviews & more
+                    Add it to the community library
                   </div>
                 </a>
               )}

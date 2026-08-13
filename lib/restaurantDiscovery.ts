@@ -107,6 +107,83 @@ function toRestaurant(row: DeckRow): Restaurant {
   }
 }
 
+export interface LibraryEntry {
+  id: string
+  name: string
+  address: string
+  cuisines: string[]
+  lat: number
+  lng: number
+  nominationCount: number
+  completenessScore: number
+  photoUrl?: string
+  favoriteDishes: string[]
+  distanceKm: number
+}
+
+/**
+ * The browsable library: only places someone has nominated.
+ * Everything you see here, someone loves.
+ */
+export async function getLibraryNearby(
+  lat: number,
+  lng: number,
+  radiusKm: number,
+  limit = 50
+): Promise<LibraryEntry[]> {
+  const cappedRadius = Math.min(Math.max(radiusKm, 1), 25)
+  const { indexes, resolution } = distanceToH3Query(lat, lng, cappedRadius)
+  // Strings, not BigInts: the driver JSON-serializes params; ::bigint[] casts server-side
+  const h3Values = indexes.map(h => BigInt(`0x${h}`).toString())
+  const h3Column = resolution === FINE_RESOLUTION ? 'h3_index_res9' : 'h3_index_res8'
+
+  const rows = await sql.query(
+    `SELECT
+       r.gers_id, r.name, r.address, r.city, r.lat, r.lng, r.categories,
+       r.nomination_count, r.completeness_score,
+       (
+         SELECT n.photo_url FROM nominations n
+         WHERE n.gers_id = r.gers_id
+         ORDER BY n.created_at DESC LIMIT 1
+       ) AS photo_url,
+       (
+         SELECT array_agg(DISTINCT dish) FROM (
+           SELECT unnest(n.my_favorite_dishes) AS dish
+           FROM nominations n WHERE n.gers_id = r.gers_id
+           LIMIT 20
+         ) dishes
+       ) AS favorite_dishes
+     FROM restaurants_with_nominations r
+     WHERE r.${h3Column} = ANY($1::bigint[])
+       AND r.nomination_count > 0
+     ORDER BY r.nomination_count DESC, r.completeness_score DESC
+     LIMIT $2`,
+    [h3Values, limit]
+  )
+
+  return (rows as Record<string, unknown>[]).map(row => {
+    const categories = (row.categories as string[]) ?? []
+    const cuisines = categories
+      .map(formatCategory)
+      .filter(c => c.toLowerCase() !== 'restaurant')
+      .slice(0, 3)
+
+    return {
+      id: row.gers_id as string,
+      name: row.name as string,
+      address: [row.address, row.city].filter(Boolean).join(', '),
+      cuisines: cuisines.length > 0 ? cuisines : ['Restaurant'],
+      lat: row.lat as number,
+      lng: row.lng as number,
+      nominationCount: row.nomination_count as number,
+      completenessScore: row.completeness_score as number,
+      photoUrl: (row.photo_url as string | null) ?? undefined,
+      favoriteDishes: ((row.favorite_dishes as string[] | null) ?? []).slice(0, 5),
+      distanceKm: Math.round(haversineDistance(lat, lng, row.lat as number, row.lng as number) * 10) / 10,
+    }
+  })
+}
+
 /**
  * Build a discovery deck near a location from our own database.
  */

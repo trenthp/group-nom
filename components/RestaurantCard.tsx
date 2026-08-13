@@ -209,7 +209,15 @@ export default function RestaurantCard({
         <div className="px-6 pt-6 pb-4 flex-shrink-0">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              {restaurant.name}
+              <a
+                href={`/restaurant/${restaurant.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-orange-600 transition"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {restaurant.name}
+              </a>
             </h2>
 
             {/* Cuisines - More prominent */}
