@@ -112,18 +112,26 @@ Everything a user sees in the library, someone loved.
 
 ## What has NOT been human-tested
 
-The full nomination loop — photo upload → nomination created → appears on the
-restaurant wall / library / deck badges — is verified at the API level but was
-**never exercised end-to-end by a human** as of this writing. There are 0 real
-nominations in the DB. The first real nomination is the smoke test.
+~~The full nomination loop~~ — done: the first real nomination (Voodoo Bayou,
+Orlando, Aug 2026) exists in the DB and renders on the wall, the library list,
+the library map popup, and the restaurant page.
 
 ## Remaining work, in rough priority order
 
-1. **`map` branch reconciliation** (big). It has a systematic design-token
-   layer and UI kit — but built around a *light glass/white-card* direction,
-   while the app evolved *dark*. Decide the design system first, then port
-   the map view for library browsing. Its Google-era data assumptions
-   (ratings, place ids) must not come along.
+1. **`map` branch reconciliation** — mostly done (Aug 2026). Decision: dark
+   library everywhere; sunset gradient survives only as the voting-session
+   "game mode". Landed: design tokens in `tailwind.config.ts` (never hard-code
+   `#222222`/`#333333`/`#EA4D19` again — use `surface-page`/`surface-card`/
+   `brand`), dark-first UI kit in `components/ui/` (see its README for a11y
+   rules), permission-aware location flow (`lib/useLocation.ts` +
+   `components/location/`), and the Leaflet map view (`components/map/`,
+   CARTO dark tiles) with a list/map toggle on `/library`. Import map pieces
+   via the `components/map` barrel only — it exports just the SSR-safe
+   entries; importing `RestaurantMap`/`RestaurantMarker` directly outside a
+   `ssr:false` dynamic breaks prerendering. Still unharvested from the `map`
+   branch: results-page decomposition (`components/results/` — needs
+   de-Googling), `RestaurantDetailSheet`, the dedicated geocode rate limiter
+   in middleware, and the session-flow (sunset) restyle onto kit variants.
 2. **Deferred security items** (from `SECURITY_AUDIT.md`, all need design):
    - Host authorization trusts client-supplied `userId`; `hostId` is exposed
      to all session members via GET. Anonymous hosts have no Clerk identity,

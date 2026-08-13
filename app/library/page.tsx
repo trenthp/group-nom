@@ -3,34 +3,37 @@
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { LocationIcon } from '@/components/icons'
-import { Spinner, NominationBadge } from '@/components/ui'
+import { Spinner, NominationBadge, Input, Button } from '@/components/ui'
+import { LocationPermissionModal } from '@/components/location'
+import { DynamicMap, MapToggle } from '@/components/map'
+import { useLocation } from '@/lib/useLocation'
 import type { LibraryEntry } from '@/lib/restaurantDiscovery'
 
-type LibraryPhase = 'locating' | 'manual-location' | 'loading' | 'ready' | 'error'
+type LibraryPhase = 'idle' | 'loading' | 'ready' | 'error'
 
 export default function LibraryPage() {
-  const [phase, setPhase] = useState<LibraryPhase>('locating')
+  const {
+    permissionState,
+    coordinates,
+    locationName,
+    isLoading: locationLoading,
+    error: locationError,
+    requestPermission,
+    geocodeAddress,
+  } = useLocation()
+
+  const [phase, setPhase] = useState<LibraryPhase>('idle')
   const [places, setPlaces] = useState<LibraryEntry[]>([])
-  const [locationName, setLocationName] = useState('')
-  const [locationQuery, setLocationQuery] = useState('')
-  const [locationError, setLocationError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<'list' | 'map'>('list')
 
-  const loadLibrary = useCallback(async (lat: number, lng: number, name?: string) => {
+  // Manual location entry (chosen via skip, forced when denied/unsupported)
+  const [manualMode, setManualMode] = useState(false)
+  const [locationQuery, setLocationQuery] = useState('')
+  const [inputError, setInputError] = useState<string | null>(null)
+
+  const loadLibrary = useCallback(async (lat: number, lng: number) => {
     setPhase('loading')
-    if (name) setLocationName(name)
-
-    if (!name) {
-      fetch('/api/geocode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng }),
-      })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => { if (data?.formattedAddress) setLocationName(data.formattedAddress) })
-        .catch(() => {})
-    }
-
     try {
       const res = await fetch(`/api/library?lat=${lat}&lng=${lng}&radius=16`)
       if (!res.ok) throw new Error('Failed to load library')
@@ -43,57 +46,66 @@ export default function LibraryPage() {
     }
   }, [])
 
-  // Try geolocation on mount
+  // Load whenever we get coordinates (GPS grant or manual geocode)
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setPhase('manual-location')
-      return
+    if (coordinates) {
+      loadLibrary(coordinates.lat, coordinates.lng)
     }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => loadLibrary(pos.coords.latitude, pos.coords.longitude),
-      () => setPhase('manual-location')
-    )
-  }, [loadLibrary])
+  }, [coordinates, loadLibrary])
 
   const handleManualLocation = useCallback(async () => {
     if (!locationQuery.trim()) {
-      setLocationError('Enter a city or zip code')
+      setInputError('Enter a city or zip code')
       return
     }
-    setLocationError(null)
-    try {
-      const res = await fetch('/api/geocode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: locationQuery }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.location) {
-        setLocationError(data.error || 'Could not find that location')
-        return
-      }
-      loadLibrary(data.location.lat, data.location.lng, data.formattedAddress)
-    } catch {
-      setLocationError('Could not find that location. Try a different city or zip.')
+    setInputError(null)
+    const ok = await geocodeAddress(locationQuery.trim())
+    if (ok) {
+      setManualMode(false)
+      setLocationQuery('')
     }
-  }, [locationQuery, loadLibrary])
+  }, [locationQuery, geocodeAddress])
+
+  const showManualEntry =
+    manualMode ||
+    ((permissionState === 'denied' || permissionState === 'unsupported') && !coordinates)
+
+  const showPermissionModal =
+    permissionState === 'prompt' && !manualMode && !coordinates
+
+  const locating =
+    !coordinates && !showManualEntry &&
+    (permissionState === 'checking' || permissionState === 'prompt' || locationLoading)
 
   return (
     <div className="min-h-screen bg-surface-page">
+      <LocationPermissionModal
+        isOpen={showPermissionModal}
+        onRequestPermission={requestPermission}
+        onSkip={() => setManualMode(true)}
+      />
+
       {/* Header - matches app's dark page pattern */}
       <header className="px-4 py-6">
         <div className="max-w-lg mx-auto">
-          <h1 className="text-xl font-bold text-white">The Library</h1>
-          <p className="text-sm text-white/50">
-            Places locals love, nominated by the community
-          </p>
-          {locationName && (
-            <p className="text-white/40 text-sm mt-2 flex items-center gap-1">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-white">The Library</h1>
+              <p className="text-sm text-white/50">
+                Places locals love, nominated by the community
+              </p>
+            </div>
+            {phase === 'ready' && places.length > 0 && (
+              <MapToggle view={view} onViewChange={setView} className="shrink-0" />
+            )}
+          </div>
+          {locationName && !showManualEntry && (
+            <p className="text-white/50 text-sm mt-2 flex items-center gap-1">
               <LocationIcon size={12} />
               {locationName}
               <button
-                onClick={() => setPhase('manual-location')}
-                className="ml-2 underline hover:text-white/70"
+                onClick={() => setManualMode(true)}
+                className="ml-2 underline hover:text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
               >
                 change
               </button>
@@ -104,56 +116,73 @@ export default function LibraryPage() {
 
       <main className="max-w-lg mx-auto px-4 pb-24">
 
-        {(phase === 'locating' || phase === 'loading') && (
+        {(locating || phase === 'loading') && !showManualEntry && (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <Spinner size="lg" className="h-10 w-10 mx-auto mb-4" />
               <p className="text-white/60">
-                {phase === 'locating' ? 'Finding your area...' : 'Opening the library...'}
+                {phase === 'loading' ? 'Opening the library...' : 'Finding your area...'}
               </p>
             </div>
           </div>
         )}
 
-        {phase === 'manual-location' && (
+        {showManualEntry && (
           <div className="max-w-sm mx-auto py-12 text-center space-y-3">
             <p className="text-white/70">Where should we look?</p>
-            <label htmlFor="library-location" className="sr-only">City or zip code</label>
-            <input
-              id="library-location"
+            {permissionState === 'denied' && (
+              <p className="text-white/50 text-sm">
+                Location access is blocked — enter a place instead, or enable
+                location in your browser settings.
+              </p>
+            )}
+            <Input
               type="text"
               value={locationQuery}
               onChange={(e) => setLocationQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleManualLocation()}
               placeholder="City or zip code..."
+              aria-label="City or zip code"
               autoFocus
-              className="w-full px-4 py-3 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:border-brand"
+              error={inputError ?? locationError ?? undefined}
             />
-            {locationError && <p role="alert" className="text-red-400 text-sm">{locationError}</p>}
-            <button
+            <Button
+              variant="primary"
+              className="w-full"
               onClick={handleManualLocation}
-              className="w-full px-6 py-3 rounded-xl font-bold bg-brand text-white hover:bg-brand-hover transition"
+              disabled={locationLoading}
             >
-              Browse the Library
-            </button>
+              {locationLoading ? 'Searching...' : 'Browse the Library'}
+            </Button>
+            {coordinates && (
+              <Button variant="ghost" className="w-full" onClick={() => setManualMode(false)}>
+                Cancel
+              </Button>
+            )}
           </div>
         )}
 
-        {phase === 'error' && (
+        {phase === 'error' && !showManualEntry && (
           <div className="text-center py-20">
-            <p className="text-red-400 mb-4">{error}</p>
-            <button
-              onClick={() => setPhase('manual-location')}
-              className="px-6 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition"
+            <p role="alert" className="text-red-400 mb-4">{error}</p>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (coordinates) {
+                  loadLibrary(coordinates.lat, coordinates.lng)
+                } else {
+                  setManualMode(true)
+                }
+              }}
             >
               Try Again
-            </button>
+            </Button>
           </div>
         )}
 
-        {phase === 'ready' && places.length === 0 && (
+        {phase === 'ready' && !showManualEntry && places.length === 0 && (
           <div className="text-center py-16 max-w-md mx-auto">
-            <div className="text-6xl mb-4">📖</div>
+            <div aria-hidden="true" className="text-6xl mb-4">📖</div>
             <h2 className="text-2xl font-bold text-white mb-2">
               The library is empty here — for now
             </h2>
@@ -164,24 +193,34 @@ export default function LibraryPage() {
             <div className="space-y-3">
               <Link
                 href="/discover"
-                className="block w-full px-6 py-3 rounded-xl font-bold bg-brand text-white hover:bg-brand-hover transition"
+                className="block w-full px-6 py-3 rounded-xl font-bold bg-brand text-white hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
               >
                 Discover Places Near You
               </Link>
-              <p className="text-white/40 text-sm">
+              <p className="text-white/50 text-sm">
                 Swipe through local spots, save the ones you love, then nominate them.
               </p>
             </div>
           </div>
         )}
 
-        {phase === 'ready' && places.length > 0 && (
+        {phase === 'ready' && !showManualEntry && places.length > 0 && view === 'map' && (
+          <DynamicMap
+            places={places}
+            userLocation={coordinates ?? undefined}
+            detailHref={(place) => `/restaurant/${place.id}`}
+            height="65vh"
+            className="rounded-card overflow-hidden"
+          />
+        )}
+
+        {phase === 'ready' && !showManualEntry && places.length > 0 && view === 'list' && (
           <div className="space-y-4">
             {places.map((place) => (
               <Link
                 key={place.id}
                 href={`/restaurant/${place.id}`}
-                className="bg-surface-card rounded-xl overflow-hidden hover:bg-surface-card-hover transition group"
+                className="block bg-surface-card rounded-xl overflow-hidden hover:bg-surface-card-hover transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 {place.photoUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
@@ -192,7 +231,7 @@ export default function LibraryPage() {
                   />
                 ) : (
                   <div className="w-full h-24 bg-gradient-to-br from-orange-900/40 to-red-900/40 flex items-center justify-center">
-                    <span className="text-3xl">🍽️</span>
+                    <span aria-hidden="true" className="text-3xl">🍽️</span>
                   </div>
                 )}
                 <div className="p-4">
@@ -200,7 +239,7 @@ export default function LibraryPage() {
                     <h3 className="font-semibold text-white text-lg leading-tight group-hover:text-orange-300 transition">
                       {place.name}
                     </h3>
-                    <span className="text-white/40 text-xs whitespace-nowrap pt-1">
+                    <span className="text-white/50 text-xs whitespace-nowrap pt-1">
                       {place.distanceKm} km
                     </span>
                   </div>
