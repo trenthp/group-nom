@@ -86,7 +86,7 @@ export default function EnrichmentForm({
   const hasChanges = favoriteDishes.length > 0 || goodFor.length > 0
 
   return (
-    <div className="bg-[#333333] rounded-2xl overflow-hidden max-w-md mx-auto">
+    <div className="bg-surface-card rounded-2xl overflow-hidden max-w-md mx-auto">
       {/* Header */}
       <div className="px-6 pt-6 pb-4 border-b border-white/10">
         <h2 className="text-xl font-bold text-white">Your nomination is live! 🎉</h2>

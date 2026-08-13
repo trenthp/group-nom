@@ -101,23 +101,23 @@ export default function NominatePage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#EA4D19] border-t-transparent" />
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-brand border-t-transparent" />
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <h2 className="text-2xl font-bold text-white mb-4">Sign In Required</h2>
           <p className="text-white/60 mb-6">
             You need to be signed in to nominate restaurants.
           </p>
           <button
             onClick={() => router.push('/sign-in')}
-            className="px-6 py-3 bg-[#EA4D19] text-white rounded-lg font-semibold hover:bg-orange-600 transition"
+            className="px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-hover transition"
           >
             Sign In
           </button>
@@ -128,8 +128,8 @@ export default function NominatePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <h2 className="text-2xl font-bold text-white mb-4">Error</h2>
           <p className="text-white/60 mb-6">{error}</p>
           <button
@@ -145,14 +145,14 @@ export default function NominatePage() {
 
   if (step === 'loading' || !restaurant) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#EA4D19] border-t-transparent" />
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-brand border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#222222] py-8 px-4">
+    <div className="min-h-screen bg-surface-page py-8 px-4">
       <div className="max-w-md mx-auto">
         {/* Back button */}
         <button
@@ -179,7 +179,7 @@ export default function NominatePage() {
         )}
 
         {step === 'success' && (
-          <div className="bg-[#333333] rounded-2xl overflow-hidden">
+          <div className="bg-surface-card rounded-2xl overflow-hidden">
             {/* Success Header */}
             <div className="bg-green-500/15 border-b border-green-500/20 px-6 py-8 text-center">
               <div className="text-5xl mb-4">🎉</div>
@@ -232,7 +232,7 @@ export default function NominatePage() {
               <div className="space-y-3">
                 <button
                   onClick={handleDone}
-                  className="w-full px-6 py-3 bg-[#EA4D19] text-white rounded-lg font-semibold hover:bg-orange-600 transition"
+                  className="w-full px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-hover transition"
                 >
                   Done
                 </button>

@@ -675,7 +675,7 @@ export default function ResultsPage({
 
           {/* Conversion Prompt for Anonymous Users */}
           {isLoaded && !isSignedIn && (
-            <div className="bg-[#333333] rounded-xl p-5 mb-6 border border-white/10">
+            <div className="bg-surface-card rounded-xl p-5 mb-6 border border-white/10">
               <div className="mb-4">
                 <h4 className="font-bold text-white text-lg mb-1">
                   Want more from Group Nom?
@@ -688,30 +688,30 @@ export default function ResultsPage({
               {/* Benefits list */}
               <ul className="space-y-2 mb-4">
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   Save your favorite restaurants
                 </li>
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   Discover new spots on your own
                 </li>
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   Create & manage your own groups
                 </li>
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   See what locals love near you
                 </li>
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   Boost your local favorites for others to discover
                 </li>
               </ul>
 
               <Link
                 href="/sign-up"
-                className="block w-full bg-[#EA4D19] text-white font-semibold py-3 rounded-lg text-center hover:bg-orange-600 transition"
+                className="block w-full bg-brand text-white font-semibold py-3 rounded-lg text-center hover:bg-brand-hover transition"
               >
                 Create Free Account
               </Link>

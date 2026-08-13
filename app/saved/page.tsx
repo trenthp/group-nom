@@ -80,7 +80,7 @@ export default function SavedPage() {
   // Auth loading
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent" />
       </div>
     )
@@ -89,10 +89,10 @@ export default function SavedPage() {
   // Not signed in
   if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-[#EA4D19]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UtensilsIcon size={32} className="text-[#EA4D19]" />
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-brand/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UtensilsIcon size={32} className="text-brand" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
             Your Saved Places
@@ -101,7 +101,7 @@ export default function SavedPage() {
             Sign in to save your favorite restaurants and access them anytime.
           </p>
           <SignInButton mode="modal">
-            <button className="bg-[#EA4D19] text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition">
+            <button className="bg-brand text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-hover transition">
               Sign In to Get Started
             </button>
           </SignInButton>
@@ -113,7 +113,7 @@ export default function SavedPage() {
   // Loading state
   if (state.loading && state.favorites.length === 0) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent mx-auto mb-4" />
           <p className="text-white/60">Loading your favorites...</p>
@@ -125,12 +125,12 @@ export default function SavedPage() {
   // Error state
   if (state.error && state.favorites.length === 0) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <p className="text-red-400 mb-4">{state.error}</p>
           <button
             onClick={() => fetchFavorites()}
-            className="bg-[#EA4D19] text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition"
+            className="bg-brand text-white px-6 py-2 rounded-lg font-medium hover:bg-brand-hover transition"
           >
             Try Again
           </button>
@@ -142,10 +142,10 @@ export default function SavedPage() {
   // Empty state
   if (state.favorites.length === 0) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-[#EA4D19]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UtensilsIcon size={32} className="text-[#EA4D19]" />
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-brand/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UtensilsIcon size={32} className="text-brand" />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">
             No favorites yet
@@ -155,7 +155,7 @@ export default function SavedPage() {
           </p>
           <Link
             href="/discover"
-            className="inline-block bg-[#EA4D19] text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition"
+            className="inline-block bg-brand text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-hover transition"
           >
             Start Discovering
           </Link>
@@ -165,7 +165,7 @@ export default function SavedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#222222]">
+    <div className="min-h-screen bg-surface-page">
       {/* Header */}
       <header className="px-4 py-6">
         <div className="max-w-lg mx-auto">
@@ -194,7 +194,7 @@ export default function SavedPage() {
             <button
               onClick={() => fetchFavorites(state.offset)}
               disabled={state.loading}
-              className="bg-[#333333] text-[#EA4D19] px-6 py-2 rounded-lg font-medium border border-white/10 hover:bg-[#3a3a3a] transition disabled:opacity-50"
+              className="bg-surface-card text-brand px-6 py-2 rounded-lg font-medium border border-white/10 hover:bg-surface-card-hover transition disabled:opacity-50"
             >
               {state.loading ? 'Loading...' : 'Load More'}
             </button>
@@ -224,7 +224,7 @@ function FavoriteCard({
   const hasPhoto = false
 
   return (
-    <div className="bg-[#333333] rounded-xl overflow-hidden">
+    <div className="bg-surface-card rounded-xl overflow-hidden">
       {/* Photo Section - links to the restaurant's library page */}
       <Link href={`/restaurant/${favorite.localId}`} className="block relative">
         {hasPhoto ? (
@@ -326,7 +326,7 @@ function FavoriteCard({
             href={googleMapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 text-sm text-[#EA4D19] hover:text-orange-400 py-2.5 rounded-lg hover:bg-white/5 transition font-medium"
+            className="flex-1 flex items-center justify-center gap-2 text-sm text-brand hover:text-orange-400 py-2.5 rounded-lg hover:bg-white/5 transition font-medium"
           >
             <GoogleIcon />
             View on Google

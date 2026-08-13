@@ -74,18 +74,18 @@ export default function RestaurantPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#EA4D19] border-t-transparent" />
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-brand border-t-transparent" />
       </div>
     )
   }
 
   if (error || !restaurant) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <p className="text-white/60 mb-4">{error || 'Restaurant not found'}</p>
-          <Link href="/library" className="text-[#EA4D19] underline">Back to the Library</Link>
+          <Link href="/library" className="text-brand underline">Back to the Library</Link>
         </div>
       </div>
     )
@@ -95,7 +95,7 @@ export default function RestaurantPage() {
   const heroPhoto = restaurant.imageUrl || nominations[0]?.photoUrl
 
   return (
-    <div className="min-h-screen bg-[#222222]">
+    <div className="min-h-screen bg-surface-page">
       {/* Back navigation over the hero */}
       <button
         onClick={() => router.back()}
@@ -114,7 +114,7 @@ export default function RestaurantPage() {
             <span className="text-5xl">🍽️</span>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#222222] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-surface-page via-transparent to-transparent" />
       </div>
 
       <main className="max-w-lg mx-auto px-4 pb-24 -mt-10 relative">
@@ -145,7 +145,7 @@ export default function RestaurantPage() {
         </div>
 
         {/* Community signal + CTA */}
-        <div className="bg-[#333333] rounded-xl p-4 mb-6">
+        <div className="bg-surface-card rounded-xl p-4 mb-6">
           {nominationCount > 0 ? (
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <span className="inline-flex items-center gap-1.5 bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm font-semibold">
@@ -156,7 +156,7 @@ export default function RestaurantPage() {
               ) : (
                 <Link
                   href={`/nominate/${restaurantId}`}
-                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-[#EA4D19] text-white hover:bg-orange-600 transition"
+                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-brand text-white hover:bg-brand-hover transition"
                 >
                   I love it too
                 </Link>
@@ -169,7 +169,7 @@ export default function RestaurantPage() {
               </p>
               <Link
                 href={`/nominate/${restaurantId}`}
-                className="inline-block px-6 py-2.5 rounded-lg font-semibold bg-[#EA4D19] text-white hover:bg-orange-600 transition"
+                className="inline-block px-6 py-2.5 rounded-lg font-semibold bg-brand text-white hover:bg-brand-hover transition"
               >
                 ❤️ Be the first to nominate it
               </Link>
@@ -179,7 +179,7 @@ export default function RestaurantPage() {
 
         {/* Completeness (only shows once nominated) */}
         {completeness.hasNominations && (
-          <div className="bg-[#333333] rounded-xl p-4 mb-6">
+          <div className="bg-surface-card rounded-xl p-4 mb-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-white/70 text-sm font-medium">Page completeness</span>
               <span className="text-white/50 text-sm">{completeness.completenessScore}%</span>
@@ -188,7 +188,7 @@ export default function RestaurantPage() {
               <div
                 className={`h-full rounded-full transition-all ${
                   completeness.completenessScore >= 80 ? 'bg-green-500'
-                  : completeness.completenessScore >= 40 ? 'bg-[#EA4D19]'
+                  : completeness.completenessScore >= 40 ? 'bg-brand'
                   : 'bg-amber-500'
                 }`}
                 style={{ width: `${completeness.completenessScore}%` }}
@@ -201,7 +201,7 @@ export default function RestaurantPage() {
         )}
 
         {/* The facts (community-maintained) */}
-        <div className="bg-[#333333] rounded-xl p-4 mb-6">
+        <div className="bg-surface-card rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-white font-semibold">The Facts</h2>
             {isSignedIn && !editingFacts && (
@@ -265,7 +265,7 @@ export default function RestaurantPage() {
             </h2>
             <div className="space-y-4">
               {nominations.map((nom) => (
-                <div key={nom.id} className="bg-[#333333] rounded-xl overflow-hidden">
+                <div key={nom.id} className="bg-surface-card rounded-xl overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={nom.photoUrl} alt={`Photo by ${nom.user?.displayName ?? 'a community member'}`} className="w-full h-48 object-cover" />
                   <div className="p-4">

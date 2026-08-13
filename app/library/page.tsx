@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { LocationIcon } from '@/components/icons'
+import { Spinner, NominationBadge } from '@/components/ui'
 import type { LibraryEntry } from '@/lib/restaurantDiscovery'
 
 type LibraryPhase = 'locating' | 'manual-location' | 'loading' | 'ready' | 'error'
@@ -78,7 +79,7 @@ export default function LibraryPage() {
   }, [locationQuery, loadLibrary])
 
   return (
-    <div className="min-h-screen bg-[#222222]">
+    <div className="min-h-screen bg-surface-page">
       {/* Header - matches app's dark page pattern */}
       <header className="px-4 py-6">
         <div className="max-w-lg mx-auto">
@@ -106,7 +107,7 @@ export default function LibraryPage() {
         {(phase === 'locating' || phase === 'loading') && (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#EA4D19] border-t-transparent mx-auto mb-4" />
+              <Spinner size="lg" className="h-10 w-10 mx-auto mb-4" />
               <p className="text-white/60">
                 {phase === 'locating' ? 'Finding your area...' : 'Opening the library...'}
               </p>
@@ -126,12 +127,12 @@ export default function LibraryPage() {
               onKeyDown={(e) => e.key === 'Enter' && handleManualLocation()}
               placeholder="City or zip code..."
               autoFocus
-              className="w-full px-4 py-3 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:border-[#EA4D19]"
+              className="w-full px-4 py-3 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:border-brand"
             />
             {locationError && <p role="alert" className="text-red-400 text-sm">{locationError}</p>}
             <button
               onClick={handleManualLocation}
-              className="w-full px-6 py-3 rounded-xl font-bold bg-[#EA4D19] text-white hover:bg-orange-600 transition"
+              className="w-full px-6 py-3 rounded-xl font-bold bg-brand text-white hover:bg-brand-hover transition"
             >
               Browse the Library
             </button>
@@ -163,7 +164,7 @@ export default function LibraryPage() {
             <div className="space-y-3">
               <Link
                 href="/discover"
-                className="block w-full px-6 py-3 rounded-xl font-bold bg-[#EA4D19] text-white hover:bg-orange-600 transition"
+                className="block w-full px-6 py-3 rounded-xl font-bold bg-brand text-white hover:bg-brand-hover transition"
               >
                 Discover Places Near You
               </Link>
@@ -180,7 +181,7 @@ export default function LibraryPage() {
               <Link
                 key={place.id}
                 href={`/restaurant/${place.id}`}
-                className="bg-[#333333] rounded-xl overflow-hidden hover:bg-[#3a3a3a] transition group"
+                className="bg-surface-card rounded-xl overflow-hidden hover:bg-surface-card-hover transition group"
               >
                 {place.photoUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
@@ -205,9 +206,7 @@ export default function LibraryPage() {
                   </div>
                   <p className="text-white/50 text-sm mb-2">{place.address}</p>
 
-                  <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-300 px-2.5 py-0.5 rounded-full text-xs font-semibold mb-2">
-                    ❤️ {place.nominationCount} nomination{place.nominationCount === 1 ? '' : 's'}
-                  </span>
+                  <NominationBadge count={place.nominationCount} className="mb-2" />
 
                   {place.favoriteDishes.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-1">

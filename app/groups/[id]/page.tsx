@@ -132,7 +132,7 @@ export default function GroupDetailPage({
   // Loading
   if (!isLoaded || state.loading) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent" />
       </div>
     )
@@ -141,12 +141,12 @@ export default function GroupDetailPage({
   // Error
   if (state.error) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <p className="text-red-400 mb-4">{state.error}</p>
           <Link
             href="/groups"
-            className="inline-block bg-[#EA4D19] text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition"
+            className="inline-block bg-brand text-white px-6 py-2 rounded-lg font-medium hover:bg-brand-hover transition"
           >
             Back to Groups
           </Link>
@@ -160,11 +160,11 @@ export default function GroupDetailPage({
   const isOwner = state.group.ownerId === user?.id
 
   return (
-    <div className="min-h-screen bg-[#222222]">
+    <div className="min-h-screen bg-surface-page">
       {/* Header */}
       <header className="px-4 py-6">
         <div className="max-w-lg mx-auto">
-          <Link href="/groups" className="text-[#EA4D19] text-sm mb-2 inline-block hover:text-orange-400 transition">
+          <Link href="/groups" className="text-brand text-sm mb-2 inline-block hover:text-orange-400 transition">
             ← Back to Groups
           </Link>
           {editing ? (
@@ -173,7 +173,7 @@ export default function GroupDetailPage({
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="flex-1 text-xl font-bold text-white border-b-2 border-[#EA4D19] outline-none bg-transparent"
+                className="flex-1 text-xl font-bold text-white border-b-2 border-brand outline-none bg-transparent"
                 maxLength={50}
                 autoFocus
               />
@@ -215,7 +215,7 @@ export default function GroupDetailPage({
 
       <main className="max-w-lg mx-auto px-4 pb-24 space-y-4">
         {/* Quick Actions */}
-        <div className="bg-[#333333] rounded-xl p-4">
+        <div className="bg-surface-card rounded-xl p-4">
           <Link
             href={`/setup?groupId=${id}`}
             className="flex items-center gap-3 text-green-400 hover:text-green-300"
@@ -232,7 +232,7 @@ export default function GroupDetailPage({
 
         {/* Invite Section (Owner only) */}
         {isOwner && state.inviteCode && (
-          <div className="bg-[#333333] rounded-xl p-4">
+          <div className="bg-surface-card rounded-xl p-4">
             <h2 className="font-semibold text-white mb-3">Invite Members</h2>
             <p className="text-sm text-white/60 mb-3">
               Share this link to invite friends to your group:
@@ -242,14 +242,14 @@ export default function GroupDetailPage({
                 type="text"
                 readOnly
                 value={`${typeof window !== 'undefined' ? window.location.origin : ''}/groups/join?code=${state.inviteCode}`}
-                className="flex-1 px-3 py-2 bg-[#222222] border border-white/10 rounded-lg text-sm text-white/70"
+                className="flex-1 px-3 py-2 bg-surface-page border border-white/10 rounded-lg text-sm text-white/70"
               />
               <button
                 onClick={handleCopyInvite}
                 className={`px-4 py-2 rounded-lg font-medium transition ${
                   copied
                     ? 'bg-green-500 text-white'
-                    : 'bg-[#EA4D19] text-white hover:bg-orange-600'
+                    : 'bg-brand text-white hover:bg-brand-hover'
                 }`}
               >
                 {copied ? 'Copied!' : 'Copy'}
@@ -259,7 +259,7 @@ export default function GroupDetailPage({
         )}
 
         {/* Members List */}
-        <div className="bg-[#333333] rounded-xl overflow-hidden">
+        <div className="bg-surface-card rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-white/10">
             <h2 className="font-semibold text-white">Members</h2>
           </div>
@@ -285,7 +285,7 @@ export default function GroupDetailPage({
                     <p className="font-medium text-white">
                       {member.displayName || 'Unknown User'}
                       {member.clerkUserId === state.group?.ownerId && (
-                        <span className="ml-2 text-xs bg-[#EA4D19]/20 text-[#EA4D19] px-2 py-0.5 rounded">
+                        <span className="ml-2 text-xs bg-brand/20 text-brand px-2 py-0.5 rounded">
                           Owner
                         </span>
                       )}

@@ -373,9 +373,9 @@ export default function DiscoverPage() {
   // Loading state (only during transitions)
   if (!isLoaded || state.loading) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="text-white text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#EA4D19] border-t-transparent mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand border-t-transparent mx-auto mb-4" />
           <p className="text-lg font-medium text-white/80">Finding restaurants near you...</p>
         </div>
       </div>
@@ -385,12 +385,12 @@ export default function DiscoverPage() {
   // Error state
   if (state.error) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <p className="text-red-400 text-lg mb-4">{state.error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="bg-[#EA4D19] text-white px-6 py-2 rounded-lg font-bold hover:bg-orange-600 transition"
+            className="bg-brand text-white px-6 py-2 rounded-lg font-bold hover:bg-brand-hover transition"
           >
             Try Again
           </button>
@@ -402,7 +402,7 @@ export default function DiscoverPage() {
   // Intro screen with card alignment animation
   if (state.phase === 'intro') {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
         <div className="text-center">
           {/* Animated card stack */}
           <div className="relative w-64 h-80 mx-auto mb-8">
@@ -455,7 +455,7 @@ export default function DiscoverPage() {
           {!state.locationDenied ? (
             <button
               onClick={handleStartSwiping}
-              className="px-8 py-4 rounded-2xl font-bold text-lg transition-all bg-[#EA4D19] text-white hover:scale-105 shadow-lg"
+              className="px-8 py-4 rounded-2xl font-bold text-lg transition-all bg-brand text-white hover:scale-105 shadow-lg"
             >
               Start Swiping
             </button>
@@ -475,7 +475,7 @@ export default function DiscoverPage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleManualLocation()}
                 placeholder="City or zip code..."
                 autoFocus
-                className="w-full px-4 py-3 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:border-[#EA4D19]"
+                className="w-full px-4 py-3 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:border-brand"
               />
               {locationError && (
                 <p role="alert" className="text-red-400 text-sm">{locationError}</p>
@@ -483,7 +483,7 @@ export default function DiscoverPage() {
               <button
                 onClick={handleManualLocation}
                 disabled={geocoding}
-                className="w-full px-8 py-3 rounded-xl font-bold text-lg transition-all bg-[#EA4D19] text-white hover:bg-orange-600 disabled:opacity-50 shadow-lg"
+                className="w-full px-8 py-3 rounded-xl font-bold text-lg transition-all bg-brand text-white hover:bg-brand-hover disabled:opacity-50 shadow-lg"
               >
                 {geocoding ? 'Finding...' : 'Start Swiping'}
               </button>
@@ -503,8 +503,8 @@ export default function DiscoverPage() {
   // Batch complete screen - shown after every 10 cards
   if (state.phase === 'batch-complete') {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <div className="text-5xl mb-4">
             {state.likedCount > 0 ? '🎉' : '👀'}
           </div>
@@ -514,14 +514,14 @@ export default function DiscoverPage() {
           <p className="text-white/60 mb-2">
             You&apos;ve swiped through {state.seenCount} restaurants
           </p>
-          <p className="text-lg font-semibold text-[#EA4D19] mb-6">
+          <p className="text-lg font-semibold text-brand mb-6">
             {state.likedCount} liked so far
           </p>
 
           <div className="space-y-3">
             <button
               onClick={handleContinueSwiping}
-              className="w-full bg-[#EA4D19] text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-600 transition"
+              className="w-full bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-hover transition"
             >
               Continue Swiping
             </button>
@@ -551,8 +551,8 @@ export default function DiscoverPage() {
   // All done - no more restaurants
   if (state.phase === 'all-done' || state.noMoreRestaurants) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <div className="text-5xl mb-4">🍽️</div>
           <h2 className="text-2xl font-bold text-white mb-2">
             That&apos;s all for now!
@@ -578,7 +578,7 @@ export default function DiscoverPage() {
             {state.likedCount > 0 && (
               <button
                 onClick={handleDone}
-                className="w-full bg-[#EA4D19] text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-600 transition"
+                className="w-full bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-hover transition"
               >
                 View Saved Restaurants
               </button>
@@ -588,7 +588,7 @@ export default function DiscoverPage() {
               className={`w-full px-6 py-3 rounded-xl font-bold transition ${
                 state.likedCount > 0
                   ? 'bg-white/10 text-white hover:bg-white/20'
-                  : 'bg-[#EA4D19] text-white hover:bg-orange-600'
+                  : 'bg-brand text-white hover:bg-brand-hover'
               }`}
             >
               Start Over

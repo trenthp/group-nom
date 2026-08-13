@@ -9,11 +9,11 @@ export default function PrivacyPolicyPage() {
   const lastUpdated = 'January 2025'
 
   return (
-    <div className="min-h-screen bg-[#222222]">
+    <div className="min-h-screen bg-surface-page">
       {/* Header */}
       <header className="px-4 py-6 border-b border-white/10">
         <div className="max-w-2xl mx-auto">
-          <Link href="/" className="text-[#EA4D19] text-sm hover:text-orange-400 transition">
+          <Link href="/" className="text-brand text-sm hover:text-orange-400 transition">
             ← Back to Group Nom
           </Link>
         </div>
@@ -103,16 +103,16 @@ export default function PrivacyPolicyPage() {
             <ul>
               <li>
                 <strong>Clerk</strong> — Authentication and user management.
-                See <a href="https://clerk.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[#EA4D19] hover:underline">Clerk's Privacy Policy</a>
+                See <a href="https://clerk.com/privacy" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Clerk's Privacy Policy</a>
               </li>
               <li>
                 <strong>Google Maps Platform</strong> — Restaurant data and maps.
-                See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[#EA4D19] hover:underline">Google's Privacy Policy</a> and{' '}
-                <a href="https://maps.google.com/help/terms_maps/" target="_blank" rel="noopener noreferrer" className="text-[#EA4D19] hover:underline">Google Maps Terms</a>
+                See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Google's Privacy Policy</a> and{' '}
+                <a href="https://maps.google.com/help/terms_maps/" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Google Maps Terms</a>
               </li>
               <li>
                 <strong>Vercel</strong> — Hosting and analytics.
-                See <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-[#EA4D19] hover:underline">Vercel's Privacy Policy</a>
+                See <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Vercel's Privacy Policy</a>
               </li>
             </ul>
           </Section>
@@ -174,7 +174,7 @@ export default function PrivacyPolicyPage() {
             <p>
               If you have questions about this Privacy Policy or your data, contact us at:
             </p>
-            <p className="text-[#EA4D19]">hello@groupnom.com</p>
+            <p className="text-brand">hello@groupnom.com</p>
           </Section>
         </div>
 

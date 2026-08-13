@@ -48,7 +48,7 @@ export default function CoNominators({
           {displayedAvatars.map((nominator, index) => (
             <div
               key={nominator.clerkUserId}
-              className="w-8 h-8 rounded-full border-2 border-[#333333] overflow-hidden bg-white/20"
+              className="w-8 h-8 rounded-full border-2 border-surface-card overflow-hidden bg-white/20"
               style={{ zIndex: displayedAvatars.length - index }}
               title={nominator.displayName || 'Local nominator'}
             >
@@ -66,7 +66,7 @@ export default function CoNominators({
             </div>
           ))}
           {remainingCount > 0 && (
-            <div className="w-8 h-8 rounded-full border-2 border-[#333333] bg-white/15 flex items-center justify-center text-xs font-medium text-white/70">
+            <div className="w-8 h-8 rounded-full border-2 border-surface-card bg-white/15 flex items-center justify-center text-xs font-medium text-white/70">
               +{remainingCount}
             </div>
           )}

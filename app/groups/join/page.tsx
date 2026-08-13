@@ -57,12 +57,12 @@ function JoinGroupContent() {
   // No code provided
   if (!code) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <p className="text-red-400 mb-4">Invalid invite link</p>
           <Link
             href="/groups"
-            className="inline-block bg-[#EA4D19] text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition"
+            className="inline-block bg-brand text-white px-6 py-2 rounded-lg font-medium hover:bg-brand-hover transition"
           >
             Go to Groups
           </Link>
@@ -74,7 +74,7 @@ function JoinGroupContent() {
   // Not loaded yet
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent" />
       </div>
     )
@@ -83,9 +83,9 @@ function JoinGroupContent() {
   // Not signed in
   if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-[#EA4D19]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-brand/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <UsersIcon />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
@@ -95,7 +95,7 @@ function JoinGroupContent() {
             Sign in to join this group and start voting on restaurants together!
           </p>
           <SignInButton mode="modal">
-            <button className="bg-[#EA4D19] text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition">
+            <button className="bg-brand text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-hover transition">
               Sign In to Join
             </button>
           </SignInButton>
@@ -107,7 +107,7 @@ function JoinGroupContent() {
   // Loading / Joining
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent mx-auto mb-4" />
           <p className="text-white/60">Joining group...</p>
@@ -119,8 +119,8 @@ function JoinGroupContent() {
   // Success
   if (success) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckIcon />
           </div>
@@ -138,13 +138,13 @@ function JoinGroupContent() {
   // Error
   if (error) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <p className="text-red-400 mb-4">{error}</p>
           <div className="space-x-3">
             <button
               onClick={joinGroup}
-              className="bg-[#EA4D19] text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition"
+              className="bg-brand text-white px-6 py-2 rounded-lg font-medium hover:bg-brand-hover transition"
             >
               Try Again
             </button>
@@ -167,7 +167,7 @@ export default function JoinGroupPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+        <div className="min-h-screen bg-surface-page flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent" />
         </div>
       }
@@ -179,7 +179,7 @@ export default function JoinGroupPage() {
 
 function UsersIcon() {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#EA4D19]">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />

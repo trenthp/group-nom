@@ -27,7 +27,7 @@ export default function CookieConsent() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 pb-safe">
-      <div className="max-w-lg mx-auto bg-[#333333] rounded-xl shadow-xl border border-white/10 p-4">
+      <div className="max-w-lg mx-auto bg-surface-card rounded-xl shadow-xl border border-white/10 p-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex-1">
             <p className="text-white text-sm">
@@ -35,14 +35,14 @@ export default function CookieConsent() {
             </p>
             <Link
               href="/privacy"
-              className="text-[#EA4D19] text-sm hover:underline"
+              className="text-brand text-sm hover:underline"
             >
               Learn more
             </Link>
           </div>
           <button
             onClick={handleAccept}
-            className="bg-[#EA4D19] text-white px-5 py-2 rounded-lg font-medium hover:bg-orange-600 transition text-sm whitespace-nowrap"
+            className="bg-brand text-white px-5 py-2 rounded-lg font-medium hover:bg-brand-hover transition text-sm whitespace-nowrap"
           >
             Got it
           </button>
