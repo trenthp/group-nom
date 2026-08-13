@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sessionStore } from '@/lib/sessionStore'
 import { getDiscoveryDeck } from '@/lib/restaurantDiscovery'
+import { reconfigureSessionSchema, parseBody } from '@/lib/validation'
 
 export async function POST(
   request: NextRequest,
@@ -8,14 +9,15 @@ export async function POST(
 ) {
   try {
     const { code } = await params
-    const { userId, filters, location } = await request.json()
 
-    if (!userId || !filters || !location) {
+    const parsed = await parseBody(request, reconfigureSessionSchema)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: parsed.error },
         { status: 400 }
       )
     }
+    const { userId, filters, location } = parsed.data
 
     const session = await sessionStore.getSession(code)
 

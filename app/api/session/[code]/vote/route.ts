@@ -34,6 +34,14 @@ export async function POST(
       )
     }
 
+    // Only session members can vote
+    if (!session.users.includes(userId)) {
+      return NextResponse.json(
+        { error: 'You must join the session before voting' },
+        { status: 403 }
+      )
+    }
+
     // Add vote
     await sessionStore.addVote(code, userId, restaurantId, liked)
 
