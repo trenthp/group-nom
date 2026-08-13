@@ -48,7 +48,7 @@ export default function CoNominators({
           {displayedAvatars.map((nominator, index) => (
             <div
               key={nominator.clerkUserId}
-              className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-gray-200"
+              className="w-8 h-8 rounded-full border-2 border-[#333333] overflow-hidden bg-white/20"
               style={{ zIndex: displayedAvatars.length - index }}
               title={nominator.displayName || 'Local nominator'}
             >
@@ -59,14 +59,14 @@ export default function CoNominators({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs font-medium">
+                <div className="w-full h-full flex items-center justify-center text-white/60 text-xs font-medium">
                   {nominator.displayName?.charAt(0)?.toUpperCase() || '?'}
                 </div>
               )}
             </div>
           ))}
           {remainingCount > 0 && (
-            <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600">
+            <div className="w-8 h-8 rounded-full border-2 border-[#333333] bg-white/15 flex items-center justify-center text-xs font-medium text-white/70">
               +{remainingCount}
             </div>
           )}
@@ -74,7 +74,7 @@ export default function CoNominators({
       )}
 
       {/* Message */}
-      <span className="text-sm text-gray-600">{getMessage()}</span>
+      <span className="text-sm text-white/60">{getMessage()}</span>
     </div>
   )
 }

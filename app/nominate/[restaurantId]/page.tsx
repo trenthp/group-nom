@@ -101,23 +101,23 @@ export default function NominatePage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
+      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#EA4D19] border-t-transparent" />
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Sign In Required</h2>
-          <p className="text-gray-600 mb-6">
+      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
+        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Sign In Required</h2>
+          <p className="text-white/60 mb-6">
             You need to be signed in to nominate restaurants.
           </p>
           <button
             onClick={() => router.push('/sign-in')}
-            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold"
+            className="px-6 py-3 bg-[#EA4D19] text-white rounded-lg font-semibold hover:bg-orange-600 transition"
           >
             Sign In
           </button>
@@ -128,13 +128,13 @@ export default function NominatePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
+        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Error</h2>
+          <p className="text-white/60 mb-6">{error}</p>
           <button
             onClick={() => router.back()}
-            className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold"
+            className="px-6 py-3 bg-white/10 text-white rounded-lg font-semibold hover:bg-white/20 transition"
           >
             Go Back
           </button>
@@ -145,19 +145,19 @@ export default function NominatePage() {
 
   if (step === 'loading' || !restaurant) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-        <div className="text-white text-lg">Loading restaurant...</div>
+      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#EA4D19] border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 py-8 px-4">
+    <div className="min-h-screen bg-[#222222] py-8 px-4">
       <div className="max-w-md mx-auto">
         {/* Back button */}
         <button
           onClick={handleCancel}
-          className="mb-4 text-white flex items-center gap-2 hover:opacity-80"
+          className="mb-4 text-white/60 flex items-center gap-2 hover:text-white transition"
         >
           ← Back
         </button>
@@ -179,24 +179,24 @@ export default function NominatePage() {
         )}
 
         {step === 'success' && (
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          <div className="bg-[#333333] rounded-2xl overflow-hidden">
             {/* Success Header */}
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-8 text-center">
+            <div className="bg-green-500/15 border-b border-green-500/20 px-6 py-8 text-center">
               <div className="text-5xl mb-4">🎉</div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 {existingNomination ? 'Already Nominated!' : 'Nomination Complete!'}
               </h2>
-              <p className="text-green-100">
+              <p className="text-green-300">
                 Thanks for sharing your local knowledge
               </p>
             </div>
 
             {/* Restaurant Info */}
             <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-2">
+              <h3 className="text-xl font-bold text-white mb-2">
                 {restaurant.name}
               </h3>
-              <p className="text-gray-600 text-sm mb-4">{restaurant.address}</p>
+              <p className="text-white/60 text-sm mb-4">{restaurant.address}</p>
 
               {/* Co-nominators */}
               {nominationCount > 0 && (
@@ -210,15 +210,15 @@ export default function NominatePage() {
 
               {/* Your nomination */}
               {nomination && (
-                <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-gray-500 mb-2">Your nomination:</p>
-                  <p className="text-gray-800 italic">"{nomination.whyILoveIt}"</p>
+                <div className="bg-white/5 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-white/50 mb-2">Your nomination:</p>
+                  <p className="text-white/90 italic">"{nomination.whyILoveIt}"</p>
                   {nomination.myFavoriteDishes && nomination.myFavoriteDishes.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {nomination.myFavoriteDishes.map((dish) => (
                         <span
                           key={dish}
-                          className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs"
+                          className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs"
                         >
                           {dish}
                         </span>
@@ -232,7 +232,7 @@ export default function NominatePage() {
               <div className="space-y-3">
                 <button
                   onClick={handleDone}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-600"
+                  className="w-full px-6 py-3 bg-[#EA4D19] text-white rounded-lg font-semibold hover:bg-orange-600 transition"
                 >
                   Done
                 </button>
@@ -240,7 +240,7 @@ export default function NominatePage() {
                 {!existingNomination && nomination && (
                   <button
                     onClick={() => setStep('enrichment')}
-                    className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
+                    className="w-full px-6 py-3 border border-white/20 text-white/70 rounded-lg font-medium hover:bg-white/5 transition"
                   >
                     Add More Details
                   </button>

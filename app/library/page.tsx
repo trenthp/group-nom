@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import Header from '@/components/Header'
 import { LocationIcon } from '@/components/icons'
 import type { LibraryEntry } from '@/lib/restaurantDiscovery'
 
@@ -80,13 +79,12 @@ export default function LibraryPage() {
 
   return (
     <div className="min-h-screen bg-[#222222]">
-      <Header />
-
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white">The Library</h1>
-          <p className="text-white/50 mt-1">
-            Places people here love — every spot was nominated by someone who wanted you to know about it.
+      {/* Header - matches app's dark page pattern */}
+      <header className="px-4 py-6">
+        <div className="max-w-lg mx-auto">
+          <h1 className="text-xl font-bold text-white">The Library</h1>
+          <p className="text-sm text-white/50">
+            Places locals love, nominated by the community
           </p>
           {locationName && (
             <p className="text-white/40 text-sm mt-2 flex items-center gap-1">
@@ -101,6 +99,9 @@ export default function LibraryPage() {
             </p>
           )}
         </div>
+      </header>
+
+      <main className="max-w-lg mx-auto px-4 pb-24">
 
         {(phase === 'locating' || phase === 'loading') && (
           <div className="flex items-center justify-center py-20">
@@ -174,7 +175,7 @@ export default function LibraryPage() {
         )}
 
         {phase === 'ready' && places.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-4">
             {places.map((place) => (
               <Link
                 key={place.id}

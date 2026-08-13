@@ -108,18 +108,18 @@ export default function QuickCaptureForm({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md mx-auto">
+    <div className="bg-[#333333] rounded-2xl overflow-hidden max-w-md mx-auto">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4">
+      <div className="px-6 pt-6 pb-4 border-b border-white/10">
         <h2 className="text-xl font-bold text-white">Nominate This Spot</h2>
-        <p className="text-orange-100 text-sm">{restaurant.name}</p>
+        <p className="text-[#EA4D19] text-sm font-medium">{restaurant.name}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         {/* Photo Upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Add a Photo <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            Add a Photo <span className="text-red-400">*</span>
           </label>
 
           {photoPreview ? (
@@ -147,14 +147,14 @@ export default function QuickCaptureForm({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-orange-400 hover:text-orange-500 transition"
+              className="w-full h-48 border-2 border-dashed border-white/20 rounded-lg flex flex-col items-center justify-center text-white/40 hover:border-[#EA4D19] hover:text-[#EA4D19] transition"
             >
               <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               <span className="text-sm font-medium">Tap to add photo</span>
-              <span className="text-xs text-gray-400 mt-1">Share your experience</span>
+              <span className="text-xs text-white/30 mt-1">Share your experience</span>
             </button>
           )}
 
@@ -169,8 +169,8 @@ export default function QuickCaptureForm({
 
         {/* Why I Love It */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Why do you love this place? <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-white/70 mb-2">
+            Why do you love this place? <span className="text-red-400">*</span>
           </label>
           <textarea
             value={whyILoveIt}
@@ -178,16 +178,16 @@ export default function QuickCaptureForm({
             placeholder="The tacos here are incredible, especially the al pastor..."
             rows={3}
             maxLength={500}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+            className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/40 border border-white/20 rounded-lg focus:outline-none focus:border-[#EA4D19] resize-none"
           />
-          <p className="text-xs text-gray-400 mt-1 text-right">
+          <p className="text-xs text-white/40 mt-1 text-right">
             {whyILoveIt.length}/500
           </p>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-red-500/20 text-red-300 px-4 py-3 rounded-lg text-sm" role="alert">
             {error}
           </div>
         )}
@@ -198,14 +198,14 @@ export default function QuickCaptureForm({
             type="button"
             onClick={onCancel}
             disabled={isUploading}
-            className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50"
+            className="flex-1 px-4 py-3 border border-white/20 text-white/70 rounded-lg font-medium hover:bg-white/5 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isUploading || !photoFile || whyILoveIt.trim().length < 10}
-            className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium hover:from-orange-600 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-3 bg-[#EA4D19] text-white rounded-lg font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUploading ? 'Nominating...' : 'Nominate'}
           </button>

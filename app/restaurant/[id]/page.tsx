@@ -1,13 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
-import Header from '@/components/Header'
-import CompletenessBar from '@/components/restaurant/CompletenessBar'
 import FactualDataForm from '@/components/restaurant/FactualDataForm'
-import { calculateCompleteness } from '@/lib/completeness'
+import { calculateCompleteness, getMissingFieldsDescription } from '@/lib/completeness'
 import { LocationIcon } from '@/components/icons'
 import type { Restaurant, Nomination, RestaurantEnrichment } from '@/lib/types'
 
@@ -21,6 +19,7 @@ function formatDate(date: string | Date): string {
 
 export default function RestaurantPage() {
   const params = useParams()
+  const router = useRouter()
   const { isSignedIn } = useUser()
   const restaurantId = params.id as string
 
@@ -75,20 +74,16 @@ export default function RestaurantPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#222222]">
-        <Header />
-        <div className="flex items-center justify-center py-32">
-          <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#EA4D19] border-t-transparent" />
-        </div>
+      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#EA4D19] border-t-transparent" />
       </div>
     )
   }
 
   if (error || !restaurant) {
     return (
-      <div className="min-h-screen bg-[#222222]">
-        <Header />
-        <div className="text-center py-32">
+      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
+        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
           <p className="text-white/60 mb-4">{error || 'Restaurant not found'}</p>
           <Link href="/library" className="text-[#EA4D19] underline">Back to the Library</Link>
         </div>
@@ -101,7 +96,13 @@ export default function RestaurantPage() {
 
   return (
     <div className="min-h-screen bg-[#222222]">
-      <Header />
+      {/* Back navigation over the hero */}
+      <button
+        onClick={() => router.back()}
+        className="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm hover:bg-black/60 transition"
+      >
+        ← Back
+      </button>
 
       {/* Hero */}
       <div className="relative">
@@ -116,7 +117,7 @@ export default function RestaurantPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#222222] via-transparent to-transparent" />
       </div>
 
-      <main className="max-w-2xl mx-auto px-4 pb-12 -mt-10 relative">
+      <main className="max-w-lg mx-auto px-4 pb-24 -mt-10 relative">
         {/* Title block */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-white mb-1">{restaurant.name}</h1>
@@ -178,8 +179,24 @@ export default function RestaurantPage() {
 
         {/* Completeness (only shows once nominated) */}
         {completeness.hasNominations && (
-          <div className="bg-white rounded-xl p-4 mb-6">
-            <CompletenessBar completeness={completeness} />
+          <div className="bg-[#333333] rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-white/70 text-sm font-medium">Page completeness</span>
+              <span className="text-white/50 text-sm">{completeness.completenessScore}%</span>
+            </div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  completeness.completenessScore >= 80 ? 'bg-green-500'
+                  : completeness.completenessScore >= 40 ? 'bg-[#EA4D19]'
+                  : 'bg-amber-500'
+                }`}
+                style={{ width: `${completeness.completenessScore}%` }}
+              />
+            </div>
+            {completeness.completenessScore < 100 && (
+              <p className="text-white/40 text-xs mt-2">{getMissingFieldsDescription(completeness)}</p>
+            )}
           </div>
         )}
 
@@ -198,18 +215,16 @@ export default function RestaurantPage() {
           </div>
 
           {editingFacts ? (
-            <div className="bg-white rounded-lg p-4">
-              <FactualDataForm
-                restaurantId={restaurantId}
-                restaurantName={restaurant.name}
-                existingData={enrichment}
-                onSuccess={(updated) => {
-                  setEnrichment(updated)
-                  setEditingFacts(false)
-                }}
-                onCancel={() => setEditingFacts(false)}
-              />
-            </div>
+            <FactualDataForm
+              restaurantId={restaurantId}
+              restaurantName={restaurant.name}
+              existingData={enrichment}
+              onSuccess={(updated) => {
+                setEnrichment(updated)
+                setEditingFacts(false)
+              }}
+              onCancel={() => setEditingFacts(false)}
+            />
           ) : (
             <div className="space-y-2 text-sm">
               {enrichment?.hoursNotes && (

@@ -86,17 +86,17 @@ export default function EnrichmentForm({
   const hasChanges = favoriteDishes.length > 0 || goodFor.length > 0
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-md mx-auto">
+    <div className="bg-[#333333] rounded-2xl overflow-hidden max-w-md mx-auto">
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
-        <h2 className="text-xl font-bold text-white">Your nomination is live!</h2>
-        <p className="text-green-100 text-sm">Want to add more details?</p>
+      <div className="px-6 pt-6 pb-4 border-b border-white/10">
+        <h2 className="text-xl font-bold text-white">Your nomination is live! 🎉</h2>
+        <p className="text-green-300 text-sm">Want to add more details?</p>
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         {/* Favorite Dishes */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-white/70 mb-2">
             Your favorite dishes
           </label>
           <div className="flex gap-2 mb-2">
@@ -112,7 +112,7 @@ export default function EnrichmentForm({
               }}
               placeholder="e.g., Al Pastor Tacos"
               maxLength={100}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="flex-1 px-4 py-2 bg-white/10 text-white placeholder-white/40 border border-white/20 rounded-lg focus:outline-none focus:border-green-400"
             />
             <button
               type="button"
@@ -129,13 +129,13 @@ export default function EnrichmentForm({
               {favoriteDishes.map((dish) => (
                 <span
                   key={dish}
-                  className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm"
+                  className="inline-flex items-center gap-1 bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm"
                 >
                   {dish}
                   <button
                     type="button"
                     onClick={() => handleRemoveDish(dish)}
-                    className="text-green-500 hover:text-green-700"
+                    className="text-green-400 hover:text-green-200"
                   >
                     ✕
                   </button>
@@ -143,14 +143,14 @@ export default function EnrichmentForm({
               ))}
             </div>
           )}
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-white/40 mt-1">
             {favoriteDishes.length}/10 dishes
           </p>
         </div>
 
         {/* Good For */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-white/70 mb-2">
             Good for
           </label>
           <div className="flex flex-wrap gap-2">
@@ -163,7 +163,7 @@ export default function EnrichmentForm({
                   px-3 py-2 rounded-lg text-sm font-medium transition
                   ${goodFor.includes(value)
                     ? 'bg-green-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-white/10 text-white/70 hover:bg-white/20'
                   }
                 `}
               >
@@ -175,7 +175,7 @@ export default function EnrichmentForm({
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-red-500/20 text-red-300 px-4 py-3 rounded-lg text-sm" role="alert">
             {error}
           </div>
         )}
@@ -186,14 +186,14 @@ export default function EnrichmentForm({
             type="button"
             onClick={onSkip}
             disabled={isSubmitting}
-            className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50"
+            className="flex-1 px-4 py-3 border border-white/20 text-white/70 rounded-lg font-medium hover:bg-white/5 disabled:opacity-50"
           >
             Maybe Later
           </button>
           <button
             type="submit"
             disabled={isSubmitting || !hasChanges}
-            className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Saving...' : 'Save Details'}
           </button>

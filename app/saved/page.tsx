@@ -225,14 +225,14 @@ function FavoriteCard({
 
   return (
     <div className="bg-[#333333] rounded-xl overflow-hidden">
-      {/* Photo Section */}
-      <div className="relative">
+      {/* Photo Section - links to the restaurant's library page */}
+      <Link href={`/restaurant/${favorite.localId}`} className="block relative">
         {hasPhoto ? (
           // Real photo would go here
           <div className="w-full h-40 bg-gray-700" />
         ) : (
           // Photo skeleton/placeholder
-          <div className="w-full h-32 bg-[#2a2a2a] flex items-center justify-center">
+          <div className="w-full h-32 bg-[#2a2a2a] flex items-center justify-center hover:bg-[#2e2e2e] transition">
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-2">
                 <CameraIcon className="text-white/20" />
@@ -246,14 +246,19 @@ function FavoriteCard({
         <div className="absolute top-3 right-3">
           <LocalBadge likeCount={favorite.likeCount} size="sm" />
         </div>
-      </div>
+      </Link>
 
       {/* Content */}
       <div className="p-4">
         {/* Header: Name & Location */}
         <div className="mb-3">
           <h3 className="font-semibold text-white text-lg leading-tight">
-            {favorite.restaurantName}
+            <Link
+              href={`/restaurant/${favorite.localId}`}
+              className="hover:text-orange-300 transition"
+            >
+              {favorite.restaurantName}
+            </Link>
           </h3>
           {favorite.restaurantCity && (
             <p className="text-sm text-white/50 flex items-center gap-1 mt-1">
@@ -265,12 +270,12 @@ function FavoriteCard({
 
         {/* Nominate CTA - you saved it because you love it; tell the community why */}
         <div className="mb-3">
-          <a
+          <Link
             href={`/nominate/${favorite.localId}`}
             className="inline-flex items-center gap-1.5 bg-green-500/20 text-green-300 hover:bg-green-500/30 px-3 py-1.5 rounded-full text-sm font-semibold transition"
           >
             ❤️ Nominate this spot
-          </a>
+          </Link>
         </div>
 
         {/* Categories */}
