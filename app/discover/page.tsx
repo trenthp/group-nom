@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { Restaurant } from '@/lib/types'
 import RestaurantCard from '@/components/RestaurantCard'
@@ -535,9 +536,9 @@ export default function DiscoverPage() {
           {!isSignedIn && state.likedCount > 0 && (
             <div className="mt-4 bg-amber-500/20 border border-amber-500/30 rounded-xl p-3">
               <p className="text-amber-200 text-sm">
-                <a href="/sign-in?redirect_url=/discover" className="font-semibold underline">
+                <Link href="/sign-in?redirect_url=/discover" className="font-semibold underline">
                   Sign in
-                </a>
+                </Link>
                 {' '}to save your favorites permanently
               </p>
             </div>
@@ -565,12 +566,12 @@ export default function DiscoverPage() {
               <p className="text-amber-200 text-sm font-medium">
                 Sign in to save your favorites!
               </p>
-              <a
+              <Link
                 href="/sign-in?redirect_url=/saved"
                 className="inline-block mt-2 text-amber-300 underline font-semibold"
               >
                 Sign In →
-              </a>
+              </Link>
             </div>
           )}
           <div className="space-y-3">
@@ -669,9 +670,9 @@ export default function DiscoverPage() {
         <div className="p-4 bg-white/10 backdrop-blur-sm">
           <p className="text-white text-center text-sm">
             Sign in to save your favorites! →{' '}
-            <a href="/sign-in" className="underline font-semibold">
+            <Link href="/sign-in" className="underline font-semibold">
               Sign In
-            </a>
+            </Link>
           </p>
         </div>
       )}

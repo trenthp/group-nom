@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import Link from 'next/link'
 import { useUser, SignInButton } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -59,12 +60,12 @@ function JoinGroupContent() {
       <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
         <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
           <p className="text-red-400 mb-4">Invalid invite link</p>
-          <a
+          <Link
             href="/groups"
             className="inline-block bg-[#EA4D19] text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition"
           >
             Go to Groups
-          </a>
+          </Link>
         </div>
       </div>
     )
@@ -147,12 +148,12 @@ function JoinGroupContent() {
             >
               Try Again
             </button>
-            <a
+            <Link
               href="/groups"
               className="inline-block px-6 py-2 border border-white/20 rounded-lg text-white/70 hover:bg-white/5 transition"
             >
               Go to Groups
-            </a>
+            </Link>
           </div>
         </div>
       </div>
