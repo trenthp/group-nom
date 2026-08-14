@@ -128,10 +128,14 @@ the library map popup, and the restaurant page.
    CARTO dark tiles) with a list/map toggle on `/library`. Import map pieces
    via the `components/map` barrel only — it exports just the SSR-safe
    entries; importing `RestaurantMap`/`RestaurantMarker` directly outside a
-   `ssr:false` dynamic breaks prerendering. Still unharvested from the `map`
-   branch: results-page decomposition (`components/results/` — needs
-   de-Googling), `RestaurantDetailSheet`, the dedicated geocode rate limiter
-   in middleware, and the session-flow (sunset) restyle onto kit variants.
+   `ssr:false` dynamic breaks prerendering. Also landed: results decomposed
+   into `components/results/` (sunset skin, positive-only, focus rings) and
+   the dedicated geocode rate limiter in middleware. Still unharvested from
+   the `map` branch: `RestaurantDetailSheet` (pairs with BottomSheet for
+   map-browse previews), and the rest of the session-flow restyle onto kit
+   variants (setup/voting screens still use raw sunset classes;
+   `RestaurantFilters` carries the components-defined-during-render lint
+   debt).
 2. **Deferred security items** (from `SECURITY_AUDIT.md`, all need design):
    - Host authorization trusts client-supplied `userId`; `hostId` is exposed
      to all session members via GET. Anonymous hosts have no Clerk identity,
