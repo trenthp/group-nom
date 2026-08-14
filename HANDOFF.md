@@ -116,24 +116,117 @@ Everything a user sees in the library, someone loved.
 Orlando, Aug 2026) exists in the DB and renders on the wall, the library list,
 the library map popup, and the restaurant page.
 
-## Product direction (decided Aug 13, 2026)
+## Product direction (decided Aug 13–14, 2026)
 
-The pivot's UX architecture is settled — see the "Library Loop" plan (Claude
-artifact) and `memory/product-direction.md`. Short version: the library is
-**members-only** (signed-out visitors get teased aggregates, never content);
-anonymous sessions are being **killed** (which also retires the host-auth
-security finding — host checks move server-side via Clerk `auth()`);
-attribution is **first name + last initial** on all community surfaces;
-"Saved" becomes the **try-list** in the core loop discover → try-list →
-visit → nominate → library. Build order: **Phase 0 structural ✅ complete**
-(member gates, attribution, sessions-require-auth — session identity is now
-the Clerk userId end to end; hostId is no longer exposed by the session GET,
-which returns a per-requester `isHost` flag) → search-first nominate +
-add-a-place → try-list + visit prompts → good-for/dish shelves → member
-shelves + OG sharing. Marketing rewrite can run parallel any time.
-NOTE: the signed-in session flow after the auth refactor has been verified
-by build + signed-out gate checks only — needs one human run-through
-(create → invite/join → vote → close → results).
+Full plan in the "Library Loop" Claude artifact and
+`memory/product-direction.md`. The product is an **ad-free, community-built
+list of the best local places**; joining means contributing. The experience
+is a **membership ladder**:
+
+**tease → join → contribute → belong**
+
+1. **Tease** (signed out): marketing pages only, with teased aggregates
+   ("23 places loved near Orlando" — counts, never names/photos/content).
+2. **Join** (member, not yet nominated): a limited taste of their local
+   area — **"Today's Five"**, a deterministic daily sample (seed = user +
+   local date, same five across list, map, and Discover all day; random
+   per-request would be scrapeable and make the map look broken). They CAN
+   save to the try-list (saving is intent, not access) and CAN join group
+   sessions with full decks (deliberate leak — sessions are the growth
+   engine).
+3. **Contribute**: the first published nomination unlocks the full library,
+   forever. Derive "unlocked" from `nomination_count > 0` — no separate flag.
+4. **Belong**: daily rhythm — drafts, follows, sessions.
+
+### Nomination mechanics
+- **One nomination per day**, resetting at the **user's local midnight**
+  (capture tz from the browser at publish time). Server-enforced.
+- **Drafts**: private nomination drafts, unlimited, one per user+restaurant.
+  Publishing a draft counts as the day's nomination. IMPORTANT: don't upload
+  draft photos to Blob at draft time — Vercel Blob URLs are public-if-known;
+  defer photo upload to publish.
+- **"Visit again first" is framing, not enforcement** (no geofencing/receipt
+  verification — privacy). The nominate flow asks "when were you last
+  there?": recent → proceed; been a while → "go support them again first"
+  and save as a draft. Drafts double as the revisit queue. The daily limit
+  pushes overflow into drafts → drafts + limit = the daily return loop
+  ("your next nomination unlocks tomorrow"). Say it out loud in the UX.
+- **Chains are soft-discouraged**, not blocked: the nominate search flags
+  known chains ("Group Nom is for local spots — this one has ~500
+  locations") using the existing chain-detection data, but lets a determined
+  member proceed.
+- Photo + why-I-love-it stay required. No ratings, no reviews, ever.
+
+### Follows (anti-clout by design)
+- Members can follow and be followed. Following delivers a home-feed section
+  ("Alex T. nominated Voodoo Bayou yesterday") and access to shelves.
+- **No follower/following counts or lists are ever displayed** — ranking
+  people by influence is the same disease as star ratings. Blocking must
+  exist (block = they can't follow you).
+
+### Trust-weighted ranking (internal only)
+- Wherever nominated places are ranked (library order, discovery decks,
+  Today's Five sampling, shelves), weight = nomination count **and the
+  quality of the nominating users**.
+- User quality is an **internal score, never displayed**, mixing:
+  **interaction** (engagement with the app), **nominations** (their
+  nomination history/completeness), and **followers**. The follower input
+  activates once follows ship; v1 of the score can run on the first two.
+
+### Session deck sources
+Host picks the deck source at setup:
+- **Group favorites** — only available when starting from a saved Group
+  (`/groups` roster): deck draws from that roster's nominations. (Decks are
+  built at creation, before ad-hoc joiners exist — that's why this mode is
+  roster-gated.)
+- **Library only** — nominated places from anyone.
+- **Mix** — current behavior: library + Overture seed, nominations weighted.
+
+### Also decided
+- Cold-start copy inversion: in an empty area the gate unlocks nothing, so
+  onboarding pitches mission instead ("be the first — put your town on the
+  map"). Choose the script by local library count; the teased-aggregate
+  number tells you which. The empty-but-joined screen is the highest-stakes
+  screen in the app — design it with care.
+- Moderation floor before growth features: report action on nominations,
+  admin remove (the `/admin` route exists, is empty), "report as closed"
+  that quietly hides a place (positive-only compatible). Count triggers
+  already handle deletes.
+- Ladder metrics from day one: join → first-nomination conversion, draft
+  publish rate, Today's Five open rate, follows per member, invites.
+
+### Schema implications (new tables/columns)
+`nomination_drafts` (user, gers_id, partial fields, no photo until publish),
+`follows` (+ blocks), per-user tz or tz-at-publish for the daily limit,
+internal trust-score storage (column or materialized), session metadata
+`deckSource`.
+
+### Build order
+**Phase 0 structural ✅ complete** (member gates; First L. attribution;
+sessions require sign-in — session identity is the Clerk userId end to end,
+host checks via `auth()`, GET returns per-requester `isHost`). NOTE: the
+signed-in session flow was verified by build + signed-out gate checks only —
+needs one human run-through (create → invite/join → vote → close → results).
+
+1. **The nomination system**: search-first nominate ("Nominate a spot" →
+   name search over seeded DB → confirm → photo/why) + add-a-place fallback;
+   recency question; drafts; one-per-day at local midnight; chain
+   soft-discourage; unlock-by-first-nomination.
+2. **The gate + Today's Five**: limited list/map/discover for
+   non-nominators; deterministic daily sample; onboarding both variants
+   (nominate-or-plan-a-visit, mission copy for empty areas); moderation
+   floor lands here too.
+3. **Follows + member shelves + home feed** (profiles with First L., shelf,
+   follow button; no counts anywhere).
+4. **Trust-weighted ranking** (all three score inputs now available; apply
+   to all surfacing).
+5. **Session deck sources** (group favorites / library only / mix).
+6. **Situational shelves** (good-for tags, dish shelves; seeded backfill
+   clearly separated) **+ OG-image sharing**.
+
+Parallel any time: marketing rewrite (hero = ad-free community library of
+loved local places; group voting is the second act; stale rating/price copy
+dies).
 
 ## Remaining work, in rough priority order
 
