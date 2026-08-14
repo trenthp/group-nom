@@ -134,8 +134,8 @@ Configured in `middleware.ts`, tiered anon/authenticated:
 ## Notes
 
 - Mobile-first design with swipe gestures for voting
-- Anonymous users get a generated ID stored in session
-- Host has elevated controls (start/stop voting, reconfigure)
+- Sessions require sign-in; identity is the Clerk userId, verified server-side
+- Host has elevated controls (start/stop voting, reconfigure); host checks use `auth()`, never client-supplied ids
 
 <!-- BEGIN:nextjs-agent-rules -->
 
