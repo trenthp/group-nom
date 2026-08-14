@@ -123,11 +123,13 @@ Required in `.env.local`:
 
 ## API Rate Limits
 
-Configured in `middleware.ts`:
-- Session creation: 5/min
-- Voting: 30/min
-- Restaurant search: 10/min
-- General API: 120/min
+Configured in `middleware.ts`, tiered anon/authenticated:
+- Session creation: 3/day anon, 10/day auth
+- Voting: 30/min anon, 60/min auth
+- Restaurant search: 5/min anon, 20/min auth
+- Geocoding: 20/min anon, 30/min auth
+- Photo upload: 30/hour (auth required)
+- General API: 60/min anon, 120/min auth
 
 ## Notes
 
