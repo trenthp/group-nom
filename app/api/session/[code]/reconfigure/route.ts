@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
 import { getDiscoveryDeck } from '@/lib/restaurantDiscovery'
 import { reconfigureSessionSchema, parseBody } from '@/lib/validation'
@@ -10,6 +11,15 @@ export async function POST(
   try {
     const { code } = await params
 
+    // Host identity is verified server-side, never trusted from the client
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Sign in required' },
+        { status: 401 }
+      )
+    }
+
     const parsed = await parseBody(request, reconfigureSessionSchema)
     if (!parsed.success) {
       return NextResponse.json(
@@ -17,7 +27,7 @@ export async function POST(
         { status: 400 }
       )
     }
-    const { userId, filters, location } = parsed.data
+    const { filters, location } = parsed.data
 
     const session = await sessionStore.getSession(code)
 

@@ -15,8 +15,7 @@ export default function SessionPage() {
   const router = useRouter()
   const sessionCode = params.code as string
 
-  const [userId, setUserId] = useState<string>('')
-  const [hostId, setHostId] = useState<string>('')
+  const [isHost, setIsHost] = useState(false)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -31,18 +30,8 @@ export default function SessionPage() {
   useEffect(() => {
     const initSession = async () => {
       try {
-        // Get or create user ID
-        const storedUserId = localStorage.getItem(`user-${sessionCode}`)
-        const newUserId = storedUserId || `user-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
-
-        if (!storedUserId) {
-          localStorage.setItem(`user-${sessionCode}`, newUserId)
-        }
-
-        setUserId(newUserId)
-
-        // Fetch session data from API
-        const response = await fetch(`/api/session/${sessionCode}?userId=${newUserId}`)
+        // Identity is server-side (Clerk) — fetching joins us into the session
+        const response = await fetch(`/api/session/${sessionCode}`)
 
         if (!response.ok) {
           if (response.status === 404) {
@@ -55,10 +44,7 @@ export default function SessionPage() {
 
         const data = await response.json()
 
-        // Set hostId from session data
-        if (data.session.hostId) {
-          setHostId(data.session.hostId)
-        }
+        setIsHost(!!data.session.isHost)
 
         // Set session created time for 60-minute expiration
         if (data.session.createdAt) {
@@ -96,9 +82,8 @@ export default function SessionPage() {
 
   // Poll for session status when pending (pauses when tab is hidden)
   const pollSessionReady = useCallback(async () => {
-    if (!userId) return
     try {
-      const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
+      const response = await fetch(`/api/session/${sessionCode}`)
       if (response.ok) {
         const data = await response.json()
 
@@ -115,20 +100,19 @@ export default function SessionPage() {
     } catch {
       // Silent retry on error
     }
-  }, [sessionCode, userId])
+  }, [sessionCode])
 
   usePollingWithVisibility(pollSessionReady, {
     intervalMs: 2000,
-    enabled: sessionStatus === 'pending' && !!userId,
+    enabled: sessionStatus === 'pending',
     immediate: true,
     sessionStartTime: sessionCreatedAt,
   })
 
   // Poll for session status during active voting to detect if session becomes finished (pauses when tab is hidden)
   const pollForFinished = useCallback(async () => {
-    if (!userId) return
     try {
-      const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
+      const response = await fetch(`/api/session/${sessionCode}`)
       if (response.ok) {
         const data = await response.json()
 
@@ -141,11 +125,11 @@ export default function SessionPage() {
     } catch {
       // Silent retry on error
     }
-  }, [sessionCode, userId])
+  }, [sessionCode])
 
   usePollingWithVisibility(pollForFinished, {
     intervalMs: 3000,
-    enabled: sessionStatus === 'active' && !!userId && !showingResults,
+    enabled: sessionStatus === 'active' && !showingResults,
     immediate: true,
     sessionStartTime: sessionCreatedAt,
   })
@@ -158,7 +142,7 @@ export default function SessionPage() {
         const response = await fetch(`/api/session/${sessionCode}/vote`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, restaurantId, liked }),
+          body: JSON.stringify({ restaurantId, liked }),
         })
 
         if (!response.ok) {
@@ -187,7 +171,7 @@ export default function SessionPage() {
         }
       }
     },
-    [currentIndex, restaurants.length, sessionCode, userId]
+    [currentIndex, restaurants.length, sessionCode]
   )
 
   const handleYes = () => {
@@ -211,8 +195,6 @@ export default function SessionPage() {
     try {
       await fetch(`/api/session/${sessionCode}/set-reconfiguring`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
       })
     } catch {
       // Continue even if this fails
@@ -227,7 +209,7 @@ export default function SessionPage() {
   const handleSessionReconfigured = useCallback(async () => {
     // Refetch session data to get new restaurants
     try {
-      const response = await fetch(`/api/session/${sessionCode}?userId=${userId}`)
+      const response = await fetch(`/api/session/${sessionCode}`)
       if (response.ok) {
         const data = await response.json()
         setRestaurants(data.session.restaurants)
@@ -246,9 +228,7 @@ export default function SessionPage() {
       setShowingResults(false)
       setSessionStatus('active')
     }
-  }, [sessionCode, userId])
-
-  const isHost = userId === hostId
+  }, [sessionCode])
 
   // Auto-open share modal for host on first load
   useEffect(() => {

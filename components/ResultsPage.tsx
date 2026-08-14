@@ -238,11 +238,9 @@ export default function ResultsPage({
   const handleCloseVoting = async () => {
     setClosingVoting(true)
     try {
-      const userId = localStorage.getItem(`user-${sessionCode}`)
+      // Host identity is verified server-side via Clerk
       const response = await fetch(`/api/session/${sessionCode}/close-voting`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
       })
       if (response.ok) {
         setAllFinished(true)

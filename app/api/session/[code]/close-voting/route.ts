@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
-import { closeVotingSchema, parseBody } from '@/lib/validation'
 import { sql } from '@/lib/db'
 import type { Session } from '@/lib/types'
 
@@ -34,20 +34,20 @@ async function recordGroupWins(session: Session): Promise<void> {
 }
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const { code } = await params
 
-    const parsed = await parseBody(request, closeVotingSchema)
-    if (!parsed.success) {
+    // Host identity is verified server-side, never trusted from the client
+    const { userId } = await auth()
+    if (!userId) {
       return NextResponse.json(
-        { error: parsed.error },
-        { status: 400 }
+        { error: 'Sign in required' },
+        { status: 401 }
       )
     }
-    const { userId } = parsed.data
 
     const session = await sessionStore.getSession(code)
 

@@ -125,10 +125,15 @@ anonymous sessions are being **killed** (which also retires the host-auth
 security finding — host checks move server-side via Clerk `auth()`);
 attribution is **first name + last initial** on all community surfaces;
 "Saved" becomes the **try-list** in the core loop discover → try-list →
-visit → nominate → library. Build order: Phase 0 structural (member gates ✅,
-attribution ✅, sessions-require-auth ⏳) → search-first nominate + add-a-place
-→ try-list + visit prompts → good-for/dish shelves → member shelves + OG
-sharing. Marketing rewrite can run parallel any time after Phase 0.
+visit → nominate → library. Build order: **Phase 0 structural ✅ complete**
+(member gates, attribution, sessions-require-auth — session identity is now
+the Clerk userId end to end; hostId is no longer exposed by the session GET,
+which returns a per-requester `isHost` flag) → search-first nominate +
+add-a-place → try-list + visit prompts → good-for/dish shelves → member
+shelves + OG sharing. Marketing rewrite can run parallel any time.
+NOTE: the signed-in session flow after the auth refactor has been verified
+by build + signed-out gate checks only — needs one human run-through
+(create → invite/join → vote → close → results).
 
 ## Remaining work, in rough priority order
 
@@ -150,11 +155,10 @@ sharing. Marketing rewrite can run parallel any time after Phase 0.
    variants (setup/voting screens still use raw sunset classes;
    `RestaurantFilters` carries the components-defined-during-render lint
    debt).
-2. **Deferred security items** (from `SECURITY_AUDIT.md`, all need design):
-   - Host authorization trusts client-supplied `userId`; `hostId` is exposed
-     to all session members via GET. Anonymous hosts have no Clerk identity,
-     so the fix is treating hostId as a secret (return a per-requester
-     `isHost` flag instead of the raw id).
+2. **Deferred security items** (from `SECURITY_AUDIT.md`):
+   - ~~Host authorization / hostId exposure~~ — fixed Aug 2026: sessions
+     require sign-in, host actions verify `auth()` server-side, and the
+     session GET returns `isHost` instead of the raw hostId.
    - Group invite codes are reversible base64 of the group id
      (`lib/groups.ts`) — replace with random codes stored in the DB.
    - Session state transitions aren't atomic (check-then-act races on KV).

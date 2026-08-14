@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const { code } = await params
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+
+    // Sessions are members-only; the requester's identity comes from Clerk.
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Sign in to join this group' },
+        { status: 401 }
+      )
+    }
 
     const session = await sessionStore.getSession(code)
 
@@ -19,13 +27,14 @@ export async function GET(
       )
     }
 
-    // Add user to session if userId provided and session is not finished
-    // If session is finished, user can only view results (read-only)
-    if (userId && session.status !== 'finished') {
+    // Join the requester into the session unless it's already finished
+    // (finished sessions are read-only)
+    if (session.status !== 'finished' && !session.users.includes(userId)) {
       await sessionStore.addUserToSession(code, userId)
+      session.users.push(userId)
     }
 
-    // Calculate per-user voting status for host view
+    // Calculate per-user voting status for host view (no ids exposed)
     const totalRestaurants = session.restaurants.length
     const userStatus = session.users.map((uid, index) => {
       const userVotes = session.votes.filter(v => v.userId === uid)
@@ -43,8 +52,9 @@ export async function GET(
         code: session.code,
         createdAt: session.createdAt,
         status: session.status,
-        hostId: session.hostId,
-        users: session.users,
+        // Per-requester flag instead of exposing hostId to every member
+        isHost: userId === session.hostId,
+        userCount: session.users.length,
         filters: session.filters,
         restaurants: session.restaurants,
         location: session.location,

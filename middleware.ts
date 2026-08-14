@@ -16,12 +16,17 @@ const isMemberRoute = createRouteMatcher([
   '/nominate(.*)',
   '/discover(.*)',
   '/saved(.*)',
+  // Sessions require sign-in too (Aug 2026) — invite links redirect through
+  // sign-in and land back on the session page.
+  '/setup(.*)',
+  '/session(.*)',
 ])
 const isMemberApiRoute = createRouteMatcher([
   '/api/library(.*)',
   '/api/nominations(.*)',
   '/api/enrichment(.*)',
   '/api/restaurants(.*)',
+  '/api/session(.*)',
 ])
 
 // Create tiered rate limiters: stricter for anonymous, generous for authenticated

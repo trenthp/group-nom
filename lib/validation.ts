@@ -1,20 +1,9 @@
 import { z } from 'zod'
 
-// Vote request validation
+// Vote request validation — voter identity comes from Clerk auth() server-side
 export const voteSchema = z.object({
-  userId: z.string().min(1, 'userId is required'),
   restaurantId: z.string().min(1, 'restaurantId is required'),
   liked: z.boolean(),
-})
-
-// Close voting request validation (requires host authorization)
-export const closeVotingSchema = z.object({
-  userId: z.string().min(1, 'userId is required'),
-})
-
-// Set reconfiguring request validation
-export const setReconfiguringSchema = z.object({
-  userId: z.string().min(1, 'userId is required'),
 })
 
 // Location validation
@@ -40,9 +29,8 @@ export const createSessionSchema = z.object({
   location: locationSchema,
 })
 
-// Reconfigure session request validation
+// Reconfigure session request validation — host identity comes from auth()
 export const reconfigureSessionSchema = z.object({
-  userId: z.string().min(1, 'userId is required'),
   filters: filtersSchema,
   location: locationSchema,
 })

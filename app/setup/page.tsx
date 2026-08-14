@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import RestaurantFilters from '@/components/RestaurantFilters'
 import Header from '@/components/Header'
@@ -20,8 +19,7 @@ function SetupPageContent() {
   const reconfigureCode = searchParams.get('reconfigure')
   const { isSignedIn, isLoaded } = useUser()
 
-  // Get restaurant limits for display
-  const anonLimit = USER_TIERS.anonymous.maxRestaurantsPerSession
+  // Get restaurant limit for display (sessions require sign-in)
   const authLimit = USER_TIERS.authenticated.maxRestaurantsPerSession
 
   // Setup mode: prompt (initial screen), auto (filter-based), favorites (pick from saved)
@@ -127,14 +125,11 @@ function SetupPageContent() {
 
     try {
       if (reconfigureCode) {
-        // Reconfigure existing session
-        const userId = localStorage.getItem(`user-${reconfigureCode}`)
-
+        // Reconfigure existing session (host identity verified server-side)
         const response = await fetch(`/api/session/${reconfigureCode}/reconfigure`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId,
             filters,
             location,
           }),
@@ -165,9 +160,6 @@ function SetupPageContent() {
 
         const result = await response.json()
         const sessionCode = result.session.code
-
-        // Store user ID for this session
-        localStorage.setItem(`user-${sessionCode}`, result.userId)
 
         // Navigate to the session
         router.push(`/session/${sessionCode}`)
@@ -235,47 +227,7 @@ function SetupPageContent() {
               <p className="text-orange-100 text-sm opacity-80">How should we find restaurants?</p>
             </div>
 
-            {/* Anonymous User View */}
-            {!isSignedIn && (
-              <div className="space-y-3">
-                {/* Side-by-side comparison */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Quick Start - 5 restaurants */}
-                  <button
-                    onClick={() => setSetupMode('auto')}
-                    className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30 text-center hover:bg-white/30 transition group"
-                  >
-                    <div className="text-5xl font-bold text-white mb-1">{anonLimit}</div>
-                    <div className="text-white/90 text-sm font-medium">restaurants</div>
-                    <div className="mt-3 bg-white text-orange-600 font-semibold py-2.5 rounded-lg group-hover:bg-orange-50 transition text-sm">
-                      Quick Start
-                    </div>
-                  </button>
-
-                  {/* Sign In - 10 restaurants */}
-                  <Link
-                    href="/sign-in?redirect_url=/setup?mode=auto"
-                    className="bg-white rounded-xl p-4 text-center hover:bg-orange-50 transition group"
-                  >
-                    <div className="text-5xl font-bold text-orange-600 mb-1">{authLimit}</div>
-                    <div className="text-orange-600/80 text-sm font-medium">restaurants</div>
-                    <div className="mt-3 bg-orange-600 text-white font-semibold py-2.5 rounded-lg group-hover:bg-orange-700 transition text-sm">
-                      Sign In
-                    </div>
-                  </Link>
-                </div>
-
-                {/* Create account link */}
-                <p className="text-center text-white/80 text-sm">
-                  New here?{' '}
-                  <Link href="/sign-up?redirect_url=/setup?mode=auto" className="underline font-medium hover:text-white">
-                    Create free account
-                  </Link>
-                </p>
-              </div>
-            )}
-
-            {/* Authenticated User View - Mode Selection */}
+            {/* Mode selection (page is members-only via middleware) */}
             {isSignedIn && (
               <div className="space-y-4">
                 <p className="text-orange-100 text-center mb-2">

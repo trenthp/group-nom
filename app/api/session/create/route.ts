@@ -18,18 +18,18 @@ function generateSessionCode(): string {
   return code
 }
 
-function generateUserId(): string {
-  const array = new Uint8Array(16)
-  crypto.getRandomValues(array)
-  return `user-${Array.from(array, b => b.toString(16).padStart(2, '0')).join('')}`
-}
-
 export async function POST(request: NextRequest) {
   try {
-    // Get auth status for tier-appropriate limits
+    // Sessions require sign-in (Aug 2026): the host is always a Clerk user,
+    // so host authorization can be verified server-side on every host action.
     const { userId: clerkUserId } = await auth()
-    const isAuthenticated = !!clerkUserId
-    const restaurantLimit = getRestaurantLimit(isAuthenticated)
+    if (!clerkUserId) {
+      return NextResponse.json(
+        { error: 'Sign in to start a group session' },
+        { status: 401 }
+      )
+    }
+    const restaurantLimit = getRestaurantLimit(true)
 
     const parsed = await parseBody(request, createSessionSchema)
     if (!parsed.success) {
@@ -56,15 +56,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use Clerk userId if authenticated, otherwise generate anonymous userId
-    const userId = clerkUserId || generateUserId()
-
     // Build the deck directly from our own database (community signals included)
     const restaurants = await getDiscoveryDeck(
       location.lat,
       location.lng,
       filters.distance,
-      restaurantLimit, // Tier-based limit (5 for anon, 10 for auth)
+      restaurantLimit,
       {
         cuisines: filters.cuisines || [],
         preferLocal: filters.preferLocal !== false,
@@ -73,16 +70,16 @@ export async function POST(request: NextRequest) {
 
     // Create session metadata for tracking user tier
     const metadata: SessionMetadata = {
-      creatorTier: getUserTier(isAuthenticated),
+      creatorTier: getUserTier(true),
       creatorClerkId: clerkUserId,
       restaurantLimit,
       createdAt: Date.now(),
     }
 
-    // Create session with metadata
+    // Create session; the signed-in creator is the host
     const session = await sessionStore.createSession(
       code,
-      userId,
+      clerkUserId,
       filters,
       restaurants,
       location,
@@ -91,14 +88,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      userId,
       session: {
         code: session.code,
         createdAt: session.createdAt,
-        users: session.users,
         filters: session.filters,
         restaurantCount: session.restaurants.length,
-        isAuthenticated, // Let client know if session has elevated limits
       },
     })
   } catch (error) {
