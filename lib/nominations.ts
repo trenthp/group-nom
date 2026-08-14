@@ -6,6 +6,7 @@
  */
 
 import { sql } from './db'
+import { toPublicName } from './userProfile'
 import type { Nomination, GoodForTag } from './types'
 
 // ============================================================================
@@ -41,7 +42,7 @@ function serializeNomination(row: DbNomination): Nomination {
     goodFor: (row.good_for ?? []) as GoodForTag[],
     createdAt: row.created_at,
     user: row.display_name !== undefined ? {
-      displayName: row.display_name ?? undefined,
+      displayName: toPublicName(row.display_name),
       avatarUrl: row.avatar_url ?? undefined,
     } : undefined,
   }
@@ -209,7 +210,7 @@ export async function getCoNominators(
 
   return rows.map(row => ({
     clerkUserId: row.clerk_user_id,
-    displayName: row.display_name ?? undefined,
+    displayName: toPublicName(row.display_name),
     avatarUrl: row.avatar_url ?? undefined,
   }))
 }

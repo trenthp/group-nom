@@ -116,6 +116,20 @@ Everything a user sees in the library, someone loved.
 Orlando, Aug 2026) exists in the DB and renders on the wall, the library list,
 the library map popup, and the restaurant page.
 
+## Product direction (decided Aug 13, 2026)
+
+The pivot's UX architecture is settled — see the "Library Loop" plan (Claude
+artifact) and `memory/product-direction.md`. Short version: the library is
+**members-only** (signed-out visitors get teased aggregates, never content);
+anonymous sessions are being **killed** (which also retires the host-auth
+security finding — host checks move server-side via Clerk `auth()`);
+attribution is **first name + last initial** on all community surfaces;
+"Saved" becomes the **try-list** in the core loop discover → try-list →
+visit → nominate → library. Build order: Phase 0 structural (member gates ✅,
+attribution ✅, sessions-require-auth ⏳) → search-first nominate + add-a-place
+→ try-list + visit prompts → good-for/dish shelves → member shelves + OG
+sharing. Marketing rewrite can run parallel any time after Phase 0.
+
 ## Remaining work, in rough priority order
 
 1. **`map` branch reconciliation** — mostly done (Aug 2026). Decision: dark

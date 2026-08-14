@@ -5,6 +5,7 @@
  */
 
 import { sql } from './db'
+import { toPublicName } from './userProfile'
 
 // ============================================================================
 // Types
@@ -61,7 +62,7 @@ export async function getCoNominators(
 
   return rows.map(row => ({
     clerkUserId: row.clerk_user_id,
-    displayName: row.display_name ?? undefined,
+    displayName: toPublicName(row.display_name),
     avatarUrl: row.avatar_url ?? undefined,
     nominatedAt: row.nominated_at,
   }))
@@ -127,7 +128,7 @@ export async function getBackers(
 
   const recentBackers: CoNominator[] = backerRows.map(row => ({
     clerkUserId: row.clerk_user_id,
-    displayName: row.display_name ?? undefined,
+    displayName: toPublicName(row.display_name),
     avatarUrl: row.avatar_url ?? undefined,
     nominatedAt: row.nominated_at,
   }))

@@ -6,6 +6,19 @@
 
 import { sql } from './db'
 
+/**
+ * Public attribution rule (Aug 2026): members are shown as first name +
+ * last initial ("Trent P.") on all community surfaces. Apply this at every
+ * read boundary that returns a member's name to other users; the stored
+ * display_name keeps the full name for the member's own settings.
+ */
+export function toPublicName(name: string | null | undefined): string | undefined {
+  if (!name) return undefined
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0]
+  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`
+}
+
 export interface UserProfile {
   id: string
   clerkUserId: string

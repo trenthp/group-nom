@@ -8,6 +8,22 @@ import { kv, isKvConfigured } from '@/lib/kv'
 const isAdminRoute = createRouteMatcher(['/admin(.*)'])
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
 
+// The library is the product's core asset — members only (Aug 2026 decision).
+// Signed-out visitors get teased aggregates on the marketing pages, never content.
+const isMemberRoute = createRouteMatcher([
+  '/library(.*)',
+  '/restaurant(.*)',
+  '/nominate(.*)',
+  '/discover(.*)',
+  '/saved(.*)',
+])
+const isMemberApiRoute = createRouteMatcher([
+  '/api/library(.*)',
+  '/api/nominations(.*)',
+  '/api/enrichment(.*)',
+  '/api/restaurants(.*)',
+])
+
 // Create tiered rate limiters: stricter for anonymous, generous for authenticated
 const anonRateLimiters = {
   createSession: new Ratelimit({
@@ -168,6 +184,19 @@ export default clerkMiddleware(async (auth, request) => {
   // Redirect signed-in users away from auth pages to home
   if (userId && isAuthRoute(request)) {
     return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // Member-only APIs return JSON 401 (a redirect would confuse fetch callers)
+  if (!userId && isMemberApiRoute(request)) {
+    return NextResponse.json(
+      { error: 'Sign in to browse the library' },
+      { status: 401 }
+    )
+  }
+
+  // Member-only pages redirect to sign-in and back
+  if (isMemberRoute(request)) {
+    await auth.protect()
   }
 
   // Protect /admin/* routes - require sign in

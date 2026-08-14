@@ -6,6 +6,7 @@
  */
 
 import { sql } from './db'
+import { toPublicName } from './userProfile'
 
 export interface Group {
   id: string
@@ -133,7 +134,7 @@ export async function getGroupWithMembers(
     createdAt: group.created_at,
     members: members.map(m => ({
       clerkUserId: m.clerk_user_id,
-      displayName: m.display_name,
+      displayName: toPublicName(m.display_name) ?? null,
       avatarUrl: m.avatar_url,
       joinedAt: m.joined_at,
     })),
