@@ -151,7 +151,7 @@ async function handleRateLimit(
     } else if (pathname.startsWith('/api/upload/')) {
       limiter = rateLimiters.upload
       identifier = `upload:${baseIdentifier}`
-    } else if (pathname === '/api/restaurants/nearby') {
+    } else if (pathname === '/api/restaurants/nearby' || pathname === '/api/restaurants/search') {
       limiter = rateLimiters.restaurants
       identifier = `restaurants:${baseIdentifier}`
     } else if (pathname === '/api/geocode') {

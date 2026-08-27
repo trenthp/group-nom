@@ -77,7 +77,7 @@ interface DeckRow {
   photo_url: string | null
 }
 
-function formatCategory(category: string): string {
+export function formatCategory(category: string): string {
   return category
     .replace(/_restaurant$|_shop$/, '')
     .split('_')

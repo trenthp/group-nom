@@ -95,9 +95,17 @@ export default function LibraryPage() {
                 Places locals love, nominated by the community
               </p>
             </div>
-            {phase === 'ready' && places.length > 0 && (
-              <MapToggle view={view} onViewChange={setView} className="shrink-0" />
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/nominate"
+                className="px-3 py-1.5 rounded-pill bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+              >
+                + Nominate
+              </Link>
+              {phase === 'ready' && places.length > 0 && (
+                <MapToggle view={view} onViewChange={setView} />
+              )}
+            </div>
           </div>
           {locationName && !showManualEntry && (
             <p className="text-white/50 text-sm mt-2 flex items-center gap-1">
@@ -192,13 +200,13 @@ export default function LibraryPage() {
             </p>
             <div className="space-y-3">
               <Link
-                href="/discover"
+                href="/nominate"
                 className="block w-full px-6 py-3 rounded-xl font-bold bg-brand text-white hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
               >
-                Discover Places Near You
+                Nominate a place you love
               </Link>
               <p className="text-white/50 text-sm">
-                Swipe through local spots, save the ones you love, then nominate them.
+                Search for it by name, add a photo and why — and put your town on the map.
               </p>
             </div>
           </div>
