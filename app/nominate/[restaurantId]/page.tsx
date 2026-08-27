@@ -25,6 +25,9 @@ export default function NominatePage() {
   }>>([])
   const [nominationCount, setNominationCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  // Where "Done" lands: your member page, with the welcome moment if this
+  // was the nomination that unlocked the library.
+  const [doneHref, setDoneHref] = useState('/library')
 
   // Fetch restaurant and nomination data
   useEffect(() => {
@@ -80,6 +83,16 @@ export default function NominatePage() {
     setNomination(newNomination)
     setNominationCount(prev => prev + 1)
     setStep('enrichment')
+
+    // Ladder state is decided server-side; the profile now reflects this publish
+    fetch('/api/user/profile')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (!data?.profile?.id) return
+        const firstEver = data.profile.nominationCount === 1
+        setDoneHref(`/member/${data.profile.id}${firstEver ? '?welcome=1' : ''}`)
+      })
+      .catch(() => { /* keep the library fallback */ })
   }
 
   const handleEnrichmentSuccess = (updatedNomination: Nomination) => {
@@ -96,7 +109,7 @@ export default function NominatePage() {
   }
 
   const handleDone = () => {
-    router.push('/')
+    router.push(doneHref)
   }
 
   if (!isLoaded) {
@@ -184,10 +197,12 @@ export default function NominatePage() {
             <div className="bg-green-500/15 border-b border-green-500/20 px-6 py-8 text-center">
               <div className="text-5xl mb-4">🎉</div>
               <h2 className="text-2xl font-bold text-white mb-2">
-                {existingNomination ? 'Already Nominated!' : 'Nomination Complete!'}
+                {existingNomination ? 'Already on your shelf' : 'It’s on the shelf'}
               </h2>
               <p className="text-green-300">
-                Thanks for sharing your local knowledge
+                {existingNomination
+                  ? 'You nominated this place before'
+                  : 'One more place the community can trust'}
               </p>
             </div>
 
@@ -234,7 +249,7 @@ export default function NominatePage() {
                   onClick={handleDone}
                   className="w-full px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-hover transition"
                 >
-                  Done
+                  {doneHref.startsWith('/member') ? 'See your page' : 'Done'}
                 </button>
 
                 {!existingNomination && nomination && (

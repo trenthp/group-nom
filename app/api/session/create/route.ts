@@ -4,6 +4,7 @@ import { sessionStore } from '@/lib/sessionStore'
 import { createSessionSchema, parseBody } from '@/lib/validation'
 import { getDiscoveryDeck } from '@/lib/restaurantDiscovery'
 import { getRestaurantLimit, getUserTier } from '@/lib/userTiers'
+import { ensureProfile } from '@/lib/userProfile'
 import type { SessionMetadata } from '@/lib/types'
 
 function generateSessionCode(): string {
@@ -29,6 +30,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+    await ensureProfile(clerkUserId)
     const restaurantLimit = getRestaurantLimit(true)
 
     const parsed = await parseBody(request, createSessionSchema)

@@ -5,7 +5,7 @@
  */
 
 import { sql } from './db'
-import { toPublicName } from './userProfile'
+import { publicNameFor } from './userProfile'
 
 // ============================================================================
 // Types
@@ -43,7 +43,7 @@ export async function getCoNominators(
 ): Promise<CoNominator[]> {
   const rows = excludeUserId
     ? await sql`
-        SELECT n.clerk_user_id, up.display_name, up.avatar_url, n.created_at as nominated_at
+        SELECT n.clerk_user_id, up.display_name, up.avatar_url, up.status AS profile_status, n.created_at as nominated_at
         FROM nominations n
         LEFT JOIN user_profiles up ON n.clerk_user_id = up.clerk_user_id
         WHERE n.gers_id = ${gersId}
@@ -52,7 +52,7 @@ export async function getCoNominators(
         LIMIT ${limit}
       `
     : await sql`
-        SELECT n.clerk_user_id, up.display_name, up.avatar_url, n.created_at as nominated_at
+        SELECT n.clerk_user_id, up.display_name, up.avatar_url, up.status AS profile_status, n.created_at as nominated_at
         FROM nominations n
         LEFT JOIN user_profiles up ON n.clerk_user_id = up.clerk_user_id
         WHERE n.gers_id = ${gersId}
@@ -62,8 +62,8 @@ export async function getCoNominators(
 
   return rows.map(row => ({
     clerkUserId: row.clerk_user_id,
-    displayName: toPublicName(row.display_name),
-    avatarUrl: row.avatar_url ?? undefined,
+    displayName: publicNameFor(row.display_name, row.profile_status),
+    avatarUrl: row.profile_status === 'deleted' ? undefined : (row.avatar_url ?? undefined),
     nominatedAt: row.nominated_at,
   }))
 }
@@ -117,6 +117,7 @@ export async function getBackers(
       n2.clerk_user_id,
       up.display_name,
       up.avatar_url,
+      up.status AS profile_status,
       n2.created_at as nominated_at
     FROM nominations n1
     JOIN nominations n2 ON n1.gers_id = n2.gers_id AND n1.clerk_user_id != n2.clerk_user_id
@@ -128,8 +129,8 @@ export async function getBackers(
 
   const recentBackers: CoNominator[] = backerRows.map(row => ({
     clerkUserId: row.clerk_user_id,
-    displayName: toPublicName(row.display_name),
-    avatarUrl: row.avatar_url ?? undefined,
+    displayName: publicNameFor(row.display_name, row.profile_status),
+    avatarUrl: row.profile_status === 'deleted' ? undefined : (row.avatar_url ?? undefined),
     nominatedAt: row.nominated_at,
   }))
 

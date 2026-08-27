@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
+import { ensureProfile } from '@/lib/userProfile'
 
 export async function GET(
   _request: NextRequest,
@@ -30,7 +31,12 @@ export async function GET(
     // Join the requester into the session unless it's already finished
     // (finished sessions are read-only)
     if (session.status !== 'finished' && !session.users.includes(userId)) {
-      await sessionStore.addUserToSession(code, userId)
+      // A joiner may be brand new (invite link → sign-up → here); make sure
+      // they have a profile row from their first real action.
+      await Promise.all([
+        sessionStore.addUserToSession(code, userId),
+        ensureProfile(userId).catch(err => console.error('[API] ensureProfile failed:', err)),
+      ])
       session.users.push(userId)
     }
 

@@ -296,7 +296,18 @@ export default function RestaurantPage() {
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={nom.user.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
                       )}
-                      {nom.user?.displayName ?? 'A community member'} · {formatDate(nom.createdAt)}
+                      {nom.user?.memberId ? (
+                        <Link
+                          href={`/member/${nom.user.memberId}`}
+                          className="text-white/60 hover:text-white underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+                        >
+                          {nom.user.displayName ?? 'A community member'}
+                        </Link>
+                      ) : (
+                        <span>{nom.user?.displayName ?? 'A community member'}</span>
+                      )}
+                      <span aria-hidden="true">·</span>
+                      {formatDate(nom.createdAt)}
                     </p>
                   </div>
                 </div>

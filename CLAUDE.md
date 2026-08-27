@@ -115,6 +115,7 @@ npm run lint     # Run ESLint
 Required in `.env.local`:
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk public key
 - `CLERK_SECRET_KEY` - Clerk secret key
+- `CLERK_WEBHOOK_SIGNING_SECRET` - Clerk webhook (user.created/updated/deleted → `/api/webhooks/clerk`)
 - `db1_KV_REST_API_URL` - Upstash Redis URL (marketplace integration; legacy `KV_REST_API_URL` also accepted)
 - `db1_KV_REST_API_TOKEN` - Upstash Redis token (legacy `KV_REST_API_TOKEN` also accepted)
 - `DATABASE_URL` - Neon Postgres connection string

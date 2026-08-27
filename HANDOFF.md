@@ -48,7 +48,12 @@ driver runs one statement at a time; the runner handles `$$` bodies).
 Applied to the live DB: 004 (nomination triggers, counts, views),
 005 (Overture columns + H3 indexes), 006 (recreated
 `restaurants_with_nominations` view — Postgres freezes `r.*` at CREATE VIEW,
-so any future column additions to `restaurants` require re-running 006).
+so any future column additions to `restaurants` require re-running 006),
+007 (member architecture: `user_profiles.timezone/status/last_active_at/
+trust_score/trust_updated_at`, `anonymize_member()` function).
+
+Migration-runner trap: it splits on every `;`, **including inside comments**.
+Never put a semicolon in a SQL comment.
 
 Data: **Florida is seeded** — ~96k restaurants from Overture release
 `2026-07-22.0`, ~48MB. Strategy is **state-on-demand** (NOT nationwide — it
@@ -195,11 +200,48 @@ Host picks the deck source at setup:
 - Ladder metrics from day one: join → first-nomination conversion, draft
   publish rate, Today's Five open rate, follows per member, invites.
 
-### Schema implications (new tables/columns)
-`nomination_drafts` (user, gers_id, partial fields, no photo until publish),
-`follows` (+ blocks), per-user tz or tz-at-publish for the daily limit,
-internal trust-score storage (column or materialized), session metadata
-`deckSource`.
+### Member architecture (decided + built Aug 27, 2026)
+The full map of user types and their flows lives in the "Who Uses Group Nom"
+artifact: https://claude.ai/code/artifact/72fb2f18-01ad-4742-89e0-4899d048434e
+(visitor / new member / contributor / host+participant / a member as seen by
+others / moderator / former member, plus a permission matrix).
+
+- **Profile rows are guaranteed**: `ensureProfile()` (upsert, also bumps
+  `last_active_at`) runs at the top of every mutating path — nominate,
+  enrich, session create, session join. Without it the nomination-count
+  trigger silently UPDATEs zero rows and the member never unlocks.
+- **Clerk webhook** `app/api/webhooks/clerk/route.ts` (`user.created` /
+  `user.updated` → `syncProfileFromClerk`, `user.deleted` → anonymize).
+  Verified via `verifyWebhook` from `@clerk/nextjs/webhooks`; needs
+  `CLERK_WEBHOOK_SIGNING_SECRET`. Exempt from auth + rate limiting in
+  middleware. **Owner setup still required**: Clerk Dashboard → Webhooks →
+  add endpoint `https://groupnom.com/api/webhooks/clerk`, subscribe to the
+  three user events, paste the signing secret into Vercel env (all scopes).
+  Until then the route returns 503 and profiles still work via lazy
+  `ensureProfile` — only name/avatar changes and deletions won't propagate.
+- **Account deletion = anonymize** (owner decision Aug 27): `anonymize_member()`
+  nulls name/avatar/tz, sets `status='deleted'`, deletes favorites, group
+  memberships and owned groups. Nominations, photos, enrichments stay and
+  render as "A former member" (`publicNameFor()` in `lib/userProfile.ts` —
+  every read boundary now selects `up.status`).
+- **Ladder state is derived, never stored**: `isUnlocked(profile)` =
+  `nomination_count > 0`; `canPublish(profile)` = `status === 'active'`.
+  `GET /api/user/profile` returns both. Enrichment PATCH is
+  **contributor-only** (unlocked) and refuses suspended accounts.
+- **Member page** `/member/[id]` (opaque `user_profiles.id` UUID, never the
+  Clerk id) with `GET /api/members/[id]`. Two modes on one route decided by
+  `isSelf` server-side: others see First L. + avatar + their nominations
+  (no counts, nothing rankable); you see the same plus your ladder state.
+  The nominate flow's "Done" now lands on your page, with `?welcome=1` on
+  the nomination that unlocked the library (the "You're in" moment).
+  Nominator names on restaurant pages link there (`Nomination.user.memberId`).
+- `Nomination.restaurant {name, city}` is joined for the member page.
+- `PUT /api/user/profile` accepts `timezone` (IANA) — the daily-limit input.
+
+### Schema still to come
+`nomination_drafts` (user, gers_id, partial fields, **no photo column**),
+`follows` (+ blocks, composite PKs, no counters), session metadata
+`deckSource`. Trust score columns already exist (unused until Phase 4).
 
 ### Build order
 **Phase 0 structural ✅ complete** (member gates; First L. attribution;
@@ -208,10 +250,33 @@ host checks via `auth()`, GET returns per-requester `isHost`). NOTE: the
 signed-in session flow was verified by build + signed-out gate checks only —
 needs one human run-through (create → invite/join → vote → close → results).
 
-1. **The nomination system**: search-first nominate ("Nominate a spot" →
-   name search over seeded DB → confirm → photo/why) + add-a-place fallback;
-   recency question; drafts; one-per-day at local midnight; chain
-   soft-discourage; unlock-by-first-nomination.
+1. **The nomination system** — workstreams, in dependency order:
+   - ✅ **Zero: member architecture** (migration 007, `ensureProfile`, Clerk
+     webhook, anonymize-on-delete, `isUnlocked`/`canPublish`, `/member/[id]`,
+     the "You're in" landing). See "Member architecture" above.
+   - **A. Search-first entry** (the spine): `/nominate` landing with a name
+     search near the user → `GET /api/restaurants/search` (needs migration
+     008: `pg_trgm` + trigram index on `restaurants.name`; nothing in the
+     codebase does name search yet) → confirm card → hands off to the
+     existing `/nominate/[restaurantId]` capture flow. Entry CTAs on home
+     and library.
+   - **D. One per day at local midnight**: browser sends
+     `Intl.DateTimeFormat().resolvedOptions().timeZone` with the publish;
+     server stores it on the profile, computes the local date, enforces with
+     a unique index on `(clerk_user_id, local_date)` (race-proof; tz is
+     spoofable and that's fine — it's a social limit). On limit-hit the UI
+     offers "save as draft".
+   - **E. Unlock moment** — landing built; wire the celebration copy to the
+     actual gate once Phase 2 ships.
+   - **B. Recency question** ("been recently?") routing into drafts.
+   - **C. Private drafts**: `nomination_drafts` table, CRUD, "My drafts" on
+     the self member page, publish pre-fills capture. No photo until publish
+     (Blob URLs are public-if-known).
+   - **F. Chain soft-discourage** on the confirm card via `chain_names`.
+   - **G. Add-a-place fallback**: name + address → LocationIQ → insert with
+     `source='community'` + H3 → dedupe against seeded rows first (the
+     fiddliest part).
+   Suggested slices: A+D+E, then B+C, then F+G.
 2. **The gate + Today's Five**: limited list/map/discover for
    non-nominators; deterministic daily sample; onboarding both variants
    (nominate-or-plan-a-visit, mission copy for empty areas); moderation
@@ -280,4 +345,11 @@ npm run lint     # eslint 9 flat config (eslint.config.mjs)
 ```
 
 `.env.local` needs: Clerk test keys, `DATABASE_URL`, `db1_KV_REST_API_URL` +
-`db1_KV_REST_API_TOKEN`, `LOCATIONIQ_API_KEY`, `BLOB_READ_WRITE_TOKEN`.
+`db1_KV_REST_API_TOKEN`, `LOCATIONIQ_API_KEY`, `BLOB_READ_WRITE_TOKEN`,
+and `CLERK_WEBHOOK_SIGNING_SECRET` once the webhook endpoint exists in Clerk
+(a Development-instance endpoint can point at an ngrok/`vercel dev` tunnel).
+
+Gate checks with curl: Clerk's `auth.protect()` answers plain curl with a
+**404**, and only redirects (307) when the request looks like a document —
+send `-H "Accept: text/html" -H "Sec-Fetch-Dest: document"` to see the real
+behavior. Member APIs return 401 JSON either way.

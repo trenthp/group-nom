@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getEnrichment, updateEnrichment } from '@/lib/restaurantEnrichment'
+import { ensureProfile, canPublish, isUnlocked } from '@/lib/userProfile'
 
 interface RouteParams {
   params: Promise<{ restaurantId: string }>
@@ -44,6 +45,22 @@ export async function PATCH(
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+
+    // Shared facts are contributor-only: you edit the wiki once you've added
+    // to it (Aug 2026 decision). Suspended members are read-only.
+    const profile = await ensureProfile(userId)
+    if (!canPublish(profile)) {
+      return NextResponse.json(
+        { error: 'Your account is read-only right now' },
+        { status: 403 }
+      )
+    }
+    if (!isUnlocked(profile)) {
+      return NextResponse.json(
+        { error: 'Nominate a place you love first, then you can add details to any page' },
+        { status: 403 }
       )
     }
 

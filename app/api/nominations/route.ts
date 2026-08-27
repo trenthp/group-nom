@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createNomination, getUserNominations } from '@/lib/nominations'
+import { ensureProfile, canPublish } from '@/lib/userProfile'
 
 /**
  * GET /api/nominations
@@ -44,6 +45,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+
+    // The row must exist before the count trigger fires, or the first
+    // nomination never unlocks the library.
+    const profile = await ensureProfile(userId)
+    if (!canPublish(profile)) {
+      return NextResponse.json(
+        { error: 'Your account is read-only right now' },
+        { status: 403 }
       )
     }
 

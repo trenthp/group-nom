@@ -150,8 +150,14 @@ export interface Nomination {
   createdAt: Date
   // Joined data (optional, populated when fetching)
   user?: {
+    /** Opaque profile id for /member/[id]; absent for former members */
+    memberId?: string
     displayName?: string
     avatarUrl?: string
+  }
+  restaurant?: {
+    name: string
+    city?: string
   }
 }
 

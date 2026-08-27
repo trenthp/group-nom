@@ -6,7 +6,7 @@
  */
 
 import { sql } from './db'
-import { toPublicName } from './userProfile'
+import { publicNameFor } from './userProfile'
 import type { Nomination, GoodForTag } from './types'
 
 // ============================================================================
@@ -25,6 +25,10 @@ interface DbNomination {
   // Joined fields
   display_name?: string
   avatar_url?: string
+  profile_status?: string
+  profile_id?: string
+  restaurant_name?: string
+  restaurant_city?: string
 }
 
 // ============================================================================
@@ -42,8 +46,13 @@ function serializeNomination(row: DbNomination): Nomination {
     goodFor: (row.good_for ?? []) as GoodForTag[],
     createdAt: row.created_at,
     user: row.display_name !== undefined ? {
-      displayName: toPublicName(row.display_name),
-      avatarUrl: row.avatar_url ?? undefined,
+      memberId: row.profile_status === 'deleted' ? undefined : (row.profile_id ?? undefined),
+      displayName: publicNameFor(row.display_name, row.profile_status),
+      avatarUrl: row.profile_status === 'deleted' ? undefined : (row.avatar_url ?? undefined),
+    } : undefined,
+    restaurant: row.restaurant_name !== undefined ? {
+      name: row.restaurant_name,
+      city: row.restaurant_city ?? undefined,
     } : undefined,
   }
 }
@@ -120,7 +129,7 @@ export async function getUserNomination(
   clerkUserId: string
 ): Promise<Nomination | null> {
   const rows = await sql`
-    SELECT n.*, up.display_name, up.avatar_url
+    SELECT n.*, up.display_name, up.avatar_url, up.status AS profile_status, up.id AS profile_id
     FROM nominations n
     LEFT JOIN user_profiles up ON n.clerk_user_id = up.clerk_user_id
     WHERE n.gers_id = ${gersId} AND n.clerk_user_id = ${clerkUserId}
@@ -141,7 +150,7 @@ export async function getRestaurantNominations(
   limit = 20
 ): Promise<Nomination[]> {
   const rows = await sql`
-    SELECT n.*, up.display_name, up.avatar_url
+    SELECT n.*, up.display_name, up.avatar_url, up.status AS profile_status, up.id AS profile_id
     FROM nominations n
     LEFT JOIN user_profiles up ON n.clerk_user_id = up.clerk_user_id
     WHERE n.gers_id = ${gersId}
@@ -160,9 +169,11 @@ export async function getUserNominations(
   limit = 50
 ): Promise<Nomination[]> {
   const rows = await sql`
-    SELECT n.*, up.display_name, up.avatar_url
+    SELECT n.*, up.display_name, up.avatar_url, up.status AS profile_status, up.id AS profile_id,
+           r.name AS restaurant_name, r.city AS restaurant_city
     FROM nominations n
     LEFT JOIN user_profiles up ON n.clerk_user_id = up.clerk_user_id
+    LEFT JOIN restaurants r ON n.gers_id = r.gers_id
     WHERE n.clerk_user_id = ${clerkUserId}
     ORDER BY n.created_at DESC
     LIMIT ${limit}
@@ -199,7 +210,7 @@ export async function getCoNominators(
   gersId: string
 ): Promise<Array<{ clerkUserId: string; displayName?: string; avatarUrl?: string }>> {
   const rows = await sql`
-    SELECT n.clerk_user_id, up.display_name, up.avatar_url
+    SELECT n.clerk_user_id, up.display_name, up.avatar_url, up.status AS profile_status, up.id AS profile_id
     FROM nominations n
     LEFT JOIN user_profiles up ON n.clerk_user_id = up.clerk_user_id
     WHERE n.gers_id = ${gersId}
@@ -210,8 +221,8 @@ export async function getCoNominators(
 
   return rows.map(row => ({
     clerkUserId: row.clerk_user_id,
-    displayName: toPublicName(row.display_name),
-    avatarUrl: row.avatar_url ?? undefined,
+    displayName: publicNameFor(row.display_name, row.profile_status),
+    avatarUrl: row.profile_status === 'deleted' ? undefined : (row.avatar_url ?? undefined),
   }))
 }
 
@@ -222,7 +233,7 @@ export async function getIncompleteNominations(
   clerkUserId: string
 ): Promise<Nomination[]> {
   const rows = await sql`
-    SELECT n.*, up.display_name, up.avatar_url
+    SELECT n.*, up.display_name, up.avatar_url, up.status AS profile_status, up.id AS profile_id
     FROM nominations n
     LEFT JOIN user_profiles up ON n.clerk_user_id = up.clerk_user_id
     WHERE n.clerk_user_id = ${clerkUserId}

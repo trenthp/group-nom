@@ -7,6 +7,9 @@ import { kv, isKvConfigured } from '@/lib/kv'
 // Define route matchers
 const isAdminRoute = createRouteMatcher(['/admin(.*)'])
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
+// Clerk → us. Authenticated by Svix signature inside the handler, not by a
+// session, and never rate limited (a dropped webhook = a stale profile).
+const isWebhookRoute = createRouteMatcher(['/api/webhooks(.*)'])
 
 // The library is the product's core asset — members only (Aug 2026 decision).
 // Signed-out visitors get teased aggregates on the marketing pages, never content.
@@ -16,6 +19,7 @@ const isMemberRoute = createRouteMatcher([
   '/nominate(.*)',
   '/discover(.*)',
   '/saved(.*)',
+  '/member(.*)',
   // Sessions require sign-in too (Aug 2026) — invite links redirect through
   // sign-in and land back on the session page.
   '/setup(.*)',
@@ -27,6 +31,7 @@ const isMemberApiRoute = createRouteMatcher([
   '/api/enrichment(.*)',
   '/api/restaurants(.*)',
   '/api/session(.*)',
+  '/api/members(.*)',
 ])
 
 // Create tiered rate limiters: stricter for anonymous, generous for authenticated
@@ -177,6 +182,10 @@ async function handleRateLimit(
 }
 
 export default clerkMiddleware(async (auth, request) => {
+  if (isWebhookRoute(request)) {
+    return NextResponse.next()
+  }
+
   // Get auth status first for tiered rate limiting
   const { userId } = await auth()
 
