@@ -50,7 +50,8 @@ Applied to the live DB: 004 (nomination triggers, counts, views),
 `restaurants_with_nominations` view — Postgres freezes `r.*` at CREATE VIEW,
 so any future column additions to `restaurants` require re-running 006),
 007 (member architecture: `user_profiles.timezone/status/last_active_at/
-trust_score/trust_updated_at`, `anonymize_member()` function).
+trust_score/trust_updated_at`, `anonymize_member()` function), 008 (`pg_trgm`
++ trigram index on `restaurants.name`, lat/lng index — powers name search).
 
 Migration-runner trap: it splits on every `;`, **including inside comments**.
 Never put a semicolon in a SQL comment.
@@ -254,12 +255,15 @@ needs one human run-through (create → invite/join → vote → close → resul
    - ✅ **Zero: member architecture** (migration 007, `ensureProfile`, Clerk
      webhook, anonymize-on-delete, `isUnlocked`/`canPublish`, `/member/[id]`,
      the "You're in" landing). See "Member architecture" above.
-   - **A. Search-first entry** (the spine): `/nominate` landing with a name
-     search near the user → `GET /api/restaurants/search` (needs migration
-     008: `pg_trgm` + trigram index on `restaurants.name`; nothing in the
-     codebase does name search yet) → confirm card → hands off to the
-     existing `/nominate/[restaurantId]` capture flow. Entry CTAs on home
-     and library.
+   - ✅ **A. Search-first entry**: `/nominate` (location-aware, debounced
+     name search) → `GET /api/restaurants/search?q&lat&lng`
+     (`lib/restaurantSearch.ts`: trigram similarity within a ~40km box,
+     ranked by match band then distance, seeded-but-unnominated places
+     included on purpose) → result card links straight into the existing
+     `/nominate/[restaurantId]` capture flow. CTAs: home "Nominate a place"
+     card, library header "+ Nominate", library empty state. Verified
+     against live data: "vodoo bayou" → Voodoo Bayou, <250ms. Empty-result
+     copy points at the add-a-place fallback (G) as "coming soon".
    - **D. One per day at local midnight**: browser sends
      `Intl.DateTimeFormat().resolvedOptions().timeZone` with the publish;
      server stores it on the profile, computes the local date, enforces with
