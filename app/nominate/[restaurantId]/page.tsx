@@ -6,7 +6,17 @@ import { useUser } from '@clerk/nextjs'
 import { QuickCaptureForm, EnrichmentForm, CoNominators } from '@/components/nomination'
 import type { Restaurant, Nomination } from '@/lib/types'
 
-type NominationStep = 'loading' | 'capture' | 'enrichment' | 'success' | 'limit'
+type NominationStep =
+  | 'loading'
+  | 'recency'   // "When were you last there?"
+  | 'revisit'   // "Go back first — we'll hold it as a draft"
+  | 'capture'
+  | 'enrichment'
+  | 'success'
+  | 'limit'     // today's nomination already used
+  | 'drafted'   // a draft was saved; where to next
+
+type DraftReason = 'revisit' | 'later' | 'limit'
 
 export default function NominatePage() {
   const params = useParams()
@@ -29,6 +39,35 @@ export default function NominatePage() {
   // was the nomination that unlocked the library.
   const [doneHref, setDoneHref] = useState('/library')
   const [resetsAt, setResetsAt] = useState<string | null>(null)
+  // Private draft for this place, if the member started one before
+  const [draftWhy, setDraftWhy] = useState<string>('')
+  const [revisitNote, setRevisitNote] = useState('')
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [memberHref, setMemberHref] = useState<string | null>(null)
+
+  const saveDraft = async (reason: DraftReason, whyILoveIt: string) => {
+    setSavingDraft(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/nominations/drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gersId: restaurantId, whyILoveIt, reason }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Could not save the draft')
+      }
+      // Drafts live on your member page
+      fetch('/api/user/profile')
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => { if (d?.profile?.id) setMemberHref(`/member/${d.profile.id}`) })
+        .catch(() => { /* keep fallback */ })
+      setStep('drafted')
+    } finally {
+      setSavingDraft(false)
+    }
+  }
 
   // Fetch restaurant and nomination data
   useEffect(() => {
@@ -61,7 +100,18 @@ export default function NominatePage() {
         // One per local day — check before showing the form so a blocked
         // publish never gets as far as uploading a photo
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-        const todayRes = await fetch(`/api/nominations/today?tz=${encodeURIComponent(tz)}`)
+        const [todayRes, draftRes] = await Promise.all([
+          fetch(`/api/nominations/today?tz=${encodeURIComponent(tz)}`),
+          fetch(`/api/nominations/drafts/${restaurantId}`),
+        ])
+        let hasDraft = false
+        if (draftRes.ok) {
+          const { draft } = await draftRes.json()
+          if (draft) {
+            hasDraft = true
+            setDraftWhy(draft.whyILoveIt ?? '')
+          }
+        }
         if (todayRes.ok) {
           const today = await todayRes.json()
           if (today.usedToday) {
@@ -71,7 +121,8 @@ export default function NominatePage() {
           }
         }
 
-        setStep('capture')
+        // A draft means they already answered "when were you last there"
+        setStep(hasDraft ? 'capture' : 'recency')
       } catch {
         setError('Failed to load restaurant data')
       }
@@ -208,8 +259,15 @@ export default function NominatePage() {
             </p>
             <div className="space-y-3">
               <button
+                onClick={() => saveDraft('limit', draftWhy)}
+                disabled={savingDraft}
+                className="w-full px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-hover transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+              >
+                {savingDraft ? 'Saving...' : 'Save it as a draft for tomorrow'}
+              </button>
+              <button
                 onClick={() => router.push(`/restaurant/${restaurantId}`)}
-                className="w-full px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+                className="w-full px-6 py-3 border border-white/20 text-white/70 rounded-lg font-medium hover:bg-white/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
               >
                 See its page
               </button>
@@ -223,11 +281,103 @@ export default function NominatePage() {
           </div>
         )}
 
+        {step === 'recency' && (
+          <div className="bg-surface-card rounded-2xl p-6">
+            <p className="text-brand text-sm font-medium mb-1">{restaurant.name}</p>
+            <h2 className="text-xl font-bold text-white mb-2">When were you last there?</h2>
+            <p className="text-white/60 text-sm mb-6">
+              Nominations are for places you&apos;ve loved <em>lately</em> — that&apos;s what keeps the list trustworthy.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => setStep('capture')}
+                className="w-full px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+              >
+                Recently — let&apos;s do it
+              </button>
+              <button
+                onClick={() => setStep('revisit')}
+                className="w-full px-6 py-3 border border-white/20 text-white/80 rounded-lg font-medium hover:bg-white/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                It&apos;s been a while
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'revisit' && (
+          <div className="bg-surface-card rounded-2xl p-6">
+            <p className="text-brand text-sm font-medium mb-1">{restaurant.name}</p>
+            <h2 className="text-xl font-bold text-white mb-2">Go back first — we&apos;ll hold it</h2>
+            <p className="text-white/60 text-sm mb-5">
+              Visit again, take a photo while you&apos;re there, and nominate it fresh. Until then it
+              sits in your drafts, private to you. Local places love a return visit.
+            </p>
+            <label htmlFor="revisit-note" className="block text-sm font-medium text-white/70 mb-2">
+              What do you remember loving? <span className="text-white/40">(optional)</span>
+            </label>
+            <textarea
+              id="revisit-note"
+              value={revisitNote}
+              onChange={(e) => setRevisitNote(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="The patio at golden hour, the smoked fish dip..."
+              className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/40 border border-white/20 rounded-lg focus:outline-none focus:border-brand resize-none mb-5"
+            />
+            {error && (
+              <p role="alert" className="text-red-300 text-sm mb-3">{error}</p>
+            )}
+            <div className="space-y-3">
+              <button
+                onClick={() => saveDraft('revisit', revisitNote.trim()).catch(err => setError(err.message))}
+                disabled={savingDraft}
+                className="w-full px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-hover transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+              >
+                {savingDraft ? 'Saving...' : 'Hold it as a draft'}
+              </button>
+              <button
+                onClick={() => setStep('recency')}
+                className="w-full px-6 py-3 border border-white/20 text-white/70 rounded-lg font-medium hover:bg-white/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'drafted' && (
+          <div className="bg-surface-card rounded-2xl p-6 text-center">
+            <div className="text-4xl mb-3" aria-hidden="true">🔖</div>
+            <h2 className="text-xl font-bold text-white mb-2">Held in your drafts</h2>
+            <p className="text-white/60 text-sm mb-6">
+              <span className="text-white font-medium">{restaurant.name}</span> is waiting for you.
+              Drafts are private — only you see them.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => router.push(memberHref ?? '/library')}
+                className="w-full px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+              >
+                {memberHref ? 'See your drafts' : 'Back to the Library'}
+              </button>
+              <button
+                onClick={() => router.push('/nominate')}
+                className="w-full px-6 py-3 border border-white/20 text-white/70 rounded-lg font-medium hover:bg-white/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                Nominate a different place
+              </button>
+            </div>
+          </div>
+        )}
+
         {step === 'capture' && (
           <QuickCaptureForm
             restaurant={restaurant}
             onSuccess={handleCaptureSuccess}
             onCancel={handleCancel}
+            initialWhy={draftWhy}
+            onSaveDraft={(why) => saveDraft('later', why)}
           />
         )}
 

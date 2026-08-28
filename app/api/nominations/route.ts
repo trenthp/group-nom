@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createNomination, getUserNominations } from '@/lib/nominations'
 import { ensureProfile, canPublish, updateProfile } from '@/lib/userProfile'
+import { deleteDraft } from '@/lib/drafts'
 import {
   resolveTimeZone,
   getDailyStatus,
@@ -115,10 +116,14 @@ export async function POST(request: NextRequest) {
       { localDate: daily.localDate, timezone }
     )
 
-    // Remember the zone so status checks without a tz param stay right
-    if (profile.timezone !== timezone) {
-      updateProfile(userId, { timezone }).catch(() => { /* non-fatal */ })
-    }
+    // Remember the zone so status checks without a tz param stay right,
+    // and retire the draft this nomination came from (if any)
+    await Promise.all([
+      profile.timezone !== timezone
+        ? updateProfile(userId, { timezone }).catch(() => { /* non-fatal */ })
+        : Promise.resolve(),
+      deleteDraft(userId, gersId).catch(() => { /* non-fatal */ }),
+    ])
 
     return NextResponse.json({ nomination }, { status: 201 })
   } catch (error: any) {

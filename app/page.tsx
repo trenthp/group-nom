@@ -46,6 +46,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   const [joinError, setJoinError] = useState('')
   const [isJoining, setIsJoining] = useState(false)
   const [stats, setStats] = useState<{ likes: number; favorites: number } | null>(null)
+  const [draftNudge, setDraftNudge] = useState<{ count: number; href: string } | null>(null)
   const [showAccountMenu, setShowAccountMenu] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
 
@@ -55,13 +56,23 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const response = await fetch('/api/user/profile')
-        if (response.ok) {
-          const data = await response.json()
+        const [profileRes, draftsRes] = await Promise.all([
+          fetch('/api/user/profile'),
+          fetch('/api/nominations/drafts'),
+        ])
+        if (profileRes.ok) {
+          const data = await profileRes.json()
           setStats({
             likes: data.stats?.likes || 0,
             favorites: data.stats?.favorites || 0,
           })
+          // A draft waiting is the daily reason to come back
+          if (draftsRes.ok && data.profile?.id) {
+            const { drafts } = await draftsRes.json()
+            if (Array.isArray(drafts) && drafts.length > 0) {
+              setDraftNudge({ count: drafts.length, href: `/member/${data.profile.id}` })
+            }
+          }
         }
       } catch {
         // Non-fatal
@@ -251,6 +262,14 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
               </div>
             </div>
           </Link>
+          {draftNudge && (
+            <Link
+              href={draftNudge.href}
+              className="block -mt-1 mb-3 px-1 text-sm text-orange-300 hover:text-orange-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+            >
+              🔖 {draftNudge.count} draft{draftNudge.count === 1 ? '' : 's'} waiting for you →
+            </Link>
+          )}
           <Link
             href="/library"
             className="block bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition group"

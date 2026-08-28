@@ -7,17 +7,37 @@ interface QuickCaptureFormProps {
   restaurant: Restaurant
   onSuccess: (nomination: { id: string; photoUrl: string; whyILoveIt: string }) => void
   onCancel: () => void
+  /** Prefilled from a private draft */
+  initialWhy?: string
+  /** Offered when present: keep the words, take the photo another day */
+  onSaveDraft?: (whyILoveIt: string) => Promise<void>
 }
 
 export default function QuickCaptureForm({
   restaurant,
   onSuccess,
   onCancel,
+  initialWhy = '',
+  onSaveDraft,
 }: QuickCaptureFormProps) {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [whyILoveIt, setWhyILoveIt] = useState('')
+  const [whyILoveIt, setWhyILoveIt] = useState(initialWhy)
   const [isUploading, setIsUploading] = useState(false)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
+
+  const handleSaveDraft = async () => {
+    if (!onSaveDraft) return
+    setError(null)
+    setIsSavingDraft(true)
+    try {
+      await onSaveDraft(whyILoveIt.trim())
+    } catch (err: any) {
+      setError(err.message || 'Could not save the draft')
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -209,12 +229,23 @@ export default function QuickCaptureForm({
           </button>
           <button
             type="submit"
-            disabled={isUploading || !photoFile || whyILoveIt.trim().length < 10}
+            disabled={isUploading || isSavingDraft || !photoFile || whyILoveIt.trim().length < 10}
             className="flex-1 px-4 py-3 bg-brand text-white rounded-lg font-medium hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUploading ? 'Nominating...' : 'Nominate'}
           </button>
         </div>
+
+        {onSaveDraft && (
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={isUploading || isSavingDraft}
+            className="w-full text-sm text-white/50 hover:text-white underline underline-offset-2 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
+          >
+            {isSavingDraft ? 'Saving...' : 'No photo handy? Save as a draft for later'}
+          </button>
+        )}
       </form>
     </div>
   )

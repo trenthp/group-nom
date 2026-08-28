@@ -240,9 +240,10 @@ others / moderator / former member, plus a permission matrix).
 - `PUT /api/user/profile` accepts `timezone` (IANA) — the daily-limit input.
 
 ### Schema still to come
-`nomination_drafts` (user, gers_id, partial fields, **no photo column**),
 `follows` (+ blocks, composite PKs, no counters), session metadata
 `deckSource`. Trust score columns already exist (unused until Phase 4).
+Applied so far beyond 007: 008 (name search), 009 (daily limit), 010
+(drafts).
 
 ### Build order
 **Phase 0 structural ✅ complete** (member gates; First L. attribution;
@@ -278,10 +279,19 @@ needs one human run-through (create → invite/join → vote → close → resul
      limit-hit state should offer "save as draft".
    - **E. Unlock moment** — landing built; wire the celebration copy to the
      actual gate once Phase 2 ships.
-   - **B. Recency question** ("been recently?") routing into drafts.
-   - **C. Private drafts**: `nomination_drafts` table, CRUD, "My drafts" on
-     the self member page, publish pre-fills capture. No photo until publish
-     (Blob URLs are public-if-known).
+   - ✅ **B. Recency question**: `/nominate/[id]` now opens on "When were
+     you last there?" (skipped when a draft already exists — they answered).
+     "It's been a while" → the revisit screen (optional "what do you
+     remember loving?") → draft with `reason='revisit'`.
+   - ✅ **C. Private drafts** (migration 010: `nomination_drafts`, no photo
+     column, `UNIQUE(clerk_user_id, gers_id)`, `reason` ∈ revisit/later/
+     limit; `anonymize_member()` now clears them). `lib/drafts.ts` +
+     `GET/POST /api/nominations/drafts`, `GET/DELETE
+     /api/nominations/drafts/[gersId]`. Entry points: revisit screen, the
+     limit-hit screen ("save it for tomorrow"), and a "no photo handy?"
+     link under the capture form. Publishing deletes the draft
+     server-side. Drafts render on the self member page (Nominate /
+     Remove) and home shows "N drafts waiting for you →".
    - **F. Chain soft-discourage** on the confirm card via `chain_names`.
    - **G. Add-a-place fallback**: name + address → LocationIQ → insert with
      `source='community'` + H3 → dedupe against seeded rows first (the

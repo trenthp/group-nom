@@ -16,6 +16,13 @@ import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Spinner, NominationBadge } from '@/components/ui'
 import type { Nomination } from '@/lib/types'
+import type { NominationDraft } from '@/lib/drafts'
+
+const REASON_LABEL: Record<NominationDraft['reason'], string> = {
+  revisit: 'After your next visit',
+  limit: 'For tomorrow',
+  later: 'When you have a photo',
+}
 
 interface MemberResponse {
   member: { id: string; displayName?: string; avatarUrl?: string }
@@ -44,6 +51,23 @@ export default function MemberPage() {
 
   const [data, setData] = useState<MemberResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [drafts, setDrafts] = useState<NominationDraft[]>([])
+
+  // Drafts are private — only fetched on your own page
+  useEffect(() => {
+    if (!data?.isSelf) return
+    let cancelled = false
+    fetch('/api/nominations/drafts')
+      .then(res => (res.ok ? res.json() : { drafts: [] }))
+      .then(json => { if (!cancelled) setDrafts(json.drafts ?? []) })
+      .catch(() => { /* non-fatal */ })
+    return () => { cancelled = true }
+  }, [data?.isSelf])
+
+  const removeDraft = async (gersId: string) => {
+    const res = await fetch(`/api/nominations/drafts/${gersId}`, { method: 'DELETE' })
+    if (res.ok) setDrafts(prev => prev.filter(d => d.gersId !== gersId))
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -160,6 +184,45 @@ export default function MemberPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Drafts (self only, private) */}
+        {isSelf && drafts.length > 0 && (
+          <section aria-labelledby="drafts-heading" className="mb-8">
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 id="drafts-heading" className="text-white font-semibold">Drafts</h2>
+              <span className="text-white/40 text-xs">Only you can see these</span>
+            </div>
+            <ul className="space-y-2 list-none p-0 m-0">
+              {drafts.map((draft) => (
+                <li key={draft.id} className="bg-surface-card rounded-card p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-white font-semibold truncate">{draft.restaurant?.name ?? 'A place'}</h3>
+                      <p className="text-white/50 text-xs">
+                        {[draft.restaurant?.city, REASON_LABEL[draft.reason]].filter(Boolean).join(' · ')}
+                      </p>
+                      {draft.whyILoveIt && (
+                        <p className="text-white/70 italic text-sm mt-1 line-clamp-2">&ldquo;{draft.whyILoveIt}&rdquo;</p>
+                      )}
+                    </div>
+                    <Link
+                      href={`/nominate/${draft.gersId}`}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+                    >
+                      Nominate
+                    </Link>
+                  </div>
+                  <button
+                    onClick={() => removeDraft(draft.gersId)}
+                    className="mt-2 text-xs text-white/40 hover:text-white/70 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
+                  >
+                    Remove draft
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {/* Places */}
