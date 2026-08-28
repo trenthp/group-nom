@@ -26,6 +26,8 @@ interface MemberResponse {
     canPublish: boolean
     nominationCount: number
     status: string
+    usedToday: boolean
+    resetsAt: string
   }
 }
 
@@ -45,7 +47,8 @@ export default function MemberPage() {
 
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/members/${id}`)
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    fetch(`/api/members/${id}?tz=${encodeURIComponent(tz)}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(res.status === 404 ? 'Member not found' : 'Failed to load member')
         return res.json()
@@ -127,11 +130,16 @@ export default function MemberPage() {
           <div className="bg-surface-card rounded-card p-4 mb-8">
             {self.status === 'suspended' ? (
               <p className="text-white/70 text-sm">Your account is read-only right now.</p>
+            ) : self.usedToday ? (
+              <p className="text-white/70 text-sm">
+                Today&apos;s place is on the shelf. The next nomination opens at{' '}
+                {new Date(self.resetsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}.
+              </p>
             ) : self.isUnlocked ? (
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-white/70 text-sm">You&apos;ve unlocked the full library. Add another place you love today.</p>
                 <Link
-                  href="/library"
+                  href="/nominate"
                   className="px-4 py-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
                 >
                   Nominate a place
@@ -144,7 +152,7 @@ export default function MemberPage() {
                   Somewhere local you&apos;ve loved recently — a photo and why. That&apos;s it.
                 </p>
                 <Link
-                  href="/library"
+                  href="/nominate"
                   className="inline-block px-4 py-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
                 >
                   Find a place to nominate

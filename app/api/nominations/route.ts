@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createNomination, getUserNominations } from '@/lib/nominations'
-import { ensureProfile, canPublish } from '@/lib/userProfile'
+import { ensureProfile, canPublish, updateProfile } from '@/lib/userProfile'
+import {
+  resolveTimeZone,
+  getDailyStatus,
+  limitMessage,
+  DAILY_LIMIT_CONSTRAINT,
+} from '@/lib/dailyLimit'
 
 /**
  * GET /api/nominations
@@ -61,6 +67,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { gersId, photoUrl, whyILoveIt } = body
 
+    // One per local day. The browser's zone wins; the profile's last-known
+    // zone is the fallback; UTC if neither.
+    const timezone = resolveTimeZone(body.timezone, profile.timezone)
+    const daily = await getDailyStatus(userId, timezone)
+    if (daily.usedToday) {
+      return NextResponse.json(
+        { error: limitMessage(daily), code: 'DAILY_LIMIT', resetsAt: daily.resetsAt },
+        { status: 429 }
+      )
+    }
+
     // Validate required fields
     if (!gersId || typeof gersId !== 'string') {
       return NextResponse.json(
@@ -94,11 +111,24 @@ export async function POST(request: NextRequest) {
       gersId,
       userId,
       photoUrl,
-      whyILoveIt.trim()
+      whyILoveIt.trim(),
+      { localDate: daily.localDate, timezone }
     )
+
+    // Remember the zone so status checks without a tz param stay right
+    if (profile.timezone !== timezone) {
+      updateProfile(userId, { timezone }).catch(() => { /* non-fatal */ })
+    }
 
     return NextResponse.json({ nomination }, { status: 201 })
   } catch (error: any) {
+    // Two nominations raced the daily limit; the index decided
+    if (error?.code === '23505' && error?.constraint === DAILY_LIMIT_CONSTRAINT) {
+      return NextResponse.json(
+        { error: "You've already nominated a place today. Come back tomorrow.", code: 'DAILY_LIMIT' },
+        { status: 429 }
+      )
+    }
     // Handle unique constraint violation (user already nominated this restaurant)
     if (error?.code === '23505') {
       return NextResponse.json(

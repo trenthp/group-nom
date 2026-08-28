@@ -6,7 +6,7 @@ import { useUser } from '@clerk/nextjs'
 import { QuickCaptureForm, EnrichmentForm, CoNominators } from '@/components/nomination'
 import type { Restaurant, Nomination } from '@/lib/types'
 
-type NominationStep = 'loading' | 'capture' | 'enrichment' | 'success'
+type NominationStep = 'loading' | 'capture' | 'enrichment' | 'success' | 'limit'
 
 export default function NominatePage() {
   const params = useParams()
@@ -28,6 +28,7 @@ export default function NominatePage() {
   // Where "Done" lands: your member page, with the welcome moment if this
   // was the nomination that unlocked the library.
   const [doneHref, setDoneHref] = useState('/library')
+  const [resetsAt, setResetsAt] = useState<string | null>(null)
 
   // Fetch restaurant and nomination data
   useEffect(() => {
@@ -53,6 +54,19 @@ export default function NominatePage() {
             setExistingNomination(data.userNomination)
             setNomination(data.userNomination)
             setStep('success')
+            return
+          }
+        }
+
+        // One per local day — check before showing the form so a blocked
+        // publish never gets as far as uploading a photo
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        const todayRes = await fetch(`/api/nominations/today?tz=${encodeURIComponent(tz)}`)
+        if (todayRes.ok) {
+          const today = await todayRes.json()
+          if (today.usedToday) {
+            setResetsAt(today.resetsAt)
+            setStep('limit')
             return
           }
         }
@@ -174,6 +188,40 @@ export default function NominatePage() {
         >
           ← Back
         </button>
+
+        {step === 'limit' && (
+          <div className="bg-surface-card rounded-2xl p-6">
+            <p className="text-xs uppercase tracking-wider text-white/50 mb-2">One a day</p>
+            <h2 className="text-xl font-bold text-white mb-2">
+              You&apos;ve already put a place on the shelf today
+            </h2>
+            <p className="text-white/70 mb-1">
+              <span className="font-semibold text-white">{restaurant.name}</span> can be tomorrow&apos;s.
+              {resetsAt && (
+                <> The next nomination opens at{' '}
+                  {new Date(resetsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}.
+                </>
+              )}
+            </p>
+            <p className="text-white/50 text-sm mb-6">
+              One place a day keeps the list honest — every nomination is something you meant.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => router.push(`/restaurant/${restaurantId}`)}
+                className="w-full px-6 py-3 bg-brand text-white rounded-lg font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+              >
+                See its page
+              </button>
+              <button
+                onClick={handleCancel}
+                className="w-full px-6 py-3 border border-white/20 text-white/70 rounded-lg font-medium hover:bg-white/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        )}
 
         {step === 'capture' && (
           <QuickCaptureForm

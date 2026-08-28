@@ -264,12 +264,18 @@ needs one human run-through (create → invite/join → vote → close → resul
      card, library header "+ Nominate", library empty state. Verified
      against live data: "vodoo bayou" → Voodoo Bayou, <250ms. Empty-result
      copy points at the add-a-place fallback (G) as "coming soon".
-   - **D. One per day at local midnight**: browser sends
-     `Intl.DateTimeFormat().resolvedOptions().timeZone` with the publish;
-     server stores it on the profile, computes the local date, enforces with
-     a unique index on `(clerk_user_id, local_date)` (race-proof; tz is
-     spoofable and that's fine — it's a social limit). On limit-hit the UI
-     offers "save as draft".
+   - ✅ **D. One per day at local midnight** (migration 009:
+     `nominations.local_date`, `published_tz`, partial unique index
+     `nominations_one_per_local_day` — legacy rows stay NULL and never
+     count). `lib/dailyLimit.ts` does the zone math with `formatToParts`
+     (server-zone independent — tested NY/LA/Tokyo/UTC/Kolkata). Browser
+     sends its IANA zone with the upload *and* the publish; the upload
+     endpoint pre-checks too so a blocked publish never orphans a Blob
+     photo. `GET /api/nominations/today?tz=` feeds the capture page (shows
+     the "already on the shelf today" state instead of the form) and the
+     self member page ("next opens at …"). The 429 carries
+     `code: 'DAILY_LIMIT'` + `resetsAt`. When drafts land (C), the
+     limit-hit state should offer "save as draft".
    - **E. Unlock moment** — landing built; wire the celebration copy to the
      actual gate once Phase 2 ships.
    - **B. Recency question** ("been recently?") routing into drafts.

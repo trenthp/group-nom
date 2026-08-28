@@ -68,11 +68,13 @@ export async function createNomination(
   gersId: string,
   clerkUserId: string,
   photoUrl: string,
-  whyILoveIt: string
+  whyILoveIt: string,
+  publish: { localDate: string; timezone: string }
 ): Promise<Nomination> {
+  // local_date + the partial unique index enforce one per local day
   const rows = await sql`
-    INSERT INTO nominations (gers_id, clerk_user_id, photo_url, why_i_love_it)
-    VALUES (${gersId}, ${clerkUserId}, ${photoUrl}, ${whyILoveIt})
+    INSERT INTO nominations (gers_id, clerk_user_id, photo_url, why_i_love_it, local_date, published_tz)
+    VALUES (${gersId}, ${clerkUserId}, ${photoUrl}, ${whyILoveIt}, ${publish.localDate}::date, ${publish.timezone})
     RETURNING *
   `
 

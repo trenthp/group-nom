@@ -13,11 +13,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getProfileById, toPublicMember, isUnlocked, canPublish } from '@/lib/userProfile'
 import { getUserNominations } from '@/lib/nominations'
+import { getDailyStatus, resolveTimeZone } from '@/lib/dailyLimit'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -37,19 +38,25 @@ export async function GET(
     }
 
     const isSelf = profile.clerkUserId === userId
-    const nominations = await getUserNominations(profile.clerkUserId, 100)
+    const tz = resolveTimeZone(request.nextUrl.searchParams.get('tz'), profile.timezone)
+    const [nominations, daily] = await Promise.all([
+      getUserNominations(profile.clerkUserId, 100),
+      isSelf ? getDailyStatus(userId, tz) : Promise.resolve(null),
+    ])
 
     return NextResponse.json({
       member: toPublicMember(profile),
       nominations,
       isSelf,
-      ...(isSelf
+      ...(isSelf && daily
         ? {
             self: {
               isUnlocked: isUnlocked(profile),
               canPublish: canPublish(profile),
               nominationCount: profile.nominationCount,
               status: profile.status,
+              usedToday: daily.usedToday,
+              resetsAt: daily.resetsAt,
             },
           }
         : {}),

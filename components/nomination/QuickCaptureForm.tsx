@@ -66,9 +66,13 @@ export default function QuickCaptureForm({
 
     try {
       // 1. Upload photo to Vercel Blob
+      // The member's zone decides which "day" this nomination lands on
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
       const formData = new FormData()
       formData.append('file', photoFile)
       formData.append('gersId', restaurant.id)
+      formData.append('timezone', timezone)
 
       const uploadRes = await fetch('/api/upload/nomination-photo', {
         method: 'POST',
@@ -90,6 +94,7 @@ export default function QuickCaptureForm({
           gersId: restaurant.id,
           photoUrl,
           whyILoveIt: whyILoveIt.trim(),
+          timezone,
         }),
       })
 

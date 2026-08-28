@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { put } from '@vercel/blob'
 import { sql } from '@/lib/db'
+import { getProfile } from '@/lib/userProfile'
+import { getDailyStatus, resolveTimeZone, limitMessage } from '@/lib/dailyLimit'
 
 // No SVG: it can carry scripts and render inline (stored XSS)
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
@@ -43,6 +45,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Invalid restaurant ID' },
         { status: 400 }
+      )
+    }
+
+    // Don't accept a photo the nomination endpoint is about to refuse —
+    // Blob URLs are public-if-known, so an orphaned upload is a leak.
+    const profile = await getProfile(userId)
+    const tz = resolveTimeZone(formData.get('timezone'), profile?.timezone)
+    const daily = await getDailyStatus(userId, tz)
+    if (daily.usedToday) {
+      return NextResponse.json(
+        { error: limitMessage(daily), code: 'DAILY_LIMIT', resetsAt: daily.resetsAt },
+        { status: 429 }
       )
     }
 
