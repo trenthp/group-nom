@@ -292,11 +292,19 @@ needs one human run-through (create → invite/join → vote → close → resul
      link under the capture form. Publishing deletes the draft
      server-side. Drafts render on the self member page (Nominate /
      Remove) and home shows "N drafts waiting for you →".
-   - **F. Chain soft-discourage** on the confirm card via `chain_names`.
-   - **G. Add-a-place fallback**: name + address → LocationIQ → insert with
-     `source='community'` + H3 → dedupe against seeded rows first (the
-     fiddliest part).
-   Suggested slices: A+D+E, then B+C, then F+G.
+   - ✅ **F. Chain soft-discourage**: `lib/chains.ts#isLikelyChain` = the
+     deck keyword heuristic ∪ `chain_names` (≥5 locations) ∪ ≥6 same-name
+     rows in the seed. Surfaced as `likelyChain` on
+     `/api/restaurants/[id]/details` and shown as a note on the recency
+     step. Never blocks.
+   - ✅ **G. Add-a-place fallback**: `/nominate` empty state → "Add … as a
+     new place" → `POST /api/restaurants/community` (`lib/geocode.ts`
+     forward-geocodes via LocationIQ, refuses a twin — similar name within
+     300m — with 409 + the match, which the UI offers as "Is it this
+     one?"). Inserts `gers_id = cmty_…`, `source='community'`, H3 res8/9,
+     then routes into the capture flow. Rate limited with uploads.
+   **Phase 1 is complete.** Untested by a human end to end — see the
+   session-test note; the nominate flow needs the same run-through.
 2. **The gate + Today's Five**: limited list/map/discover for
    non-nominators; deterministic daily sample; onboarding both variants
    (nominate-or-plan-a-visit, mission copy for empty areas); moderation

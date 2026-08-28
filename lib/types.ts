@@ -3,9 +3,11 @@
 // ==============================================
 
 export interface Restaurant {
-  id: string // Google place_id
+  id: string // gers_id (Overture) or cmty_… (community-added)
   name: string
   address: string
+  /** Soft-discourage signal for nominating chains; never blocks */
+  likelyChain?: boolean
   rating: number
   reviewCount: number
   cuisines: string[]

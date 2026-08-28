@@ -288,6 +288,16 @@ export default function NominatePage() {
             <p className="text-white/60 text-sm mb-6">
               Nominations are for places you&apos;ve loved <em>lately</em> — that&apos;s what keeps the list trustworthy.
             </p>
+            {restaurant.likelyChain && (
+              <div className="mb-6 rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-sm">
+                <p className="text-white/80 font-medium mb-1">Looks like a chain</p>
+                <p className="text-white/60">
+                  This list is about the independent places a town would miss. If this one is
+                  genuinely special to you, go ahead — but the one-a-day slot might be better
+                  spent on a local spot.
+                </p>
+              </div>
+            )}
             <div className="space-y-3">
               <button
                 onClick={() => setStep('capture')}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
+import { isLikelyChain } from '@/lib/chains'
 
 /**
  * GET /api/restaurants/[id]/details
@@ -51,6 +52,8 @@ export async function GET(
     }
 
     const r = rows[0]
+    // Soft-discourage signal for the nominate flow (never blocks)
+    const likelyChain = await isLikelyChain(r.name).catch(() => false)
 
     return NextResponse.json({
       success: true,
@@ -68,6 +71,7 @@ export async function GET(
         lng: r.lng,
         likeCount: r.like_count,
         nominationCount: r.nomination_count,
+        likelyChain,
       },
     })
   } catch (error) {

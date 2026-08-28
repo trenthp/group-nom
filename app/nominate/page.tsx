@@ -41,6 +41,38 @@ export default function NominateSearchPage() {
   const [searchError, setSearchError] = useState<string | null>(null)
   const requestSeq = useRef(0)
 
+  // Add-a-place fallback: the place isn't in the seed
+  const [adding, setAdding] = useState(false)
+  const [addName, setAddName] = useState('')
+  const [addAddress, setAddAddress] = useState('')
+  const [addBusy, setAddBusy] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
+  const [twin, setTwin] = useState<{ id: string; name: string; address: string; nominationCount: number } | null>(null)
+
+  const submitPlace = async () => {
+    setAddError(null)
+    setTwin(null)
+    setAddBusy(true)
+    try {
+      const res = await fetch('/api/restaurants/community', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: addName, address: addAddress }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 409 && data.existing) {
+        setTwin(data.existing)
+        return
+      }
+      if (!res.ok) throw new Error(data.error || 'Could not add the place')
+      router.push(`/nominate/${data.restaurant.id}`)
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Could not add the place')
+    } finally {
+      setAddBusy(false)
+    }
+  }
+
   const runSearch = useCallback(async (q: string, lat: number, lng: number) => {
     const seq = ++requestSeq.current
     if (q.trim().length < 2) {
@@ -196,14 +228,70 @@ export default function NominateSearchPage() {
               <div className="flex justify-center py-8"><Spinner /></div>
             )}
 
-            {!searching && searched && results.length === 0 && (
+            {!searching && searched && results.length === 0 && !adding && (
               <div className="text-center py-12 max-w-sm mx-auto">
                 <p className="text-white font-semibold mb-1">Nothing by that name nearby</p>
-                <p className="text-white/50 text-sm">
+                <p className="text-white/50 text-sm mb-5">
                   Try a shorter version of the name, or widen the area with
-                  &ldquo;change&rdquo; above. Adding a place that isn&apos;t on the map
-                  yet is coming soon.
+                  &ldquo;change&rdquo; above. Or put it on the map yourself.
                 </p>
+                <Button
+                  variant="primary"
+                  onClick={() => { setAddName(query.trim()); setAdding(true) }}
+                >
+                  Add &ldquo;{query.trim()}&rdquo; as a new place
+                </Button>
+              </div>
+            )}
+
+            {adding && (
+              <div className="bg-surface-card rounded-xl p-5 max-w-sm mx-auto space-y-4">
+                <div>
+                  <h2 className="text-white font-semibold">Put it on the map</h2>
+                  <p className="text-white/50 text-sm">
+                    A name and a street address. We&apos;ll find the pin; you add the love.
+                  </p>
+                </div>
+                <Input
+                  type="text"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  placeholder="Place name"
+                  aria-label="Place name"
+                  maxLength={120}
+                />
+                <Input
+                  type="text"
+                  value={addAddress}
+                  onChange={(e) => setAddAddress(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && submitPlace()}
+                  placeholder="Street address, city"
+                  aria-label="Street address"
+                  maxLength={200}
+                  autoFocus
+                  error={addError ?? undefined}
+                />
+                {twin && (
+                  <div className="rounded-lg border border-brand/50 bg-brand/10 p-3">
+                    <p className="text-white text-sm font-medium mb-1">Is it this one?</p>
+                    <p className="text-white/70 text-sm">{twin.name}</p>
+                    <p className="text-white/50 text-xs mb-2">{twin.address}</p>
+                    <Link
+                      href={`/nominate/${twin.id}`}
+                      className="inline-block px-3 py-1.5 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      Yes — nominate it
+                    </Link>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="ghost" className="flex-1" onClick={() => { setAdding(false); setTwin(null); setAddError(null) }} disabled={addBusy}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" className="flex-1" onClick={submitPlace} disabled={addBusy || addName.trim().length < 2 || addAddress.trim().length < 5}>
+                    {addBusy ? 'Finding it...' : 'Add place'}
+                  </Button>
+                </div>
               </div>
             )}
 

@@ -148,7 +148,7 @@ async function handleRateLimit(
     } else if (pathname.includes('/vote') || pathname.includes('/close-voting')) {
       limiter = rateLimiters.vote
       identifier = `vote:${baseIdentifier}`
-    } else if (pathname.startsWith('/api/upload/')) {
+    } else if (pathname.startsWith('/api/upload/') || pathname === '/api/restaurants/community') {
       limiter = rateLimiters.upload
       identifier = `upload:${baseIdentifier}`
     } else if (pathname === '/api/restaurants/nearby' || pathname === '/api/restaurants/search') {
