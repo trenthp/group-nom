@@ -305,10 +305,33 @@ needs one human run-through (create → invite/join → vote → close → resul
      then routes into the capture flow. Rate limited with uploads.
    **Phase 1 is complete.** Untested by a human end to end — see the
    session-test note; the nominate flow needs the same run-through.
-2. **The gate + Today's Five**: limited list/map/discover for
-   non-nominators; deterministic daily sample; onboarding both variants
-   (nominate-or-plan-a-visit, mission copy for empty areas); moderation
-   floor lands here too.
+2. ✅ **The gate + Today's Five + moderation floor** (Aug 27, 2026):
+   - `lib/gate.ts`: `getTodaysFive(userId, tz, lat, lng)` — candidates
+     from `getLibraryNearby` (25km, up to 200), sorted by id then shuffled
+     with a seeded PRNG (`userId|localDate`), first five; memoized in KV
+     (`five:{user}:{date}`, 36h) so the set holds all day and the page
+     check is one read. `canOpenRestaurant()` = unlocked, or in the five,
+     or saved/drafted/own-nominated, or in a session deck the member is in
+     (`?session=CODE`, the winner card passes it).
+   - Served by `/api/library` (`limited: true, totalNearby`), by
+     `POST /api/restaurants/nearby` (Discover swipes the same five, then
+     runs out), and enforced on `GET /api/nominations/restaurant/[id]`
+     (403 `code: 'GATED'`). Restaurant details stay open — the nominate
+     flow needs name/address for any searchable place; the *wall* is the
+     content. `/restaurant/[id]` renders a teaser card on 403.
+   - Onboarding: home leads with "Nominate your first place" + "Today's
+     Five" for pre-unlock members (from `isUnlocked` on the profile API);
+     the library header/banner explains the five and counts what opens.
+     Empty-area mission copy was already on the library empty state.
+   - Moderation (migration 011): `reports` table (one per member per
+     target), `restaurants.hidden_at` quiet-hide (filtered out of
+     library, decks, search, and the five), `POST /api/reports`,
+     `components/ReportButton` (per nomination + place-level "closed /
+     not a restaurant"), `/admin` queue with dismiss / remove nomination /
+     hide place / suspend member (`/api/admin/reports*`). Moderator role =
+     Clerk `publicMetadata.role` ∈ {admin, moderator} (`lib/admin.ts`);
+     non-moderators get 404. **Owner setup**: set `{"role":"admin"}` in
+     your user's Public metadata in the Clerk Dashboard.
 3. **Follows + member shelves + home feed** (profiles with First L., shelf,
    follow button; no counts anywhere).
 4. **Trust-weighted ranking** (all three score inputs now available; apply

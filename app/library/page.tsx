@@ -26,6 +26,8 @@ export default function LibraryPage() {
   const [places, setPlaces] = useState<LibraryEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'map'>('list')
+  // Pre-unlock members see Today's Five; the count is the tease
+  const [limited, setLimited] = useState<{ totalNearby: number } | null>(null)
 
   // Manual location entry (chosen via skip, forced when denied/unsupported)
   const [manualMode, setManualMode] = useState(false)
@@ -35,10 +37,12 @@ export default function LibraryPage() {
   const loadLibrary = useCallback(async (lat: number, lng: number) => {
     setPhase('loading')
     try {
-      const res = await fetch(`/api/library?lat=${lat}&lng=${lng}&radius=16`)
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      const res = await fetch(`/api/library?lat=${lat}&lng=${lng}&radius=16&tz=${encodeURIComponent(tz)}`)
       if (!res.ok) throw new Error('Failed to load library')
       const data = await res.json()
       setPlaces(data.places || [])
+      setLimited(data.limited ? { totalNearby: data.totalNearby ?? 0 } : null)
       setPhase('ready')
     } catch {
       setError('Could not load the library. Please try again.')
@@ -90,9 +94,11 @@ export default function LibraryPage() {
         <div className="max-w-lg mx-auto">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-xl font-bold text-white">The Library</h1>
+              <h1 className="text-xl font-bold text-white">{limited ? "Today's Five" : 'The Library'}</h1>
               <p className="text-sm text-white/50">
-                Places locals love, nominated by the community
+                {limited
+                  ? 'Five places locals love, picked for you today'
+                  : 'Places locals love, nominated by the community'}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -185,6 +191,26 @@ export default function LibraryPage() {
             >
               Try Again
             </Button>
+          </div>
+        )}
+
+        {phase === 'ready' && !showManualEntry && limited && places.length > 0 && (
+          <div className="mb-4 rounded-card bg-surface-card border border-brand/40 p-4">
+            <p className="text-white font-semibold mb-1">
+              {limited.totalNearby > places.length
+                ? `${limited.totalNearby - places.length} more loved places nearby`
+                : 'The whole library'}
+              {' '}open with your first nomination.
+            </p>
+            <p className="text-white/60 text-sm mb-3">
+              A new five arrives at midnight. Or add a place you love and see everything, for good.
+            </p>
+            <Link
+              href="/nominate"
+              className="inline-block px-4 py-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+            >
+              Nominate a place
+            </Link>
           </div>
         )}
 

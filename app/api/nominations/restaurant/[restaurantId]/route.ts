@@ -6,6 +6,9 @@ import {
   getCoNominators,
   getNominationCount
 } from '@/lib/nominations'
+import { ensureProfile } from '@/lib/userProfile'
+import { canOpenRestaurant, GATE_MESSAGE } from '@/lib/gate'
+import { resolveTimeZone } from '@/lib/dailyLimit'
 
 interface RouteParams {
   params: Promise<{ restaurantId: string }>
@@ -22,12 +25,23 @@ export async function GET(
   try {
     const { restaurantId } = await params
 
-    // Auth is optional - we show nominations to everyone
-    // But we include extra data if the user is signed in
+    // Members only (middleware), and gated for pre-unlock members
     const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Sign in to browse the library' }, { status: 401 })
+    }
 
     const searchParams = request.nextUrl.searchParams
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '20', 10), 50)
+
+    const profile = await ensureProfile(userId)
+    const allowed = await canOpenRestaurant(userId, profile, restaurantId, {
+      timezone: resolveTimeZone(searchParams.get('tz'), profile.timezone),
+      sessionCode: searchParams.get('session'),
+    })
+    if (!allowed) {
+      return NextResponse.json({ error: GATE_MESSAGE, code: 'GATED' }, { status: 403 })
+    }
 
     // Get nominations for this restaurant
     const nominations = await getRestaurantNominations(restaurantId, limit)

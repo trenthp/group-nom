@@ -50,6 +50,7 @@ export async function searchRestaurantsByName(
     FROM restaurants
     WHERE lat BETWEEN ${lat - dLat} AND ${lat + dLat}
       AND lng BETWEEN ${lng - dLng} AND ${lng + dLng}
+      AND hidden_at IS NULL
       AND (name ILIKE ${'%' + q + '%'} OR name % ${q})
     ORDER BY score DESC, ((lat - ${lat}) * (lat - ${lat}) + (lng - ${lng}) * (lng - ${lng})) ASC
     LIMIT ${limit * 4}

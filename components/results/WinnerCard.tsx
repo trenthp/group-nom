@@ -6,13 +6,15 @@ import { ConfettiIcon, CompassIcon, PhoneIcon, GlobeIcon } from '@/components/ic
 export interface WinnerCardProps {
   winner: Restaurant
   resultMessage: string
+  /** Lets a pre-unlock member open the winner's page (it's in their deck) */
+  sessionCode?: string
 }
 
 /**
  * The celebration card (Sunset Glass skin). Positive-only: the community
  * signal is nominations — no ratings, no reviews.
  */
-export function WinnerCard({ winner, resultMessage }: WinnerCardProps) {
+export function WinnerCard({ winner, resultMessage, sessionCode }: WinnerCardProps) {
   return (
     <div className="bg-white rounded-2xl shadow-card-light overflow-hidden bounce-winner">
       {/* Image */}
@@ -79,7 +81,7 @@ export function WinnerCard({ winner, resultMessage }: WinnerCardProps) {
           </a>
 
           <a
-            href={`/restaurant/${winner.id}`}
+            href={`/restaurant/${winner.id}${sessionCode ? `?session=${encodeURIComponent(sessionCode)}` : ''}`}
             className="block w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2"
           >
             <span className="flex items-center justify-center gap-2">

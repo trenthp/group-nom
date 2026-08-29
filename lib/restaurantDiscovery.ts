@@ -156,6 +156,7 @@ export async function getLibraryNearby(
      FROM restaurants_with_nominations r
      WHERE r.${h3Column} = ANY($1::bigint[])
        AND r.nomination_count > 0
+       AND r.hidden_at IS NULL
      ORDER BY r.nomination_count DESC, r.completeness_score DESC
      LIMIT $2`,
     [h3Values, limit]
@@ -223,6 +224,7 @@ export async function getDiscoveryDeck(
         FROM restaurants r
         WHERE r.h3_index_res9 = ANY(${h3Values}::bigint[])
           AND NOT (r.gers_id = ANY(${excludeIds}::text[]))
+          AND r.hidden_at IS NULL
           AND (
             ${prefixes.length === 0} OR EXISTS (
               SELECT 1 FROM unnest(r.categories) cat
@@ -244,6 +246,7 @@ export async function getDiscoveryDeck(
         FROM restaurants r
         WHERE r.h3_index_res8 = ANY(${h3Values}::bigint[])
           AND NOT (r.gers_id = ANY(${excludeIds}::text[]))
+          AND r.hidden_at IS NULL
           AND (
             ${prefixes.length === 0} OR EXISTS (
               SELECT 1 FROM unnest(r.categories) cat

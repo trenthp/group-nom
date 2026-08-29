@@ -72,6 +72,7 @@ export default function DiscoverPage() {
           radius: 5000,
           limit: 1, // Only fetch 1 restaurant at a time
           excludeIds, // Pass already seen IDs to backend
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Today's Five day boundary
         }),
       })
 

@@ -421,7 +421,7 @@ export default function ResultsPage({
         <div className="w-full max-w-md">
           {/* Winner Card */}
           <div className="mb-8">
-            <WinnerCard winner={winner} resultMessage={resultMessage} />
+            <WinnerCard winner={winner} resultMessage={resultMessage} sessionCode={sessionCode} />
           </div>
 
           {/* Match Navigation */}

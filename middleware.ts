@@ -32,6 +32,8 @@ const isMemberApiRoute = createRouteMatcher([
   '/api/restaurants(.*)',
   '/api/session(.*)',
   '/api/members(.*)',
+  '/api/reports(.*)',
+  '/api/admin(.*)',
 ])
 
 // Create tiered rate limiters: stricter for anonymous, generous for authenticated

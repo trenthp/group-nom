@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { sql } from '@/lib/db'
 import { isLikelyChain } from '@/lib/chains'
 
@@ -14,6 +15,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Sign in to browse the library' }, { status: 401 })
+    }
 
     if (!id) {
       return NextResponse.json(
@@ -52,6 +57,10 @@ export async function GET(
     }
 
     const r = rows[0]
+
+    // Not gated: the nominate flow needs name/address for any searchable
+    // place. The gate lives on the nominations wall (the actual content).
+
     // Soft-discourage signal for the nominate flow (never blocks)
     const likelyChain = await isLikelyChain(r.name).catch(() => false)
 

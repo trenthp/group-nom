@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { ReportButton } from '@/components/ReportButton'
 import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import FactualDataForm from '@/components/restaurant/FactualDataForm'
@@ -22,8 +23,12 @@ export default function RestaurantPage() {
   const router = useRouter()
   const { isSignedIn } = useUser()
   const restaurantId = params.id as string
+  const search = useSearchParams()
+  // A session code lets a pre-unlock member open a winner from their deck
+  const sessionCode = search.get('session')
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
+  const [gated, setGated] = useState<string | null>(null)
   const [nominations, setNominations] = useState<Nomination[]>([])
   const [nominationCount, setNominationCount] = useState(0)
   const [userNomination, setUserNomination] = useState<Nomination | null>(null)
@@ -34,9 +39,11 @@ export default function RestaurantPage() {
 
   const fetchAll = useCallback(async () => {
     try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      const gateQs = `tz=${encodeURIComponent(tz)}${sessionCode ? `&session=${encodeURIComponent(sessionCode)}` : ''}`
       const [detailsRes, nomsRes, enrichRes] = await Promise.all([
         fetch(`/api/restaurants/${restaurantId}/details`),
-        fetch(`/api/nominations/restaurant/${restaurantId}`),
+        fetch(`/api/nominations/restaurant/${restaurantId}?${gateQs}`),
         fetch(`/api/enrichment/${restaurantId}`),
       ])
 
@@ -48,6 +55,14 @@ export default function RestaurantPage() {
 
       const details = await detailsRes.json()
       setRestaurant(details.restaurant)
+
+      if (nomsRes.status === 403) {
+        const body = await nomsRes.json().catch(() => ({}))
+        setGated(body.error || 'Nominate a place you love to open this page.')
+        setNominationCount(details.restaurant?.nominationCount ?? 0)
+        setLoading(false)
+        return
+      }
 
       if (nomsRes.ok) {
         const noms = await nomsRes.json()
@@ -66,11 +81,51 @@ export default function RestaurantPage() {
       setError('Failed to load restaurant')
       setLoading(false)
     }
-  }, [restaurantId])
+  }, [restaurantId, sessionCode])
 
   useEffect(() => {
     if (restaurantId) fetchAll()
   }, [restaurantId, fetchAll])
+
+  if (!loading && restaurant && gated) {
+    return (
+      <div className="min-h-screen bg-surface-page">
+        <main className="max-w-lg mx-auto px-4 pt-10 pb-24">
+          <button
+            onClick={() => router.back()}
+            className="mb-6 text-white/60 flex items-center gap-2 hover:text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
+          >
+            ← Back
+          </button>
+          <div className="bg-surface-card rounded-2xl p-6">
+            <h1 className="text-2xl font-bold text-white mb-1">{restaurant.name}</h1>
+            <p className="text-white/50 text-sm mb-5">{restaurant.address}</p>
+            {nominationCount > 0 && (
+              <p className="text-white/80 mb-2">
+                ❤️ Loved by {nominationCount} local{nominationCount === 1 ? '' : 's'} — their photos and
+                stories are waiting behind your first nomination.
+              </p>
+            )}
+            <p className="text-white/60 text-sm mb-6">{gated}</p>
+            <div className="space-y-3">
+              <Link
+                href="/nominate"
+                className="block w-full text-center px-6 py-3 rounded-lg font-semibold bg-brand text-white hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+              >
+                Nominate a place you love
+              </Link>
+              <Link
+                href="/library"
+                className="block w-full text-center px-6 py-3 rounded-lg font-medium border border-white/20 text-white/70 hover:bg-white/5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                See Today&apos;s Five
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -308,6 +363,9 @@ export default function RestaurantPage() {
                       )}
                       <span aria-hidden="true">·</span>
                       {formatDate(nom.createdAt)}
+                      <span className="ml-auto">
+                        <ReportButton targetType="nomination" targetId={nom.id} />
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -316,11 +374,14 @@ export default function RestaurantPage() {
           </div>
         )}
 
-        {/* Back link */}
-        <div className="text-center pt-4">
+        {/* Back link + place-level report (closed / not a restaurant) */}
+        <div className="text-center pt-4 space-y-3">
           <Link href="/library" className="text-white/40 hover:text-white/70 text-sm underline">
             ← Back to the Library
           </Link>
+          <div>
+            <ReportButton targetType="restaurant" targetId={restaurantId} label="Closed or not a restaurant? Let us know" />
+          </div>
         </div>
       </main>
     </div>

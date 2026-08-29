@@ -47,6 +47,8 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   const [isJoining, setIsJoining] = useState(false)
   const [stats, setStats] = useState<{ likes: number; favorites: number } | null>(null)
   const [draftNudge, setDraftNudge] = useState<{ count: number; href: string } | null>(null)
+  // null until known; the pre-unlock home leads with the first nomination
+  const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null)
   const [showAccountMenu, setShowAccountMenu] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
 
@@ -66,6 +68,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
             likes: data.stats?.likes || 0,
             favorites: data.stats?.favorites || 0,
           })
+          if (typeof data.isUnlocked === 'boolean') setIsUnlocked(data.isUnlocked)
           // A draft waiting is the daily reason to come back
           if (draftsRes.ok && data.profile?.id) {
             const { drafts } = await draftsRes.json()
@@ -199,7 +202,9 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
             Hey {userName}!
           </h1>
           <p className="text-white/60 text-sm mt-1">
-            Ready to find something good?
+            {isUnlocked === false
+              ? 'Your first nomination opens the whole library.'
+              : 'Ready to find something good?'}
           </p>
         </div>
       </header>
@@ -257,8 +262,14 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
                 </svg>
               </div>
               <div>
-                <h3 className="font-bold text-white text-lg">Nominate a place</h3>
-                <p className="text-white/50 text-sm">Somewhere local you&apos;ve loved lately</p>
+                <h3 className="font-bold text-white text-lg">
+                  {isUnlocked === false ? 'Nominate your first place' : 'Nominate a place'}
+                </h3>
+                <p className="text-white/50 text-sm">
+                  {isUnlocked === false
+                    ? 'Somewhere local you’ve loved lately — a photo and why. Not lately? We’ll hold it while you go back.'
+                    : 'Somewhere local you’ve loved lately'}
+                </p>
               </div>
             </div>
           </Link>
@@ -281,8 +292,12 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
                 </svg>
               </div>
               <div>
-                <h3 className="font-bold text-white text-lg">The Library</h3>
-                <p className="text-white/50 text-sm">Places locals love, nominated by the community</p>
+                <h3 className="font-bold text-white text-lg">{isUnlocked === false ? "Today's Five" : 'The Library'}</h3>
+                <p className="text-white/50 text-sm">
+                  {isUnlocked === false
+                    ? 'Five loved places near you, new every day'
+                    : 'Places locals love, nominated by the community'}
+                </p>
               </div>
             </div>
           </Link>
