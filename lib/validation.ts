@@ -24,15 +24,23 @@ export const filtersSchema = z.object({
 })
 
 // Create session request validation
+// Where the deck comes from (Phase 5): mix (default) | library | group
+const deckSourceSchema = z.enum(['mix', 'library', 'group']).optional()
+const groupIdSchema = z.string().uuid().optional()
+
 export const createSessionSchema = z.object({
   filters: filtersSchema,
   location: locationSchema,
+  deckSource: deckSourceSchema,
+  groupId: groupIdSchema,
 })
 
 // Reconfigure session request validation — host identity comes from auth()
 export const reconfigureSessionSchema = z.object({
   filters: filtersSchema,
   location: locationSchema,
+  deckSource: deckSourceSchema,
+  groupId: groupIdSchema,
 })
 
 // Helper to parse and validate request body

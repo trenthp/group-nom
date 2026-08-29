@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
 import { createSessionSchema, parseBody } from '@/lib/validation'
-import { getDiscoveryDeck } from '@/lib/restaurantDiscovery'
 import { getRestaurantLimit, getUserTier } from '@/lib/userTiers'
 import { ensureProfile } from '@/lib/userProfile'
+import { buildDeck } from '@/lib/deckSources'
+import { getGroupWithMembers } from '@/lib/groups'
 import type { SessionMetadata } from '@/lib/types'
 
 function generateSessionCode(): string {
@@ -40,7 +41,23 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { filters, location } = parsed.data
+    const { filters, location, groupId } = parsed.data
+    let deckSource = parsed.data.deckSource ?? 'mix'
+
+    // Group decks are for saved-Group sessions only: the roster is known
+    // at creation, ad-hoc joiners aren't. The host must be on the roster.
+    let groupMemberIds: string[] | undefined
+    if (deckSource === 'group') {
+      const group = groupId ? await getGroupWithMembers(groupId, clerkUserId) : null
+      // getGroupWithMembers already verifies the host is owner or member
+      if (!group) {
+        return NextResponse.json(
+          { error: 'Pick one of your saved groups to build a deck from its favorites' },
+          { status: 400 }
+        )
+      }
+      groupMemberIds = Array.from(new Set([group.ownerId, ...group.members.map(m => m.clerkUserId)]))
+    }
 
     // Generate session code with collision detection
     let code = generateSessionCode()
@@ -58,17 +75,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build the deck directly from our own database (community signals included)
-    const restaurants = await getDiscoveryDeck(
-      location.lat,
-      location.lng,
-      filters.distance,
-      restaurantLimit,
-      {
-        cuisines: filters.cuisines || [],
-        preferLocal: filters.preferLocal !== false,
-      }
-    )
+    // Build the deck from the chosen source (falls back to mix if thin)
+    const deck = await buildDeck(deckSource, {
+      lat: location.lat,
+      lng: location.lng,
+      radiusKm: filters.distance,
+      limit: restaurantLimit,
+      cuisines: filters.cuisines || [],
+      preferLocal: filters.preferLocal !== false,
+      groupMemberIds,
+    })
+    const restaurants = deck.restaurants
+    deckSource = deck.source
 
     // Create session metadata for tracking user tier
     const metadata: SessionMetadata = {
@@ -76,6 +94,9 @@ export async function POST(request: NextRequest) {
       creatorClerkId: clerkUserId,
       restaurantLimit,
       createdAt: Date.now(),
+      deckSource,
+      groupId: deckSource === 'group' ? groupId : undefined,
+      deckFellBack: deck.fellBack,
     }
 
     // Create session; the signed-in creator is the host
@@ -95,6 +116,8 @@ export async function POST(request: NextRequest) {
         createdAt: session.createdAt,
         filters: session.filters,
         restaurantCount: session.restaurants.length,
+        deckSource,
+        deckFellBack: deck.fellBack,
       },
     })
   } catch (error) {

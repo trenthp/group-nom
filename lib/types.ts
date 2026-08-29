@@ -208,6 +208,12 @@ export interface SessionMetadata {
   creatorClerkId: string | null
   restaurantLimit: number
   createdAt: number
+  /** Where the deck came from (Phase 5); absent on older sessions = mix */
+  deckSource?: 'mix' | 'library' | 'group'
+  /** Saved group the deck was built from, when deckSource = 'group' */
+  groupId?: string
+  /** The requested source couldn't fill a deck, so mix was used */
+  deckFellBack?: boolean
 }
 
 // Auth types

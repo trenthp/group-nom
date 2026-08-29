@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
-import { getDiscoveryDeck } from '@/lib/restaurantDiscovery'
 import { reconfigureSessionSchema, parseBody } from '@/lib/validation'
+import { buildDeck } from '@/lib/deckSources'
+import { getGroupWithMembers } from '@/lib/groups'
 
 export async function POST(
   request: NextRequest,
@@ -46,17 +47,33 @@ export async function POST(
       )
     }
 
-    // Build a fresh deck directly from our own database
-    const restaurants = await getDiscoveryDeck(
-      location.lat,
-      location.lng,
-      filters.distance,
-      10,
-      {
-        cuisines: filters.cuisines || [],
-        preferLocal: filters.preferLocal !== false,
+    // Deck source: the request wins, else whatever the session was made with
+    const deckSource = parsed.data.deckSource ?? session.metadata?.deckSource ?? 'mix'
+    const groupId = parsed.data.groupId ?? session.metadata?.groupId
+    let groupMemberIds: string[] | undefined
+    if (deckSource === 'group') {
+      const group = groupId ? await getGroupWithMembers(groupId, userId) : null
+      // getGroupWithMembers already verifies the host is owner or member
+      if (!group) {
+        return NextResponse.json(
+          { error: 'Pick one of your saved groups to build a deck from its favorites' },
+          { status: 400 }
+        )
       }
-    )
+      groupMemberIds = Array.from(new Set([group.ownerId, ...group.members.map(m => m.clerkUserId)]))
+    }
+
+    // Build a fresh deck from the chosen source
+    const deck = await buildDeck(deckSource, {
+      lat: location.lat,
+      lng: location.lng,
+      radiusKm: filters.distance,
+      limit: session.metadata?.restaurantLimit ?? 10,
+      cuisines: filters.cuisines || [],
+      preferLocal: filters.preferLocal !== false,
+      groupMemberIds,
+    })
+    const restaurants = deck.restaurants
 
     // Reconfigure the session
     const updatedSession = await sessionStore.reconfigureSession(
@@ -79,6 +96,8 @@ export async function POST(
         code: updatedSession.code,
         status: updatedSession.status,
         restaurantCount: updatedSession.restaurants.length,
+        deckSource: deck.source,
+        deckFellBack: deck.fellBack,
       },
     })
   } catch (error) {

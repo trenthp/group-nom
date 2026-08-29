@@ -28,6 +28,17 @@ function SetupPageContent() {
   const [setupMode, setSetupMode] = useState<SetupMode>(skipPrompt ? 'auto' : 'prompt')
 
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS })
+  // Where the deck comes from (Phase 5). Group decks need a saved group.
+  const [deckSource, setDeckSource] = useState<'mix' | 'library' | 'group'>('mix')
+  const [groupId, setGroupId] = useState<string>('')
+  const [groups, setGroups] = useState<Array<{ id: string; name: string; memberCount: number }>>([])
+
+  useEffect(() => {
+    fetch('/api/groups')
+      .then(res => (res.ok ? res.json() : { groups: [] }))
+      .then(json => setGroups(json.groups ?? []))
+      .catch(() => { /* non-fatal */ })
+  }, [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -132,6 +143,8 @@ function SetupPageContent() {
           body: JSON.stringify({
             filters,
             location,
+            deckSource,
+            groupId: deckSource === 'group' && groupId ? groupId : undefined,
           }),
         })
 
@@ -150,6 +163,8 @@ function SetupPageContent() {
           body: JSON.stringify({
             filters,
             location,
+            deckSource,
+            groupId: deckSource === 'group' && groupId ? groupId : undefined,
           }),
         })
 
@@ -344,6 +359,60 @@ function SetupPageContent() {
             locationLoading={locationLoading}
             locationError={locationError}
           />
+
+          {/* Deck source (Phase 5): mix / library only / group favorites */}
+          <fieldset className="mt-4 bg-white/15 backdrop-blur-sm rounded-xl p-4 text-white">
+            <legend className="sr-only">Where the deck comes from</legend>
+            <p className="text-sm font-semibold mb-2">Build the deck from</p>
+            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Deck source">
+              {([
+                { value: 'mix', label: 'Everything', hint: 'Nearby, love-weighted' },
+                { value: 'library', label: 'The Library', hint: 'Only loved places' },
+                { value: 'group', label: 'Group favorites', hint: 'Your group’s picks' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={deckSource === opt.value}
+                  onClick={() => setDeckSource(opt.value)}
+                  className={`rounded-lg px-2 py-2 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                    deckSource === opt.value ? 'bg-white text-orange-700' : 'bg-white/10 hover:bg-white/20'
+                  }`}
+                >
+                  <span className="block text-sm font-semibold leading-tight">{opt.label}</span>
+                  <span className={`block text-[11px] leading-tight ${deckSource === opt.value ? 'text-orange-700/80' : 'text-white/70'}`}>{opt.hint}</span>
+                </button>
+              ))}
+            </div>
+            {deckSource === 'group' && (
+              <div className="mt-3">
+                {groups.length === 0 ? (
+                  <p className="text-white/80 text-sm">
+                    Group favorites need a saved group — create one from the home page first.
+                  </p>
+                ) : (
+                  <>
+                    <label htmlFor="deck-group" className="block text-xs text-white/80 mb-1">Which group?</label>
+                    <select
+                      id="deck-group"
+                      value={groupId}
+                      onChange={(e) => setGroupId(e.target.value)}
+                      className="w-full rounded-lg bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white"
+                    >
+                      <option value="">Pick a group</option>
+                      {groups.map(g => (
+                        <option key={g.id} value={g.id}>{g.name} · {g.memberCount} member{g.memberCount === 1 ? '' : 's'}</option>
+                      ))}
+                    </select>
+                    <p className="text-white/70 text-xs mt-1">
+                      Only places your group has nominated. If that&apos;s fewer than three, we fill from everything nearby.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </fieldset>
 
           {error && (
             <div className="mt-4 bg-red-500 text-white p-4 rounded-lg">

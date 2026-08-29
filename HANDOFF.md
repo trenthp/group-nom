@@ -364,7 +364,17 @@ needs one human run-through (create → invite/join → vote → close → resul
    without one). Add a cron hitting
    `SELECT recompute_trust_score(clerk_user_id) FROM user_profiles WHERE nomination_count > 0`
    nightly when there's a scheduler.
-5. **Session deck sources** (group favorites / library only / mix).
+5. ✅ **Session deck sources** (Aug 27, 2026). `lib/deckSources.ts#buildDeck`:
+   `mix` (current love-weighted discovery), `library` (nominated-only via
+   `getLibraryNearby`, love-ordered), `group` (places nominated by the
+   saved group's roster, ordered by roster votes then love;
+   `getGroupWithMembers(groupId, hostId)` enforces the host is on the
+   roster). Under 3 places → falls back to `mix` and reports
+   `deckFellBack`. Wired into `session/create` and `reconfigure`
+   (`deckSource`, `groupId` in the Zod schemas; stored on
+   `SessionMetadata`). Setup page has a three-way picker + group select
+   (fetches `/api/groups`). Not surfaced yet: the fallback notice on the
+   session waiting screen (the create response carries `deckFellBack`).
 6. **Situational shelves** (good-for tags, dish shelves; seeded backfill
    clearly separated) **+ OG-image sharing**.
 
