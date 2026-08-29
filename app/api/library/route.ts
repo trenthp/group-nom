@@ -4,6 +4,9 @@ import { getLibraryNearby } from '@/lib/restaurantDiscovery'
 import { ensureProfile, isUnlocked } from '@/lib/userProfile'
 import { getTodaysFive } from '@/lib/gate'
 import { resolveTimeZone } from '@/lib/dailyLimit'
+import type { GoodForTag } from '@/lib/types'
+
+const GOOD_FOR_TAGS: GoodForTag[] = ['date_night', 'family', 'groups', 'solo', 'quick_bite', 'late_night', 'brunch']
 
 /**
  * GET /api/library?lat=..&lng=..&radius=..&tz=..
@@ -48,9 +51,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const places = await getLibraryNearby(lat, lng, radiusKm, limit)
+    // Situational shelf (Phase 6): a good-for tag members put on nominations
+    const shelf = params.get('shelf')
+    const goodFor = shelf && GOOD_FOR_TAGS.includes(shelf as GoodForTag) ? shelf : undefined
 
-    return NextResponse.json({ success: true, places, limited: false })
+    const places = await getLibraryNearby(lat, lng, radiusKm, limit, { goodFor })
+
+    return NextResponse.json({ success: true, places, limited: false, shelf: goodFor ?? null })
   } catch (error) {
     console.error('[API] Error fetching library:', error)
     return NextResponse.json(

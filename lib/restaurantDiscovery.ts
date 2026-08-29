@@ -126,11 +126,17 @@ export interface LibraryEntry {
  * The browsable library: only places someone has nominated.
  * Everything you see here, someone loves.
  */
+export interface LibraryOptions {
+  /** Situational shelf: only places someone tagged with this good-for tag */
+  goodFor?: string
+}
+
 export async function getLibraryNearby(
   lat: number,
   lng: number,
   radiusKm: number,
-  limit = 50
+  limit = 50,
+  options: LibraryOptions = {}
 ): Promise<LibraryEntry[]> {
   const cappedRadius = Math.min(Math.max(radiusKm, 1), 25)
   const { indexes, resolution } = distanceToH3Query(lat, lng, cappedRadius)
@@ -158,9 +164,13 @@ export async function getLibraryNearby(
      WHERE r.${h3Column} = ANY($1::bigint[])
        AND r.nomination_count > 0
        AND r.hidden_at IS NULL
+       AND ($3::text IS NULL OR EXISTS (
+         SELECT 1 FROM nominations n
+         WHERE n.gers_id = r.gers_id AND $3::text = ANY(n.good_for)
+       ))
      ORDER BY r.love_score DESC, r.nomination_count DESC, r.completeness_score DESC
      LIMIT $2`,
-    [h3Values, limit]
+    [h3Values, limit, options.goodFor ?? null]
   )
 
   return (rows as Record<string, unknown>[]).map(row => {

@@ -375,8 +375,20 @@ needs one human run-through (create → invite/join → vote → close → resul
    `SessionMetadata`). Setup page has a three-way picker + group select
    (fetches `/api/groups`). Not surfaced yet: the fallback notice on the
    session waiting screen (the create response carries `deckFellBack`).
-6. **Situational shelves** (good-for tags, dish shelves; seeded backfill
-   clearly separated) **+ OG-image sharing**.
+6. ✅ **Situational shelves + sharing** (Aug 27, 2026).
+   - Shelves: chip row on `/library` (Date night, With kids, Groups, Solo,
+     Quick bite, Late night, Brunch) → `/api/library?shelf=<good_for tag>`
+     → `getLibraryNearby(..., { goodFor })` (places with at least one
+     nomination carrying the tag, still love-ordered). Hidden for
+     pre-unlock members — the five are the five. Dish shelves not built:
+     favorite dishes are free text; needs normalization first.
+   - Sharing: `/restaurant/*` is member-gated, so unfurlers would hit a
+     sign-in redirect. Share links go to **`/p/[id]`** (public, server
+     component, `generateMetadata` + `opengraph-image.tsx` via `next/og`):
+     name, town, "Loved by N locals" — never a photo/quote/member
+     (`lib/teaser.ts`). Share button on the restaurant page uses
+     `navigator.share` or copies the link. `/p` is outside the member
+     matcher on purpose.
 
 Parallel any time: marketing rewrite (hero = ad-free community library of
 loved local places; group voting is the second act; stale rating/price copy

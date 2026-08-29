@@ -33,12 +33,15 @@ export default function LibraryPage() {
   const [manualMode, setManualMode] = useState(false)
   const [locationQuery, setLocationQuery] = useState('')
   const [inputError, setInputError] = useState<string | null>(null)
+  // Situational shelves (Phase 6): good-for tags members put on nominations
+  const [shelf, setShelf] = useState<string | null>(null)
 
-  const loadLibrary = useCallback(async (lat: number, lng: number) => {
+  const loadLibrary = useCallback(async (lat: number, lng: number, shelfTag: string | null = null) => {
     setPhase('loading')
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-      const res = await fetch(`/api/library?lat=${lat}&lng=${lng}&radius=16&tz=${encodeURIComponent(tz)}`)
+      const shelfQs = shelfTag ? `&shelf=${encodeURIComponent(shelfTag)}` : ''
+      const res = await fetch(`/api/library?lat=${lat}&lng=${lng}&radius=16&tz=${encodeURIComponent(tz)}${shelfQs}`)
       if (!res.ok) throw new Error('Failed to load library')
       const data = await res.json()
       setPlaces(data.places || [])
@@ -50,12 +53,12 @@ export default function LibraryPage() {
     }
   }, [])
 
-  // Load whenever we get coordinates (GPS grant or manual geocode)
+  // Load whenever we get coordinates (GPS grant or manual geocode) or the shelf changes
   useEffect(() => {
     if (coordinates) {
-      loadLibrary(coordinates.lat, coordinates.lng)
+      loadLibrary(coordinates.lat, coordinates.lng, shelf)
     }
-  }, [coordinates, loadLibrary])
+  }, [coordinates, shelf, loadLibrary])
 
   const handleManualLocation = useCallback(async () => {
     if (!locationQuery.trim()) {
@@ -194,6 +197,33 @@ export default function LibraryPage() {
           </div>
         )}
 
+        {/* Shelves — only once the library is open; the five are the five */}
+        {!limited && coordinates && !showManualEntry && phase !== 'error' && (
+          <div className="flex gap-2 overflow-x-auto pb-3 mb-3 -mx-4 px-4" role="group" aria-label="Shelves">
+            {([
+              [null, 'Everything'],
+              ['date_night', 'Date night'],
+              ['family', 'With kids'],
+              ['groups', 'Groups'],
+              ['solo', 'Solo'],
+              ['quick_bite', 'Quick bite'],
+              ['late_night', 'Late night'],
+              ['brunch', 'Brunch'],
+            ] as Array<[string | null, string]>).map(([tag, label]) => (
+              <button
+                key={label}
+                onClick={() => setShelf(tag)}
+                aria-pressed={shelf === tag}
+                className={`shrink-0 px-3 py-1.5 rounded-pill text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page ${
+                  shelf === tag ? 'bg-brand text-white font-semibold' : 'bg-surface-card text-white/70 hover:bg-surface-card-hover'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {phase === 'ready' && !showManualEntry && limited && places.length > 0 && (
           <div className="mb-4 rounded-card bg-surface-card border border-brand/40 p-4">
             <p className="text-white font-semibold mb-1">
@@ -214,7 +244,22 @@ export default function LibraryPage() {
           </div>
         )}
 
-        {phase === 'ready' && !showManualEntry && places.length === 0 && (
+        {phase === 'ready' && !showManualEntry && places.length === 0 && shelf && (
+          <div className="text-center py-16 max-w-md mx-auto">
+            <h2 className="text-xl font-bold text-white mb-2">Nothing on this shelf yet</h2>
+            <p className="text-white/60 mb-6">
+              Shelves fill up as members tag what a place is good for. Know one? Nominate it and say so.
+            </p>
+            <button
+              onClick={() => setShelf(null)}
+              className="px-5 py-2.5 rounded-xl font-semibold bg-surface-card text-white hover:bg-surface-card-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              Back to everything
+            </button>
+          </div>
+        )}
+
+        {phase === 'ready' && !showManualEntry && places.length === 0 && !shelf && (
           <div className="text-center py-16 max-w-md mx-auto">
             <div aria-hidden="true" className="text-6xl mb-4">📖</div>
             <h2 className="text-2xl font-bold text-white mb-2">

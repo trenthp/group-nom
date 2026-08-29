@@ -36,6 +36,24 @@ export default function RestaurantPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editingFacts, setEditingFacts] = useState(false)
+  const [shared, setShared] = useState(false)
+
+  // Share links go to the public teaser page — the member page is gated
+  const share = async () => {
+    const url = `${window.location.origin}/p/${restaurantId}`
+    const title = restaurant ? `${restaurant.name} on Group Nom` : 'Group Nom'
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url })
+      } else {
+        await navigator.clipboard.writeText(url)
+        setShared(true)
+        setTimeout(() => setShared(false), 2000)
+      }
+    } catch {
+      /* user cancelled or clipboard unavailable */
+    }
+  }
 
   const fetchAll = useCallback(async () => {
     try {
@@ -151,12 +169,18 @@ export default function RestaurantPage() {
 
   return (
     <div className="min-h-screen bg-surface-page">
-      {/* Back navigation over the hero */}
+      {/* Back navigation + share over the hero */}
       <button
         onClick={() => router.back()}
-        className="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm hover:bg-black/60 transition"
+        className="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm hover:bg-black/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
       >
         ← Back
+      </button>
+      <button
+        onClick={share}
+        className="absolute top-4 right-4 z-10 bg-black/40 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm hover:bg-black/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+      >
+        {shared ? 'Link copied' : 'Share'}
       </button>
 
       {/* Hero */}
