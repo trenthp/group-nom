@@ -106,7 +106,8 @@ export interface GateContext {
 /**
  * Can this member open a restaurant page? Unlocked members: always.
  * Pre-unlock: Today's Five, their saved places, their drafts, their own
- * nominations, or a place from a session they're in.
+ * nominations, a place loved by someone they follow, or a place from a
+ * session they're in.
  */
 export async function canOpenRestaurant(
   userId: string,
@@ -124,6 +125,10 @@ export async function canOpenRestaurant(
       SELECT 1 FROM nomination_drafts WHERE clerk_user_id = ${userId} AND gers_id = ${gersId}
       UNION ALL
       SELECT 1 FROM nominations WHERE clerk_user_id = ${userId} AND gers_id = ${gersId}
+      UNION ALL
+      SELECT 1 FROM nominations n
+      JOIN follows f ON f.followee_id = n.clerk_user_id AND f.follower_id = ${userId}
+      WHERE n.gers_id = ${gersId}
       LIMIT 1
     `,
   ])

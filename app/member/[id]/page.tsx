@@ -28,6 +28,7 @@ interface MemberResponse {
   member: { id: string; displayName?: string; avatarUrl?: string }
   nominations: Nomination[]
   isSelf: boolean
+  viewer?: { following: boolean; blocked: boolean }
   self?: {
     isUnlocked: boolean
     canPublish: boolean
@@ -63,6 +64,34 @@ export default function MemberPage() {
       .catch(() => { /* non-fatal */ })
     return () => { cancelled = true }
   }, [data?.isSelf])
+
+  const [relBusy, setRelBusy] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const setRelationship = async (kind: 'follow' | 'block', on: boolean) => {
+    setRelBusy(true)
+    try {
+      const res = await fetch(`/api/members/${id}/${kind}`, { method: on ? 'POST' : 'DELETE' })
+      if (!res.ok) return
+      const json = await res.json()
+      setData(prev => prev ? {
+        ...prev,
+        viewer: {
+          following: kind === 'follow' ? !!json.following : (on ? false : prev.viewer?.following ?? false),
+          blocked: kind === 'block' ? !!json.blocked : prev.viewer?.blocked ?? false,
+        },
+        nominations: kind === 'block' && on ? [] : prev.nominations,
+      } : prev)
+      if (kind === 'block' && !on) {
+        // Unblocked: reload so their places come back
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        fetch(`/api/members/${id}?tz=${encodeURIComponent(tz)}`).then(r => r.ok ? r.json() : null).then(j => { if (j) setData(j) })
+      }
+    } finally {
+      setRelBusy(false)
+      setMenuOpen(false)
+    }
+  }
 
   const removeDraft = async (gersId: string) => {
     const res = await fetch(`/api/nominations/drafts/${gersId}`, { method: 'DELETE' })
@@ -101,7 +130,7 @@ export default function MemberPage() {
     )
   }
 
-  const { member, nominations, isSelf, self } = data
+  const { member, nominations, isSelf, self, viewer } = data
   const name = member.displayName ?? 'A community member'
   const count = nominations.length
 
@@ -142,11 +171,56 @@ export default function MemberPage() {
             <p className="text-white/60 text-sm">
               {isSelf ? name : null}
               {isSelf && count > 0 ? ' · ' : ''}
-              {count > 0
-                ? `${count} place${count === 1 ? '' : 's'} loved`
-                : isSelf ? 'No places yet' : 'Just joined'}
+              {viewer?.blocked
+                ? 'Blocked'
+                : count > 0
+                  ? `${count} place${count === 1 ? '' : 's'} loved`
+                  : isSelf ? 'No places yet' : 'Just joined'}
             </p>
           </div>
+
+          {/* Follow / overflow — no counts, no lists, ever */}
+          {!isSelf && viewer && (
+            <div className="ml-auto flex items-center gap-2 relative">
+              {!viewer.blocked && (
+                <button
+                  onClick={() => setRelationship('follow', !viewer.following)}
+                  disabled={relBusy}
+                  aria-pressed={viewer.following}
+                  className={`px-4 py-2 rounded-pill text-sm font-semibold transition disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page ${
+                    viewer.following
+                      ? 'bg-white/10 text-white hover:bg-white/15'
+                      : 'bg-brand text-white hover:bg-brand-hover'
+                  }`}
+                >
+                  {viewer.following ? 'Following' : 'Follow'}
+                </button>
+              )}
+              <button
+                onClick={() => setMenuOpen(o => !o)}
+                aria-label="More options"
+                aria-expanded={menuOpen}
+                className="w-9 h-9 rounded-full bg-white/10 text-white hover:bg-white/15 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                ⋯
+              </button>
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                  <div role="menu" className="absolute right-0 top-full mt-2 w-44 bg-surface-card rounded-xl shadow-xl border border-white/10 z-50 overflow-hidden">
+                    <button
+                      role="menuitem"
+                      onClick={() => setRelationship('block', !viewer.blocked)}
+                      disabled={relBusy}
+                      className="w-full px-4 py-2.5 text-left text-sm text-white/80 hover:bg-white/5 disabled:opacity-50"
+                    >
+                      {viewer.blocked ? 'Unblock' : 'Block this member'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </header>
 
         {/* Ladder state (self only) */}

@@ -49,6 +49,21 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   const [draftNudge, setDraftNudge] = useState<{ count: number; href: string } | null>(null)
   // null until known; the pre-unlock home leads with the first nomination
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null)
+  // Places loved by people you follow (empty until you follow someone)
+  const [feed, setFeed] = useState<Array<{
+    nominationId: string
+    restaurant: { id: string; name: string; city?: string }
+    photoUrl: string
+    whyILoveIt: string
+    member: { id: string; displayName?: string; avatarUrl?: string }
+  }>>([])
+
+  useEffect(() => {
+    fetch('/api/feed?limit=6')
+      .then(res => (res.ok ? res.json() : { items: [] }))
+      .then(json => setFeed(json.items ?? []))
+      .catch(() => { /* non-fatal */ })
+  }, [])
   const [showAccountMenu, setShowAccountMenu] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
 
@@ -240,13 +255,40 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
               </div>
-              <h3 className="font-bold text-white text-lg">Saved</h3>
+              <h3 className="font-bold text-white text-lg">To try</h3>
               <p className="text-white/50 text-sm">
-                {stats ? `${stats.favorites} favorite${stats.favorites !== 1 ? 's' : ''}` : 'Your favorites'}
+                {stats ? `${stats.favorites} place${stats.favorites !== 1 ? 's' : ''} to get to` : 'Places to get to'}
               </p>
             </Link>
           </div>
         </div>
+
+        {/* Section: From people you follow */}
+        {feed.length > 0 && (
+          <div className="mb-4">
+            <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1">From people you follow</p>
+            <ul className="space-y-2 list-none p-0 m-0">
+              {feed.map((item) => (
+                <li key={item.nominationId}>
+                  <Link
+                    href={`/restaurant/${item.restaurant.id}`}
+                    className="flex gap-3 bg-surface-card rounded-2xl p-3 hover:bg-surface-card-hover transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.photoUrl} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-white font-semibold truncate group-hover:text-orange-300 transition">{item.restaurant.name}</p>
+                      <p className="text-white/70 text-sm italic line-clamp-1">&ldquo;{item.whyILoveIt}&rdquo;</p>
+                      <p className="text-white/40 text-xs mt-0.5">
+                        {item.member.displayName ?? 'A community member'}{item.restaurant.city ? ` · ${item.restaurant.city}` : ''}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Section: Community Library */}
         <div className="mb-4">

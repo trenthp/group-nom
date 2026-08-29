@@ -14,6 +14,7 @@ import { auth } from '@clerk/nextjs/server'
 import { getProfileById, toPublicMember, isUnlocked, canPublish } from '@/lib/userProfile'
 import { getUserNominations } from '@/lib/nominations'
 import { getDailyStatus, resolveTimeZone } from '@/lib/dailyLimit'
+import { getRelationship, isBlockedEitherWay } from '@/lib/follows'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -38,9 +39,17 @@ export async function GET(
     }
 
     const isSelf = profile.clerkUserId === userId
+
+    // A member who blocked you doesn't exist to you (and vice versa,
+    // except that you can still see — and undo — your own block)
+    const relationship = isSelf ? null : await getRelationship(userId, profile.clerkUserId)
+    if (!isSelf && !relationship?.blocked && (await isBlockedEitherWay(userId, profile.clerkUserId))) {
+      return NextResponse.json({ error: 'Member not found' }, { status: 404 })
+    }
+
     const tz = resolveTimeZone(request.nextUrl.searchParams.get('tz'), profile.timezone)
     const [nominations, daily] = await Promise.all([
-      getUserNominations(profile.clerkUserId, 100),
+      relationship?.blocked ? Promise.resolve([]) : getUserNominations(profile.clerkUserId, 100),
       isSelf ? getDailyStatus(userId, tz) : Promise.resolve(null),
     ])
 
@@ -48,6 +57,7 @@ export async function GET(
       member: toPublicMember(profile),
       nominations,
       isSelf,
+      ...(relationship ? { viewer: relationship } : {}),
       ...(isSelf && daily
         ? {
             self: {

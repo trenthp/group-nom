@@ -332,8 +332,21 @@ needs one human run-through (create → invite/join → vote → close → resul
      Clerk `publicMetadata.role` ∈ {admin, moderator} (`lib/admin.ts`);
      non-moderators get 404. **Owner setup**: set `{"role":"admin"}` in
      your user's Public metadata in the Clerk Dashboard.
-3. **Follows + member shelves + home feed** (profiles with First L., shelf,
-   follow button; no counts anywhere).
+3. ✅ **Follows + home feed + try-list** (Aug 27, 2026; migration 012:
+   `follows`, `blocks`, no counter columns by design; `anonymize_member`
+   clears both). `lib/follows.ts`: follow/unfollow, block/unblock (severs
+   follows both ways, refuses re-follow), `getFeed` (followees' nominations,
+   newest first, active members only, hidden places and blocks excluded).
+   API: `POST/DELETE /api/members/[id]/follow`, `…/block`, `GET /api/feed`.
+   `GET /api/members/[id]` returns `viewer: {following, blocked}` for
+   others; a member who blocked you (or whom you blocked, except that you
+   still see your own block to undo it) 404s. Member page: Follow /
+   Following pill + ⋯ menu with Block. Home: "From people you follow"
+   section (top 6). Gate: pre-unlock members can open any place loved by
+   someone they follow. Try-list framing: Saved → "Places to try" / home
+   card "To try". Still no counts, no lists, no notifications anywhere.
+   Not built: "shelves" as a separate concept — a member's page *is* their
+   shelf; situational shelves are Phase 6.
 4. **Trust-weighted ranking** (all three score inputs now available; apply
    to all surfacing).
 5. **Session deck sources** (group favorites / library only / mix).

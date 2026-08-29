@@ -148,10 +148,10 @@ export default function SavedPage() {
             <UtensilsIcon size={32} className="text-brand" />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">
-            No favorites yet
+            Nothing on your try-list yet
           </h2>
           <p className="text-white/60 mb-6">
-            Start discovering restaurants and swipe right to save your favorites!
+            Save the places you want to get to. When you go and love one, nominate it.
           </p>
           <Link
             href="/discover"
@@ -169,9 +169,9 @@ export default function SavedPage() {
       {/* Header */}
       <header className="px-4 py-6">
         <div className="max-w-lg mx-auto">
-          <h1 className="text-xl font-bold text-white">Saved Places</h1>
+          <h1 className="text-xl font-bold text-white">Places to try</h1>
           <p className="text-sm text-white/50">
-            {state.favorites.length} restaurant{state.favorites.length !== 1 ? 's' : ''}
+            {state.favorites.length} place{state.favorites.length !== 1 ? 's' : ''} you want to get to
           </p>
         </div>
       </header>
