@@ -149,4 +149,6 @@ export async function setMemberStatus(clerkUserId: string, status: 'active' | 's
     UPDATE user_profiles SET status = ${status}, updated_at = NOW()
     WHERE clerk_user_id = ${clerkUserId} AND status != 'deleted'
   `
+  // Suspended members contribute zero love; the trigger re-weights their places
+  await sql`SELECT recompute_trust_score(${clerkUserId})`
 }

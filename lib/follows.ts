@@ -10,6 +10,7 @@
 
 import { sql } from './db'
 import { publicNameFor } from './userProfile'
+import { recomputeTrust } from './trust'
 
 export interface Relationship {
   following: boolean
@@ -43,11 +44,13 @@ export async function follow(followerId: string, followeeId: string): Promise<bo
     VALUES (${followerId}, ${followeeId})
     ON CONFLICT DO NOTHING
   `
+  recomputeTrust(followeeId) // followers are an internal trust input
   return true
 }
 
 export async function unfollow(followerId: string, followeeId: string): Promise<void> {
   await sql`DELETE FROM follows WHERE follower_id = ${followerId} AND followee_id = ${followeeId}`
+  recomputeTrust(followeeId)
 }
 
 /** Blocking severs follows in both directions. */
@@ -63,6 +66,8 @@ export async function block(blockerId: string, blockedId: string): Promise<void>
     WHERE (follower_id = ${blockerId} AND followee_id = ${blockedId})
        OR (follower_id = ${blockedId} AND followee_id = ${blockerId})
   `
+  recomputeTrust(blockerId)
+  recomputeTrust(blockedId)
 }
 
 export async function unblock(blockerId: string, blockedId: string): Promise<void> {

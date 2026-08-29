@@ -243,6 +243,8 @@ export async function incrementEnrichmentCount(clerkUserId: string): Promise<voi
     SET enrichment_count = COALESCE(enrichment_count, 0) + 1
     WHERE clerk_user_id = ${clerkUserId}
   `
+  // Enrichment is an "interaction" input to trust (migration 013)
+  sql`SELECT recompute_trust_score(${clerkUserId})`.catch(() => { /* non-fatal */ })
 }
 
 // Helper to map database record to profile interface

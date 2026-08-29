@@ -347,8 +347,23 @@ needs one human run-through (create → invite/join → vote → close → resul
    card "To try". Still no counts, no lists, no notifications anywhere.
    Not built: "shelves" as a separate concept — a member's page *is* their
    shelf; situational shelves are Phase 6.
-4. **Trust-weighted ranking** (all three score inputs now available; apply
-   to all surfacing).
+4. ✅ **Trust-weighted ranking** (Aug 27, 2026; migration 013). The math
+   is in Postgres so it can never drift from the data:
+   `compute_trust_score(user)` = 1.0 + nomination history (≤ +1.0) +
+   agreement share (≤ +0.5) + enrichments (≤ +0.5) + active-in-30d (+0.2)
+   + followers (≤ +0.5), clamped 0–3; suspended → 0; deleted keeps last.
+   `restaurants.love_score` = Σ nominators' trust, maintained by the 004
+   count triggers (now call `recompute_love_score`) and by a trigger on
+   `user_profiles.trust_score` that re-weights every place the member
+   loves. App side (`lib/trust.ts#recomputeTrust`, fire-and-forget) runs
+   after publish, enrichment, follow/unfollow/block, and suspension.
+   Ranking now uses `love_score` in the library list/map order and in the
+   deck score (Today's Five draws from the love-ordered pool). Trust is
+   never serialized: `mapDbToProfile` omits it — keep it that way.
+   Not done: a scheduled full recompute (the 30-day activity input decays
+   without one). Add a cron hitting
+   `SELECT recompute_trust_score(clerk_user_id) FROM user_profiles WHERE nomination_count > 0`
+   nightly when there's a scheduler.
 5. **Session deck sources** (group favorites / library only / mix).
 6. **Situational shelves** (good-for tags, dish shelves; seeded backfill
    clearly separated) **+ OG-image sharing**.

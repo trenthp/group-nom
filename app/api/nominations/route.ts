@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { createNomination, getUserNominations } from '@/lib/nominations'
 import { ensureProfile, canPublish, updateProfile } from '@/lib/userProfile'
 import { deleteDraft } from '@/lib/drafts'
+import { recomputeTrust } from '@/lib/trust'
 import {
   resolveTimeZone,
   getDailyStatus,
@@ -124,6 +125,8 @@ export async function POST(request: NextRequest) {
         : Promise.resolve(),
       deleteDraft(userId, gersId).catch(() => { /* non-fatal */ }),
     ])
+    // Their nomination history just changed — and co-nominators' agreement
+    recomputeTrust(userId)
 
     return NextResponse.json({ nomination }, { status: 201 })
   } catch (error: any) {

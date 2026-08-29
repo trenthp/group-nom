@@ -74,6 +74,7 @@ interface DeckRow {
   categories: string[]
   like_count: number
   nomination_count: number
+  love_score: number
   photo_url: string | null
 }
 
@@ -157,7 +158,7 @@ export async function getLibraryNearby(
      WHERE r.${h3Column} = ANY($1::bigint[])
        AND r.nomination_count > 0
        AND r.hidden_at IS NULL
-     ORDER BY r.nomination_count DESC, r.completeness_score DESC
+     ORDER BY r.love_score DESC, r.nomination_count DESC, r.completeness_score DESC
      LIMIT $2`,
     [h3Values, limit]
   )
@@ -215,7 +216,7 @@ export async function getDiscoveryDeck(
     ? await sql`
         SELECT
           r.gers_id, r.name, r.address, r.city, r.state, r.lat, r.lng,
-          r.categories, r.like_count, r.nomination_count,
+          r.categories, r.like_count, r.nomination_count, r.love_score,
           (
             SELECT n.photo_url FROM nominations n
             WHERE n.gers_id = r.gers_id
@@ -237,7 +238,7 @@ export async function getDiscoveryDeck(
     : await sql`
         SELECT
           r.gers_id, r.name, r.address, r.city, r.state, r.lat, r.lng,
-          r.categories, r.like_count, r.nomination_count,
+          r.categories, r.like_count, r.nomination_count, r.love_score,
           (
             SELECT n.photo_url FROM nominations n
             WHERE n.gers_id = r.gers_id
@@ -261,7 +262,8 @@ export async function getDiscoveryDeck(
   // keeps decks fresh between sessions.
   const scored = rows.map(row => {
     let score = Math.random()
-    if (row.nomination_count > 0) score += 10 + Math.min(row.nomination_count, 5)
+    // Trust-weighted: the sum of nominators' trust, not a raw count (Phase 4)
+    if (row.nomination_count > 0) score += 10 + Math.min(row.love_score ?? row.nomination_count, 6)
     if (row.like_count > 0) score += Math.min(row.like_count * 0.5, 2)
     if (preferLocal && !isChainRestaurant(row.name)) score += 1.5
     // Slight nudge toward closer places
