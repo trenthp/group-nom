@@ -23,6 +23,13 @@
   color: white;
 }
 
+/* Dark-mode OSM raster tiles: invert the light basemap, swing hues back,
+   then mute and darken toward the Dark Ember ground. Applied via the
+   TileLayer className in RestaurantMap. */
+.map-tiles-dark {
+  filter: invert(100%) hue-rotate(180deg) brightness(90%) contrast(90%) saturate(30%);
+}
+
 .leaflet-popup-tip {
   background: #333333 !important; /* surface-card */
 }

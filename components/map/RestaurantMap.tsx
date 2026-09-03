@@ -79,10 +79,14 @@ export function RestaurantMap({
         scrollWheelZoom={true}
         style={{ height: '100%', width: '100%', borderRadius: '0.75rem' }}
       >
-        {/* CARTO dark basemap to match the Dark Ember skin */}
+        {/* OSM tiles, darkened via CSS filter (.map-tiles-dark) to match the
+            Dark Ember skin. CARTO's basemaps started requiring an API key
+            (Aug 2026) — this is the zero-key fallback; a keyed dark
+            basemap (CARTO/Stadia) is the better answer before growth. */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          className="map-tiles-dark"
         />
         <MapBoundsHandler places={places} userLocation={userLocation} />
         {places.map((place, index) => (

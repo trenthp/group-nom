@@ -11,7 +11,7 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.groupnom.com https://challenges.cloudflare.com",
   "connect-src 'self' https://*.clerk.accounts.dev https://clerk.groupnom.com https://clerk-telemetry.com",
-  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://img.clerk.com https://*.basemaps.cartocdn.com",
+  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://img.clerk.com https://tile.openstreetmap.org",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "worker-src 'self' blob:",
