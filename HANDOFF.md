@@ -402,8 +402,16 @@ dies).
    `#222222`/`#333333`/`#EA4D19` again — use `surface-page`/`surface-card`/
    `brand`), dark-first UI kit in `components/ui/` (see its README for a11y
    rules), permission-aware location flow (`lib/useLocation.ts` +
-   `components/location/`), and the Leaflet map view (`components/map/`,
-   CARTO dark tiles) with a list/map toggle on `/library`. Import map pieces
+   `components/location/`), and the Leaflet map view (`components/map/`)
+   with a list/map toggle on `/library`. **Basemap (Aug 27, 2026)**:
+   CARTO's tiles started requiring an API key (they serve "API KEY
+   REQUIRED" watermark tiles anonymously), so the map now uses plain OSM
+   raster tiles darkened by a CSS filter (`.map-tiles-dark` in
+   globals.css) — keyless and verified visually, but OSM's tile policy
+   frowns on production load. Before growth, sign up for a free CARTO
+   basemaps key or Stadia's `alidade_smooth_dark` and swap the TileLayer
+   URL back (one line in `RestaurantMap.tsx` + the host in the CSP
+   img-src). Import map pieces
    via the `components/map` barrel only — it exports just the SSR-safe
    entries; importing `RestaurantMap`/`RestaurantMarker` directly outside a
    `ssr:false` dynamic breaks prerendering. Also landed: results decomposed
