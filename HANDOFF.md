@@ -418,10 +418,21 @@ dies).
    - ~~Host authorization / hostId exposure~~ — fixed Aug 2026: sessions
      require sign-in, host actions verify `auth()` server-side, and the
      session GET returns `isHost` instead of the raw hostId.
-   - Group invite codes are reversible base64 of the group id
-     (`lib/groups.ts`) — replace with random codes stored in the DB.
-   - Session state transitions aren't atomic (check-then-act races on KV).
-   - No CSP header yet (needs Clerk + blob domain allowances).
+   - ~~Group invite codes reversible~~ — fixed Aug 27 (migration 014):
+     codes are random, stored, unique (`groups.invite_code`); lookup by
+     code, never derived from the id. **Old base64 invite links stopped
+     working by design.**
+   - ~~Session transitions not atomic~~ — fixed Aug 27: every
+     get-modify-set in `lib/sessionStore.ts` runs under a per-session
+     Redis lock (`SET NX PX`, 3s TTL, retry then proceed-unlocked so a
+     KV hiccup can't fail a request).
+   - ~~No CSP~~ — added Aug 27 in `next.config.js` (Clerk dev+prod
+     domains, Turnstile, Vercel Blob, Clerk avatars, CARTO tiles, Google
+     Fonts; `frame-ancestors 'none'`). **Verify after deploy**: watch the
+     browser console on sign-in, map view, and photo upload for CSP
+     violations — Clerk's prod frontend domain is assumed to be
+     `clerk.groupnom.com`; if the Clerk Dashboard shows a different
+     frontend API host, add it to script-src/connect-src.
 3. **Tech debt visible in lint** (33 warnings, `npm run lint`): components
    defined during render in `RestaurantFilters`/`ResultsPage` (identity
    changes every render), setState-in-effect patterns, `<img>` vs
