@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -16,21 +16,7 @@ export default function Header({ sessionCode, autoOpenShare = false }: HeaderPro
   const { isSignedIn, isLoaded } = useUser()
   const [showOverlay, setShowOverlay] = useState(false)
   const [showLeaveModal, setShowLeaveModal] = useState(false)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
 
-  // Close mobile menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMobileMenu(false)
-      }
-    }
-    if (showMobileMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showMobileMenu])
 
   // Open overlay when autoOpenShare prop becomes true
   useEffect(() => {
@@ -99,42 +85,8 @@ export default function Header({ sessionCode, autoOpenShare = false }: HeaderPro
             {isLoaded && (
               isSignedIn ? (
                 <UserMenu />
-              ) : sessionCode ? (
-                // Mobile menu for unauthenticated users in active session
-                <div className="relative" ref={menuRef}>
-                  <button
-                    onClick={() => setShowMobileMenu(!showMobileMenu)}
-                    aria-label="Open menu"
-                    aria-expanded={showMobileMenu}
-                    className="p-2 text-white hover:bg-white/10 rounded-lg transition"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                  </button>
-
-                  {/* Dropdown menu */}
-                  {showMobileMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl py-2 z-50">
-                      <Link
-                        href="/sign-in"
-                        className="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition"
-                        onClick={() => setShowMobileMenu(false)}
-                      >
-                        Sign In
-                      </Link>
-                      <Link
-                        href="/sign-up"
-                        className="block px-4 py-2.5 text-orange-600 font-medium hover:bg-orange-50 transition"
-                        onClick={() => setShowMobileMenu(false)}
-                      >
-                        Sign Up
-                      </Link>
-                    </div>
-                  )}
-                </div>
               ) : (
-                // Desktop layout for unauthenticated users (no session)
+                // Signed-out visitor
                 <div className="flex items-center gap-4">
                   <Link
                     href="/sign-in"

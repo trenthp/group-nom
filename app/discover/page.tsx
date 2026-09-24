@@ -350,7 +350,7 @@ export default function DiscoverPage() {
 
   // User is done - go to saved restaurants
   const handleDone = useCallback(() => {
-    window.location.href = '/saved'
+    window.location.href = '/to-try'
   }, [])
 
   // Full refresh - reset everything
@@ -530,7 +530,7 @@ export default function DiscoverPage() {
               onClick={handleDone}
               className="w-full bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition"
             >
-              {state.likedCount > 0 ? "I'm Done - View Saved" : "I'm Done"}
+              {state.likedCount > 0 ? "I'm done · To try" : "I'm Done"}
             </button>
           </div>
 
@@ -568,7 +568,7 @@ export default function DiscoverPage() {
                 Sign in to save your favorites!
               </p>
               <Link
-                href="/sign-in?redirect_url=/saved"
+                href="/sign-in?redirect_url=/to-try"
                 className="inline-block mt-2 text-amber-300 underline font-semibold"
               >
                 Sign In →
@@ -581,7 +581,7 @@ export default function DiscoverPage() {
                 onClick={handleDone}
                 className="w-full bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-hover transition"
               >
-                View Saved Restaurants
+                See your to-try list
               </button>
             )}
             <button

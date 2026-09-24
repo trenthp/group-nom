@@ -45,7 +45,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [joinError, setJoinError] = useState('')
   const [isJoining, setIsJoining] = useState(false)
-  const [stats, setStats] = useState<{ likes: number; favorites: number } | null>(null)
+  const [stats, setStats] = useState<{ favorites: number } | null>(null)
   const [draftNudge, setDraftNudge] = useState<{ count: number; href: string } | null>(null)
   // null until known; the pre-unlock home leads with the first nomination
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null)
@@ -67,8 +67,6 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   const [showAccountMenu, setShowAccountMenu] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
 
-  const authLimit = USER_TIERS.authenticated.maxRestaurantsPerSession
-
   // Fetch user stats
   useEffect(() => {
     async function fetchStats() {
@@ -79,10 +77,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
         ])
         if (profileRes.ok) {
           const data = await profileRes.json()
-          setStats({
-            likes: data.stats?.likes || 0,
-            favorites: data.stats?.favorites || 0,
-          })
+          setStats({ favorites: data.stats?.favorites || 0 })
           if (typeof data.isUnlocked === 'boolean') setIsUnlocked(data.isUnlocked)
           // A draft waiting is the daily reason to come back
           if (draftsRes.ok && data.profile?.id) {
@@ -178,12 +173,17 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
 
                     {/* Menu Items */}
                     <div className="py-1">
-                      {/* Stats */}
-                      {stats && (
-                        <div className="px-4 py-2 text-white/50 text-sm">
-                          {stats.likes} swipes · {stats.favorites} saved
-                        </div>
-                      )}
+                      <Link
+                        href="/profile"
+                        onClick={() => setShowAccountMenu(false)}
+                        className="w-full px-4 py-2.5 text-left text-white/70 hover:bg-white/5 transition text-sm flex items-center gap-2"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                        </svg>
+                        Your page
+                      </Link>
 
                       <button
                         onClick={() => {
@@ -226,43 +226,6 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
 
       {/* Main Content */}
       <main className="max-w-lg mx-auto px-4 pb-24">
-        {/* Section 1: Discover & Saved */}
-        <div className="mb-4">
-          <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1">Solo</p>
-          <div className="grid grid-cols-2 gap-3">
-            {/* Discover Card */}
-            <Link
-              href="/discover"
-              className="bg-gradient-to-br from-[#F97316] to-[#DC2626] rounded-2xl p-5 hover:scale-[1.02] active:scale-[0.98] transition group"
-            >
-              <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center mb-3">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                  <polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88" fill="currentColor" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-white text-lg">Discover</h3>
-              <p className="text-white/70 text-sm">Find new spots</p>
-            </Link>
-
-            {/* Saved Card */}
-            <Link
-              href="/saved"
-              className="bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition group"
-            >
-              <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center mb-3">
-                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-white text-lg">To try</h3>
-              <p className="text-white/50 text-sm">
-                {stats ? `${stats.favorites} place${stats.favorites !== 1 ? 's' : ''} to get to` : 'Places to get to'}
-              </p>
-            </Link>
-          </div>
-        </div>
-
         {/* Section: From people you follow */}
         {feed.length > 0 && (
           <div className="mb-4">
@@ -345,25 +308,60 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
           </Link>
         </div>
 
-        {/* Section 2: Groups */}
-        <div className="mb-6">
-          <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1">With Friends</p>
+        {/* Section: Around you — the map and your list */}
+        <div className="mb-4">
+          <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1">Around you</p>
           <div className="grid grid-cols-2 gap-3">
-            {/* Start Group Card */}
             <Link
-              href="/setup"
-              className="bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition group"
+              href="/discover"
+              className="bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center mb-3">
-                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                  <polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88" fill="currentColor" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-white text-lg">Discover</h3>
+              <p className="text-white/50 text-sm">Browse the map, save what looks good</p>
+            </Link>
+
+            <Link
+              href="/to-try"
+              className="bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center mb-3">
+                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-white text-lg">To try</h3>
+              <p className="text-white/50 text-sm">
+                {stats ? `${stats.favorites} place${stats.favorites !== 1 ? 's' : ''} to get to` : 'Places to get to'}
+              </p>
+            </Link>
+          </div>
+        </div>
+
+        {/* Section: Sessions */}
+        <div className="mb-6">
+          <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1">With friends</p>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Start a session */}
+            <Link
+              href="/setup"
+              className="bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center mb-3">
+                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </div>
-              <h3 className="font-bold text-white text-lg">Start Group</h3>
-              <p className="text-white/50 text-sm">{authLimit} restaurants</p>
+              <h3 className="font-bold text-white text-lg">Start a session</h3>
+              <p className="text-white/50 text-sm">Vote on where to eat</p>
             </Link>
 
-            {/* Join Group Card */}
+            {/* Join a session */}
             <div
               className="bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition cursor-pointer"
               onClick={() => !showJoinForm && setShowJoinForm(true)}
@@ -375,8 +373,8 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <h3 className="font-bold text-white text-lg">Join Group</h3>
-                  <p className="text-white/50 text-sm">Enter code</p>
+                  <h3 className="font-bold text-white text-lg">Join a session</h3>
+                  <p className="text-white/50 text-sm">Enter a code</p>
                 </>
               ) : (
                 <form onSubmit={joinSession} className="space-y-2" onClick={(e) => e.stopPropagation()}>
@@ -420,6 +418,12 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
               )}
             </div>
           </div>
+          <Link
+            href="/groups"
+            className="block mt-3 px-1 text-sm text-white/50 hover:text-white/80 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+          >
+            Your groups — saved rosters for the people you eat with →
+          </Link>
         </div>
 
         <Footer />

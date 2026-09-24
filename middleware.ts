@@ -18,8 +18,10 @@ const isMemberRoute = createRouteMatcher([
   '/restaurant(.*)',
   '/nominate(.*)',
   '/discover(.*)',
-  '/saved(.*)',
+  '/to-try(.*)',
   '/member(.*)',
+  '/profile(.*)',
+  '/groups(.*)',
   // Sessions require sign-in too (Aug 2026) — invite links redirect through
   // sign-in and land back on the session page.
   '/setup(.*)',

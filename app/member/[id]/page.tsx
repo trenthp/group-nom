@@ -260,6 +260,26 @@ export default function MemberPage() {
           </div>
         )}
 
+        {/* Your lists (self only) */}
+        {isSelf && (
+          <nav aria-label="Your lists" className="grid grid-cols-2 gap-3 mb-8">
+            <Link
+              href="/to-try"
+              className="bg-surface-card rounded-card p-4 hover:bg-surface-card-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <p className="text-white font-semibold">To try</p>
+              <p className="text-white/50 text-xs mt-0.5">Places you want to get to</p>
+            </Link>
+            <Link
+              href="/groups"
+              className="bg-surface-card rounded-card p-4 hover:bg-surface-card-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <p className="text-white font-semibold">Your groups</p>
+              <p className="text-white/50 text-xs mt-0.5">The people you eat with</p>
+            </Link>
+          </nav>
+        )}
+
         {/* Drafts (self only, private) */}
         {isSelf && drafts.length > 0 && (
           <section aria-labelledby="drafts-heading" className="mb-8">

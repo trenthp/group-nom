@@ -8,49 +8,31 @@ interface NavItem {
   href: string
   label: string
   icon: React.ReactNode
-  requiresAuth?: boolean
+  /** Extra path prefixes that count as "here" for the active state */
+  also?: string[]
 }
 
+// Four tabs (Sep 2026): Home, Library, Discover, Profile. Nominate is the
+// primary action on Library rather than a tab; groups and the to-try list
+// hang off Home and Profile.
 const navItems: NavItem[] = [
-  {
-    href: '/',
-    label: 'Home',
-    icon: <HomeIcon />,
-  },
-  {
-    href: '/discover',
-    label: 'Discover',
-    icon: <CompassIcon />,
-  },
-  {
-    href: '/saved',
-    label: 'Saved',
-    icon: <HeartIcon />,
-    requiresAuth: true,
-  },
-  {
-    href: '/groups',
-    label: 'Groups',
-    icon: <UsersIcon />,
-  },
+  { href: '/', label: 'Home', icon: <HomeIcon /> },
+  { href: '/library', label: 'Library', icon: <BookIcon />, also: ['/restaurant', '/nominate'] },
+  { href: '/discover', label: 'Discover', icon: <CompassIcon /> },
+  { href: '/profile', label: 'Profile', icon: <UserIcon />, also: ['/member', '/to-try', '/groups'] },
 ]
 
 export default function BottomNav() {
   const pathname = usePathname()
   const { isSignedIn, isLoaded } = useUser()
 
-  // Don't show for unauthenticated users - reduces noise on the landing experience
-  if (isLoaded && !isSignedIn) {
+  // Members only — the signed-out landing has its own navigation
+  if (!isLoaded || !isSignedIn) {
     return null
   }
 
-  // Don't show on session pages
+  // Sessions are full-screen "game mode"
   if (pathname?.startsWith('/session/')) {
-    return null
-  }
-
-  // Don't show while auth is loading to prevent flash
-  if (!isLoaded) {
     return null
   }
 
@@ -61,21 +43,17 @@ export default function BottomNav() {
     >
       <div className="flex items-center justify-around max-w-lg mx-auto">
         {navItems.map((item) => {
-          // Skip auth-required items for non-signed-in users
-          if (item.requiresAuth && !isSignedIn) {
-            return null
-          }
-
           const isActive =
             pathname === item.href ||
-            (item.href !== '/' && pathname?.startsWith(item.href))
+            (item.href !== '/' && pathname?.startsWith(item.href)) ||
+            (item.also?.some((p) => pathname?.startsWith(p)) ?? false)
 
           return (
             <Link
               key={item.href}
               href={item.href}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex flex-col items-center py-2 px-4 min-w-[64px] transition ${
+              className={`flex flex-col items-center py-2 px-4 min-w-[64px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-lg ${
                 isActive
                   ? 'text-brand'
                   : 'text-white/40 hover:text-white/60'
@@ -91,12 +69,19 @@ export default function BottomNav() {
   )
 }
 
-// Simple icons for navigation
 function HomeIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9,22 9,12 15,12 15,22" />
+    </svg>
+  )
+}
+
+function BookIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
     </svg>
   )
 }
@@ -110,21 +95,11 @@ function CompassIcon() {
   )
 }
 
-function HeartIcon() {
+function UserIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </svg>
-  )
-}
-
-function UsersIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </svg>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUser, SignInButton } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { Group } from '@/lib/groups'
 
@@ -115,29 +115,6 @@ export default function GroupsPage() {
     )
   }
 
-  // Not signed in
-  if (!isSignedIn) {
-    return (
-      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
-        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-brand/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UsersIcon />
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-2">
-            Your Groups
-          </h1>
-          <p className="text-white/60 mb-6">
-            Sign in to create groups and start voting sessions with your friends.
-          </p>
-          <SignInButton mode="modal">
-            <button className="bg-brand text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-hover transition">
-              Sign In to Get Started
-            </button>
-          </SignInButton>
-        </div>
-      </div>
-    )
-  }
 
   // Loading state
   if (state.loading) {

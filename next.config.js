@@ -31,6 +31,9 @@ const csp = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    return [{ source: '/saved', destination: '/to-try', permanent: true }]
+  },
   async headers() {
     return [
       {

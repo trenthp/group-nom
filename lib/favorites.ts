@@ -26,6 +26,7 @@ export interface FavoriteWithRestaurant extends UserFavorite {
   restaurantLng: number
   restaurantCategories: string[]
   likeCount: number
+  nominationCount: number
 }
 
 /**
@@ -133,7 +134,8 @@ export async function getFavorites(
       r.lat as restaurant_lat,
       r.lng as restaurant_lng,
       r.categories as restaurant_categories,
-      r.like_count
+      r.like_count,
+      r.nomination_count
     FROM user_favorites f
     JOIN restaurants r ON f.local_id = r.gers_id
     WHERE f.clerk_user_id = ${clerkUserId}
@@ -224,5 +226,6 @@ function mapDbToFavoriteWithRestaurant(db: Record<string, unknown>): FavoriteWit
     restaurantLng: db.restaurant_lng as number,
     restaurantCategories: db.restaurant_categories as string[],
     likeCount: db.like_count as number,
+    nominationCount: (db.nomination_count as number) ?? 0,
   }
 }
