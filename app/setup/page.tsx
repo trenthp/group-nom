@@ -3,34 +3,35 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import { useUser } from '@clerk/nextjs'
 import RestaurantFilters from '@/components/RestaurantFilters'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { getUserLocation } from '@/lib/geolocation'
-import { USER_TIERS } from '@/lib/userTiers'
 import { DEFAULT_FILTERS } from '@/lib/types'
 
-type SetupMode = 'prompt' | 'auto' | 'favorites'
+/**
+ * Session setup ("game mode" — sunset skin by design). One screen: where
+ * the deck comes from first, then where you are and how far. The old
+ * "auto-generate vs pick from favorites" fork is gone — the deck source
+ * is the real choice.
+ */
+type DeckSource = 'mix' | 'library' | 'group'
+
+const DECK_SOURCES: Array<{ value: DeckSource; label: string; hint: string }> = [
+  { value: 'mix', label: 'Everything nearby', hint: 'Loved places weighted up' },
+  { value: 'library', label: 'The Library', hint: 'Only places someone loves' },
+  { value: 'group', label: 'Group favorites', hint: 'What your group nominated' },
+]
 
 function SetupPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const reconfigureCode = searchParams.get('reconfigure')
-  const { isSignedIn, isLoaded } = useUser()
-
-  // Get restaurant limit for display (sessions require sign-in)
-  const authLimit = USER_TIERS.authenticated.maxRestaurantsPerSession
-
-  // Setup mode: prompt (initial screen), auto (filter-based), favorites (pick from saved)
-  // Skip prompt if reconfiguring or if user came from sign-in redirect
-  const skipPrompt = !!reconfigureCode || searchParams.get('mode') === 'auto'
-  const [setupMode, setSetupMode] = useState<SetupMode>(skipPrompt ? 'auto' : 'prompt')
+  const preselectedGroup = searchParams.get('groupId')
 
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS })
-  // Where the deck comes from (Phase 5). Group decks need a saved group.
-  const [deckSource, setDeckSource] = useState<'mix' | 'library' | 'group'>('mix')
-  const [groupId, setGroupId] = useState<string>('')
+  const [deckSource, setDeckSource] = useState<DeckSource>(preselectedGroup ? 'group' : 'mix')
+  const [groupId, setGroupId] = useState<string>(preselectedGroup ?? '')
   const [groups, setGroups] = useState<Array<{ id: string; name: string; memberCount: number }>>([])
 
   useEffect(() => {
@@ -39,6 +40,7 @@ function SetupPageContent() {
       .then(json => setGroups(json.groups ?? []))
       .catch(() => { /* non-fatal */ })
   }, [])
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -52,17 +54,17 @@ function SetupPageContent() {
     name: '',
   })
 
-  // Auto-fetch current location on mount - triggers browser's native location prompt
+  // Try for the member's location on mount. If they decline, the location
+  // chip stays empty and they type a city — no made-up fallback.
   useEffect(() => {
     const fetchCurrentLocation = async () => {
       setLocationLoading(true)
       const loc = await getUserLocation()
       if (loc) {
         setLocation(loc)
-        setLocationAddress('Current Location')
-        currentLocationRef.current = { coords: loc, name: 'Current Location' }
+        setLocationAddress('Current location')
+        currentLocationRef.current = { coords: loc, name: 'Current location' }
 
-        // Reverse geocode to get city/state
         try {
           const response = await fetch('/api/geocode', {
             method: 'POST',
@@ -79,11 +81,6 @@ function SetupPageContent() {
         } catch (err) {
           console.error('Error reverse geocoding:', err)
         }
-      } else {
-        // Fallback to NYC if location denied
-        setLocation({ lat: 40.7128, lng: -74.006 })
-        setLocationAddress('New York, NY')
-        currentLocationRef.current = { coords: { lat: 40.7128, lng: -74.006 }, name: 'New York, NY' }
       }
       setLocationLoading(false)
     }
@@ -95,6 +92,8 @@ function SetupPageContent() {
     if (currentLocationRef.current.coords) {
       setLocation(currentLocationRef.current.coords)
       setLocationAddress(currentLocationRef.current.name)
+    } else {
+      setLocationError('Location is off for this site — enter a city or zip instead')
     }
   }
 
@@ -125,59 +124,49 @@ function SetupPageContent() {
   }
 
   const handleStartSession = async () => {
-    // Validate location
     if (!location) {
-      setError('Please select a location to search for restaurants')
+      setError('Set a location first — where is the group eating?')
+      return
+    }
+    if (deckSource === 'group' && !groupId) {
+      setError('Pick which group the deck should draw from')
       return
     }
 
     setLoading(true)
     setError(null)
 
+    const body = JSON.stringify({
+      filters,
+      location,
+      deckSource,
+      groupId: deckSource === 'group' && groupId ? groupId : undefined,
+    })
+
     try {
       if (reconfigureCode) {
-        // Reconfigure existing session (host identity verified server-side)
         const response = await fetch(`/api/session/${reconfigureCode}/reconfigure`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filters,
-            location,
-            deckSource,
-            groupId: deckSource === 'group' && groupId ? groupId : undefined,
-          }),
+          body,
         })
-
         if (!response.ok) {
           const data = await response.json()
           throw new Error(data.error || 'Failed to reconfigure session')
         }
-
-        // Navigate back to the session
         router.push(`/session/${reconfigureCode}`)
       } else {
-        // Create new session via API - code will be generated server-side
         const response = await fetch('/api/session/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filters,
-            location,
-            deckSource,
-            groupId: deckSource === 'group' && groupId ? groupId : undefined,
-          }),
+          body,
         })
-
         if (!response.ok) {
           const data = await response.json()
           throw new Error(data.error || 'Failed to create session')
         }
-
         const result = await response.json()
-        const sessionCode = result.session.code
-
-        // Navigate to the session
-        router.push(`/session/${sessionCode}`)
+        router.push(`/session/${result.session.code}`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start session')
@@ -185,7 +174,6 @@ function SetupPageContent() {
     }
   }
 
-  // Show loading screen while creating session
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600 flex flex-col items-center justify-center p-4">
@@ -199,17 +187,15 @@ function SetupPageContent() {
               className="mx-auto rounded-xl mb-4 animate-spin"
             />
             <h1 className="text-3xl font-bold text-white mb-2">
-              Starting Your Group
+              {reconfigureCode ? 'Rebuilding the deck' : 'Starting your session'}
             </h1>
-            <p className="text-white text-opacity-90 mb-4">
-              Finding your type...
-            </p>
+            <p className="text-white text-opacity-90 mb-4">Building the deck…</p>
           </div>
 
-          <div className="space-y-3 text-sm text-white text-opacity-80">
+          <div className="space-y-3 text-sm text-white text-opacity-80" aria-live="polite">
             <div className="flex items-center justify-center gap-2 fade-in-1">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <p>Scanning the area...</p>
+              <p>Scanning the area…</p>
             </div>
             <div className="flex items-center justify-center gap-2 fade-in-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
@@ -217,117 +203,11 @@ function SetupPageContent() {
             </div>
             <div className="flex items-center justify-center gap-2 fade-in-3">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <p>Setting the vibe...</p>
+              <p>Shuffling the deck…</p>
             </div>
           </div>
 
-          <p className="text-xs text-white text-opacity-60 mt-6">
-            This may take a few seconds...
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  // Show initial prompt screen for mode selection
-  if (setupMode === 'prompt' && isLoaded) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
-        <Header />
-        <div className="flex flex-col items-center p-4 pt-8" style={{ minHeight: 'calc(100vh - 56px)' }}>
-          <div className="w-full max-w-md">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Start a Group Session</h1>
-              <p className="text-orange-100 mb-2">Pick your path</p>
-              <p className="text-orange-100 text-sm opacity-80">How should we find restaurants?</p>
-            </div>
-
-            {/* Mode selection (page is members-only via middleware) */}
-            {isSignedIn && (
-              <div className="space-y-4">
-                <p className="text-orange-100 text-center mb-2">
-                  How do you want to create your session?
-                </p>
-
-                {/* Auto-Generate Option */}
-                <button
-                  onClick={() => setSetupMode('auto')}
-                  className="w-full bg-white/20 backdrop-blur-sm rounded-xl p-5 border border-white/30 text-left hover:bg-white/30 transition group"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-white/30 transition">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h2 className="text-white font-bold text-lg">Auto-Generate</h2>
-                      <p className="text-orange-100 text-sm">
-                        Set filters and we'll find {authLimit} restaurants for you
-                      </p>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Pick from Favorites Option */}
-                <button
-                  onClick={() => setSetupMode('favorites')}
-                  className="w-full bg-white/20 backdrop-blur-sm rounded-xl p-5 border border-white/30 text-left hover:bg-white/30 transition group"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-white/30 transition">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h2 className="text-white font-bold text-lg">Pick from Favorites</h2>
-                      <p className="text-orange-100 text-sm">
-                        Choose specific restaurants from your saved list
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            )}
-
-            <Footer />
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Show favorites picker mode (placeholder - will implement FavoritesPicker component)
-  if (setupMode === 'favorites') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
-        <Header />
-        <div className="flex flex-col items-center p-4 pt-8" style={{ minHeight: 'calc(100vh - 56px)' }}>
-          <div className="w-full max-w-md text-center">
-            <h1 className="text-2xl font-bold text-white mb-4">Pick from Favorites</h1>
-            <p className="text-orange-100 mb-6">Select restaurants from your saved list to add to this session.</p>
-
-            {/* TODO: Replace with FavoritesPicker component */}
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 mb-4">
-              <p className="text-orange-100 text-sm">Favorites picker coming soon!</p>
-              <p className="text-orange-200 text-xs mt-2">For now, use auto-generate mode.</p>
-            </div>
-
-            <button
-              onClick={() => setSetupMode('auto')}
-              className="w-full bg-white text-orange-600 font-semibold py-3 rounded-lg hover:bg-orange-50 transition"
-            >
-              Use Auto-Generate Instead
-            </button>
-            <button
-              onClick={() => setSetupMode('prompt')}
-              className="w-full mt-3 text-white/80 font-medium py-2 hover:text-white transition"
-            >
-              Back
-            </button>
-            <Footer />
-          </div>
+          <p className="text-xs text-white text-opacity-60 mt-6">This takes a few seconds.</p>
         </div>
       </div>
     )
@@ -340,36 +220,24 @@ function SetupPageContent() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">
-              {reconfigureCode ? 'Try Again' : 'Configure Group'}
+              {reconfigureCode ? 'Try again' : 'Start a session'}
             </h1>
             <p className="text-orange-100 mb-2">
-              {reconfigureCode ? 'Change the vibe' : 'Set the vibe'}
+              {reconfigureCode ? 'Change the deck' : 'Vote on where to eat, together'}
             </p>
             <p className="text-orange-100 text-sm opacity-80">
-              {reconfigureCode ? 'Your group is waiting.' : 'Everyone plays by the same rules.'}
+              {reconfigureCode
+                ? 'Your group is waiting.'
+                : 'Everyone swipes the same ten places. Matches win.'}
             </p>
           </div>
 
-          <RestaurantFilters
-            filters={filters}
-            onFiltersChange={setFilters}
-            locationName={locationAddress}
-            onCustomLocationSubmit={handleCustomLocationSubmit}
-            onUseCurrentLocation={handleUseCurrentLocation}
-            locationLoading={locationLoading}
-            locationError={locationError}
-          />
-
-          {/* Deck source (Phase 5): mix / library only / group favorites */}
-          <fieldset className="mt-4 bg-white/15 backdrop-blur-sm rounded-xl p-4 text-white">
+          {/* 1. Where the deck comes from — the real choice */}
+          <fieldset className="bg-white/15 backdrop-blur-sm rounded-xl p-4 text-white">
             <legend className="sr-only">Where the deck comes from</legend>
             <p className="text-sm font-semibold mb-2">Build the deck from</p>
             <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Deck source">
-              {([
-                { value: 'mix', label: 'Everything', hint: 'Nearby, love-weighted' },
-                { value: 'library', label: 'The Library', hint: 'Only loved places' },
-                { value: 'group', label: 'Group favorites', hint: 'Your group’s picks' },
-              ] as const).map(opt => (
+              {DECK_SOURCES.map(opt => (
                 <button
                   key={opt.value}
                   type="button"
@@ -389,7 +257,7 @@ function SetupPageContent() {
               <div className="mt-3">
                 {groups.length === 0 ? (
                   <p className="text-white/80 text-sm">
-                    Group favorites need a saved group — create one from the home page first.
+                    Group favorites need a saved group — create one from your profile first.
                   </p>
                 ) : (
                   <>
@@ -414,8 +282,21 @@ function SetupPageContent() {
             )}
           </fieldset>
 
+          {/* 2. Where and how far */}
+          <div className="mt-4">
+            <RestaurantFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              locationName={locationAddress}
+              onCustomLocationSubmit={handleCustomLocationSubmit}
+              onUseCurrentLocation={handleUseCurrentLocation}
+              locationLoading={locationLoading}
+              locationError={locationError}
+            />
+          </div>
+
           {error && (
-            <div className="mt-4 bg-red-500 text-white p-4 rounded-lg">
+            <div className="mt-4 bg-red-500 text-white p-4 rounded-lg" role="alert">
               {error}
             </div>
           )}
@@ -423,9 +304,9 @@ function SetupPageContent() {
           <button
             onClick={handleStartSession}
             disabled={loading}
-            className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition mt-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            {reconfigureCode ? 'Try Again' : 'Start Group'}
+            {reconfigureCode ? 'Try again' : 'Start session'}
           </button>
 
           <Footer />
