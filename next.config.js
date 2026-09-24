@@ -2,20 +2,26 @@
 //   script/connect  Clerk (dev *.clerk.accounts.dev, prod clerk.groupnom.com)
 //                   + Cloudflare Turnstile (Clerk bot protection)
 //   img             Vercel Blob (nomination photos), Clerk avatars,
-//                   CARTO dark map tiles
+//                   OSM raster tiles (darkened via CSS)
 //   style/font      Google Fonts (Alan Sans / Albert Sans in layout.tsx)
 //   worker blob:    Clerk runs a web worker from a blob URL
 // 'unsafe-inline'/'unsafe-eval' in script-src are required by Next.js dev
 // and Clerk today; tightening to nonces is a later pass.
+//
+// Preview deployments also get the Vercel toolbar (vercel.live) so its
+// feedback widget is not blocked; production never includes these hosts.
+const isPreview = process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production"
+const live = (list) => (isPreview ? " " + list : "")
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.groupnom.com https://challenges.cloudflare.com",
-  "connect-src 'self' https://*.clerk.accounts.dev https://clerk.groupnom.com https://clerk-telemetry.com",
-  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://img.clerk.com https://tile.openstreetmap.org",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.groupnom.com https://challenges.cloudflare.com" + live("https://vercel.live"),
+  "connect-src 'self' https://*.clerk.accounts.dev https://clerk.groupnom.com https://clerk-telemetry.com" + live("https://vercel.live wss://ws-us3.pusher.com"),
+  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://img.clerk.com https://tile.openstreetmap.org" + live("https://vercel.live https://vercel.com"),
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com" + live("https://vercel.live"),
+  "font-src 'self' https://fonts.gstatic.com" + live("https://vercel.live https://assets.vercel.com"),
   "worker-src 'self' blob:",
-  "frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev",
+  "frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev" + live("https://vercel.live"),
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
