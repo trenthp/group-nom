@@ -6,6 +6,7 @@
  */
 
 import { sql } from './db'
+import { toPublicName } from './userProfile'
 
 export interface Group {
   id: string
@@ -29,13 +30,21 @@ export interface GroupMember {
 /**
  * Create a new group
  */
+/** Random, unreadable-by-design: the code is the only way in. */
+function newInviteCode(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O, 1/I/L
+  const bytes = new Uint8Array(10)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, b => alphabet[b % alphabet.length]).join('')
+}
+
 export async function createGroup(
   ownerId: string,
   name: string
 ): Promise<Group> {
   const result = await sql`
-    INSERT INTO groups (owner_id, name)
-    VALUES (${ownerId}, ${name})
+    INSERT INTO groups (owner_id, name, invite_code)
+    VALUES (${ownerId}, ${name}, ${newInviteCode()})
     RETURNING *
   `
 
@@ -133,7 +142,7 @@ export async function getGroupWithMembers(
     createdAt: group.created_at,
     members: members.map(m => ({
       clerkUserId: m.clerk_user_id,
-      displayName: m.display_name,
+      displayName: toPublicName(m.display_name) ?? null,
       avatarUrl: m.avatar_url,
       joinedAt: m.joined_at,
     })),
@@ -243,22 +252,14 @@ export async function removeMember(
 }
 
 /**
- * Generate a shareable invite code for a group
- * Returns a base64-encoded group ID (simple for now)
+ * The stored invite code, owners only (security audit fix: codes are
+ * random and stored, never derivable from the group id).
  */
-export function generateInviteCode(groupId: string): string {
-  return Buffer.from(groupId).toString('base64url')
-}
-
-/**
- * Decode an invite code to get the group ID
- */
-export function decodeInviteCode(code: string): string | null {
-  try {
-    return Buffer.from(code, 'base64url').toString('utf-8')
-  } catch {
-    return null
-  }
+export async function getInviteCode(groupId: string, ownerId: string): Promise<string | null> {
+  const rows = await sql`
+    SELECT invite_code FROM groups WHERE id = ${groupId} AND owner_id = ${ownerId}
+  `
+  return rows.length ? (rows[0].invite_code as string) : null
 }
 
 /**
@@ -268,19 +269,19 @@ export async function joinGroupByCode(
   inviteCode: string,
   clerkUserId: string
 ): Promise<Group | null> {
-  const groupId = decodeInviteCode(inviteCode)
-  if (!groupId) {
+  const code = inviteCode.trim().toUpperCase()
+  if (!/^[A-Z0-9]{6,32}$/.test(code)) {
     return null
   }
 
-  // Verify group exists
   const groupResult = await sql`
-    SELECT * FROM groups WHERE id = ${groupId}
+    SELECT * FROM groups WHERE invite_code = ${code}
   `
 
   if (groupResult.length === 0) {
     return null
   }
+  const groupId = groupResult[0].id as string
 
   // Add member
   await addMember(groupId, clerkUserId)

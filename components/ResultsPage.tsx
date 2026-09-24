@@ -9,17 +9,9 @@ import { Restaurant } from '@/lib/types'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import HostStatusPanel from '@/components/HostStatusPanel'
-import {
-  RefreshIcon,
-  HourglassIcon,
-  SadFaceIcon,
-  ConfettiIcon,
-  StarIcon,
-  CompassIcon,
-  LocationIcon,
-  PhoneIcon,
-  GlobeIcon,
-} from '@/components/icons'
+import { Button } from '@/components/ui'
+import { WinnerCard, MatchNavigation, NoMatchesState, WaitingCard } from '@/components/results'
+import { RefreshIcon, HourglassIcon } from '@/components/icons'
 
 interface UserStatus {
   userIndex: number
@@ -64,7 +56,6 @@ export default function ResultsPage({
   const [allFinished, setAllFinished] = useState<boolean | null>(null) // null = not yet checked
   const [loading, setLoading] = useState(true)
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
-  const [showVoteBreakdown, setShowVoteBreakdown] = useState(false)
   const [noResults, setNoResults] = useState(false)
   const [isReconfiguring, setIsReconfiguring] = useState(false)
   const [userStatus, setUserStatus] = useState<UserStatus[]>([])
@@ -72,7 +63,7 @@ export default function ResultsPage({
   const [closingVoting, setClosingVoting] = useState(false)
 
   // Fetch results from API
-  const fetchResults = async () => {
+  const fetchResults = useCallback(async () => {
     try {
       const response = await fetch(`/api/session/${sessionCode}/results`)
 
@@ -148,7 +139,7 @@ export default function ResultsPage({
     } catch {
       setLoading(false)
     }
-  }
+  }, [sessionCode])
 
   // Results are fetched when status check confirms allFinished
   // No need to fetch on mount - status check will trigger it
@@ -208,7 +199,7 @@ export default function ResultsPage({
     } catch {
       // Silent retry on next poll
     }
-  }, [sessionCode])
+  }, [sessionCode, fetchResults])
 
   usePollingWithVisibility(checkAndPollStatus, {
     intervalMs: 3000,
@@ -247,11 +238,9 @@ export default function ResultsPage({
   const handleCloseVoting = async () => {
     setClosingVoting(true)
     try {
-      const userId = localStorage.getItem(`user-${sessionCode}`)
+      // Host identity is verified server-side via Clerk
       const response = await fetch(`/api/session/${sessionCode}/close-voting`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
       })
       if (response.ok) {
         setAllFinished(true)
@@ -322,22 +311,11 @@ export default function ResultsPage({
         <Header sessionCode={sessionCode} />
         <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
           <div className="w-full max-w-md text-center">
-            <div className="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-8">
-              <div className="mb-6 animate-bounce flex justify-center">
-                <RefreshIcon size={64} className="text-white" />
-              </div>
-              <h2 className="text-3xl font-bold text-white mb-4">
-                Host is changing the vibe...
-              </h2>
-              <p className="text-orange-100 text-lg">
-                New options incoming. Stay hungry.
-              </p>
-              <div className="mt-6 flex items-center justify-center gap-2">
-                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-100"></div>
-                <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-200"></div>
-              </div>
-            </div>
+            <WaitingCard
+              icon={<RefreshIcon size={64} className="text-white" />}
+              title="Host is changing the vibe..."
+              message="New options incoming. Stay hungry."
+            />
           </div>
         </div>
       </div>
@@ -351,22 +329,11 @@ export default function ResultsPage({
         <Header sessionCode={sessionCode} />
         <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
           <div className="w-full max-w-md text-center">
-            <div className="bg-white bg-opacity-20 backdrop-blur rounded-2xl p-8">
-              <div className="mb-6 animate-bounce flex justify-center">
-                <HourglassIcon size={64} className="text-white" />
-              </div>
-              <h2 className="text-3xl font-bold text-white mb-4">
-                Waiting on your friends...
-              </h2>
-              <p className="text-orange-100 text-lg">
-                You've made your choices. Now we wait.
-              </p>
-              <div className="mt-6 flex items-center justify-center gap-2">
-                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-100"></div>
-                <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-200"></div>
-              </div>
-            </div>
+            <WaitingCard
+              icon={<HourglassIcon size={64} className="text-white" />}
+              title="Waiting on your friends..."
+              message="You've made your choices. Now we wait."
+            />
 
             {/* Host Status Panel */}
             {isHost && userStatus.length > 0 && (
@@ -376,14 +343,15 @@ export default function ResultsPage({
                   totalRestaurants={totalRestaurants}
                 />
 
-                <button
+                <Button
+                  variant="glass"
                   onClick={handleCloseVoting}
                   disabled={closingVoting}
-                  className="w-full mt-4 bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+                  className="w-full mt-4 rounded-lg py-3"
                 >
                   {closingVoting ? 'Closing...' : 'Close Voting & See Results'}
-                </button>
-                <p className="text-white text-opacity-60 text-xs mt-2">
+                </Button>
+                <p className="text-white/60 text-xs mt-2">
                   End voting early if someone left
                 </p>
               </div>
@@ -416,38 +384,12 @@ export default function ResultsPage({
       <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
         <Header sessionCode={sessionCode} />
         <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
+          <NoMatchesState
+            isHost={isHost}
+            onReconfigure={onReconfigure}
+            onLeaveSession={onLeaveSession}
+          />
           <div className="w-full max-w-md">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 text-center mb-6">
-              <div className="mb-4 flex justify-center">
-                <SadFaceIcon size={64} className="text-gray-400" />
-              </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-4">
-                No Matches Found
-              </h2>
-              <p className="text-gray-600 mb-2">
-                Looks like the spark wasn't there.
-              </p>
-              <p className="text-gray-600 mb-6">
-                {isHost ? "Try again. Maybe lower your standards?" : "Waiting on the host to try again."}
-              </p>
-            </div>
-
-            {isHost ? (
-              <button
-                onClick={onReconfigure}
-                className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-              >
-                Try Different Settings
-              </button>
-            ) : (
-              <button
-                onClick={onLeaveSession}
-                className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-              >
-                Leave Group
-              </button>
-            )}
-
             <Footer />
           </div>
         </div>
@@ -478,218 +420,27 @@ export default function ResultsPage({
       <div className="flex flex-col items-center justify-center p-4" style={{ minHeight: 'calc(100vh - 56px)' }}>
         <div className="w-full max-w-md">
           {/* Winner Card */}
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden mb-8 transform scale-100 bounce-winner">
-          {/* Image */}
-          {winner?.imageUrl ? (
-            <div className="h-64 bg-gray-200 relative">
-              <img
-                src={winner.imageUrl}
-                alt={winner.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 right-4 bg-white bg-opacity-90 rounded-full p-3 shadow-lg">
-                <ConfettiIcon size={32} className="text-orange-500" />
-              </div>
-            </div>
-          ) : (
-            <div className="h-64 bg-gradient-to-br from-green-300 to-blue-400 flex items-center justify-center">
-              <ConfettiIcon size={96} className="text-white" />
-            </div>
-          )}
-
-          {/* Content */}
-          <div className="p-8 text-center">
-            <h2 className="text-4xl font-bold text-gray-800 mb-4">
-              {winner?.name}
-            </h2>
-
-            {winner?.address && (
-              <p className="text-gray-600 mb-4">{winner.address}</p>
-            )}
-
-            <div className="bg-green-100 text-green-800 px-4 py-3 rounded-lg mb-6 font-bold">
-              {resultMessage}
-            </div>
-
-            <div className="space-y-3 mb-6">
-              {winner?.rating && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-700">Rating</span>
-                  <div className="flex items-center gap-2">
-                    <StarIcon size={18} className="text-yellow-400" />
-                    <span className="font-bold text-gray-800">
-                      {winner.rating} ({winner.reviewCount} reviews)
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {winner?.priceLevel && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-700">Price</span>
-                  <span className="font-semibold text-gray-800">
-                    {winner.priceLevel}
-                  </span>
-                </div>
-              )}
-
-              {winner?.cuisines && winner.cuisines.length > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-700">Cuisines</span>
-                  <span className="font-semibold text-gray-800">
-                    {winner.cuisines.join(', ')}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Primary Actions */}
-            <div className="space-y-3 mb-4">
-              {winner && (
-                <a
-                  href={winner.id.startsWith('ChIJ')
-                    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(winner.name)}&destination_place_id=${winner.id}`
-                    : `https://www.google.com/maps/dir/?api=1&destination=${winner.lat},${winner.lng}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-700 transition"
-                >
-                  <CompassIcon size={20} />
-                  Get Directions
-                </a>
-              )}
-
-              {winner && (
-                <a
-                  href={winner.id.startsWith('ChIJ')
-                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(winner.name)}&query_place_id=${winner.id}`
-                    : `https://www.google.com/maps/search/?api=1&query=${winner.lat},${winner.lng}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition text-center"
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    <LocationIcon size={20} />
-                    View on Google Maps
-                  </span>
-                  <div className="text-xs font-normal mt-1 opacity-90">
-                    See menu, photos, reviews & more
-                  </div>
-                </a>
-              )}
-            </div>
-
-            {/* Secondary Actions */}
-            {(winner?.phone || winner?.website) && (
-              <div className="space-y-2 pt-2 border-t border-gray-200">
-                {winner?.phone && (
-                  <a
-                    href={`tel:${winner.phone}`}
-                    className="flex items-center justify-center gap-2 w-full bg-gray-100 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-200 transition text-sm"
-                  >
-                    <PhoneIcon size={16} />
-                    Call Restaurant
-                  </a>
-                )}
-
-                {winner?.website && (
-                  <a
-                    href={winner.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full bg-gray-100 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-200 transition text-sm"
-                  >
-                    <GlobeIcon size={16} />
-                    Visit Website
-                  </a>
-                )}
-              </div>
-            )}
+          <div className="mb-8">
+            <WinnerCard winner={winner} resultMessage={resultMessage} sessionCode={sessionCode} />
           </div>
-        </div>
 
-        {/* Match Navigation */}
-        {totalMatches > 1 && (
-          <nav className="bg-white bg-opacity-20 backdrop-blur rounded-xl p-4 mb-6 text-white" aria-label="Match navigation">
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={handlePreviousMatch}
-                disabled={!hasPrevious}
-                aria-label="View previous match"
-                className="bg-white bg-opacity-20 hover:bg-opacity-30 disabled:opacity-30 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-semibold transition"
-              >
-                ← Previous
-              </button>
-
-              <div className="text-center" aria-live="polite">
-                <p className="text-sm opacity-80">Match</p>
-                <p className="text-2xl font-bold">
-                  {currentMatchIndex + 1} / {totalMatches}
-                </p>
-                {currentMatch && (
-                  <p className="text-xs opacity-70 mt-1">
-                    {currentMatch.yesCount} {currentMatch.yesCount === 1 ? 'vote' : 'votes'}
-                  </p>
-                )}
-              </div>
-
-              <button
-                onClick={handleNextMatch}
-                disabled={!hasNext}
-                aria-label="View next match"
-                className="bg-white bg-opacity-20 hover:bg-opacity-30 disabled:opacity-30 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-semibold transition"
-              >
-                Next →
-              </button>
-            </div>
-
-            {/* Vote Breakdown Accordion */}
-            <div className="border-t border-white border-opacity-20 pt-4">
-              <button
-                onClick={() => setShowVoteBreakdown(!showVoteBreakdown)}
-                aria-expanded={showVoteBreakdown}
-                aria-controls="vote-breakdown-content"
-                className="w-full flex items-center justify-between text-sm font-semibold hover:opacity-80 transition"
-              >
-                <span>Vote Breakdown</span>
-                <span className="text-lg" aria-hidden="true">{showVoteBreakdown ? '▲' : '▼'}</span>
-              </button>
-
-              {showVoteBreakdown && (
-                <div id="vote-breakdown-content" className="mt-3 space-y-2">
-                  {voteDetails
-                    .filter((v) => Object.keys(v.votes).length > 0)
-                    .sort((a, b) => b.yesCount - a.yesCount)
-                    .map((detail) => (
-                      <div
-                        key={detail.restaurantId}
-                        className="bg-white bg-opacity-10 p-3 rounded-lg"
-                      >
-                        <p className="font-semibold text-sm mb-1">{detail.restaurant.name}</p>
-                        <div className="w-full bg-black bg-opacity-30 rounded-full h-2">
-                          <div
-                            className="bg-green-400 h-2 rounded-full"
-                            style={{
-                              width: `${(detail.yesCount / (detail.yesCount + detail.noCount)) * 100 || 0}%`,
-                            }}
-                          />
-                        </div>
-                        <p className="text-xs mt-1 opacity-90">
-                          {detail.yesCount} yes, {detail.noCount} no
-                        </p>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          </nav>
-        )}
+          {/* Match Navigation */}
+          {totalMatches > 1 && (
+            <MatchNavigation
+              currentIndex={currentMatchIndex}
+              totalMatches={totalMatches}
+              currentYesCount={currentMatch?.yesCount}
+              onPrevious={handlePreviousMatch}
+              onNext={handleNextMatch}
+              voteDetails={matchesWithVotes
+                .slice()
+                .sort((a, b) => b.yesCount - a.yesCount)}
+            />
+          )}
 
           {/* Conversion Prompt for Anonymous Users */}
           {isLoaded && !isSignedIn && (
-            <div className="bg-[#333333] rounded-xl p-5 mb-6 border border-white/10">
+            <div className="bg-surface-card rounded-xl p-5 mb-6 border border-white/10">
               <div className="mb-4">
                 <h4 className="font-bold text-white text-lg mb-1">
                   Want more from Group Nom?
@@ -702,30 +453,30 @@ export default function ResultsPage({
               {/* Benefits list */}
               <ul className="space-y-2 mb-4">
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   Save your favorite restaurants
                 </li>
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   Discover new spots on your own
                 </li>
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   Create & manage your own groups
                 </li>
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   See what locals love near you
                 </li>
                 <li className="flex items-center gap-2 text-white/80 text-sm">
-                  <span className="text-[#EA4D19]">✓</span>
+                  <span className="text-brand">✓</span>
                   Boost your local favorites for others to discover
                 </li>
               </ul>
 
               <Link
                 href="/sign-up"
-                className="block w-full bg-[#EA4D19] text-white font-semibold py-3 rounded-lg text-center hover:bg-orange-600 transition"
+                className="block w-full bg-brand text-white font-semibold py-3 rounded-lg text-center hover:bg-brand-hover transition"
               >
                 Create Free Account
               </Link>
@@ -735,19 +486,13 @@ export default function ResultsPage({
           {/* Actions - only for signed in users */}
           {isSignedIn && (
             isHost ? (
-              <button
-                onClick={onNewSession}
-                className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-              >
+              <Button variant="inverse" size="lg" className="w-full" onClick={onNewSession}>
                 Start New Group
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={onLeaveSession}
-                className="w-full bg-white text-orange-600 font-semibold py-4 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-              >
+              <Button variant="inverse" size="lg" className="w-full" onClick={onLeaveSession}>
                 Leave Group
-              </button>
+              </Button>
             )
           )}
 

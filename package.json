@@ -6,29 +6,36 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.0",
-    "@googlemaps/google-maps-services-js": "^3.4.2",
     "@neondatabase/serverless": "^1.0.2",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@upstash/ratelimit": "^2.0.7",
     "@vercel/analytics": "^1.5.0",
+    "@vercel/blob": "^2.8.0",
     "@vercel/kv": "^3.0.0",
     "autoprefixer": "^10.4.16",
+    "clsx": "^2.1.1",
+    "h3-js": "^4.5.0",
+    "leaflet": "^1.9.4",
     "next": "^16.0.10",
     "postcss": "^8.4.31",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-leaflet": "^5.0.0",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.7.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
+    "@types/leaflet": "^1.9.22",
     "eslint": "^9.17.0",
-    "eslint-config-next": "^16.0.10"
+    "eslint-config-next": "^16.3.0"
   }
 }

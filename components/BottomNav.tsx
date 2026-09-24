@@ -77,7 +77,7 @@ export default function BottomNav() {
               aria-current={isActive ? 'page' : undefined}
               className={`flex flex-col items-center py-2 px-4 min-w-[64px] transition ${
                 isActive
-                  ? 'text-[#EA4D19]'
+                  ? 'text-brand'
                   : 'text-white/40 hover:text-white/60'
               }`}
             >

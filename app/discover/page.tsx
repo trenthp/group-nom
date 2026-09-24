@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { Restaurant } from '@/lib/types'
 import RestaurantCard from '@/components/RestaurantCard'
@@ -20,6 +21,7 @@ interface DiscoverState {
   error: string | null
   location: { lat: number; lng: number } | null
   locationName: string
+  locationDenied: boolean // Geolocation unavailable - offer manual entry
   likedCount: number
   seenCount: number
   batchCount: number // Count within current batch (0-9)
@@ -38,6 +40,7 @@ export default function DiscoverPage() {
     error: null,
     location: null,
     locationName: '',
+    locationDenied: false,
     likedCount: 0,
     seenCount: 0,
     batchCount: 0,
@@ -47,6 +50,11 @@ export default function DiscoverPage() {
 
   // Track seen restaurant IDs to avoid duplicates
   const seenIds = useRef<Set<string>>(new Set())
+
+  // Manual location entry (fallback when geolocation is denied)
+  const [locationQuery, setLocationQuery] = useState('')
+  const [locationError, setLocationError] = useState<string | null>(null)
+  const [geocoding, setGeocoding] = useState(false)
 
   // Fetch a single restaurant
   const fetchNextRestaurant = useCallback(async (
@@ -63,15 +71,8 @@ export default function DiscoverPage() {
           lng,
           radius: 5000,
           limit: 1, // Only fetch 1 restaurant at a time
-          filters: {
-            minRating: 3.5,
-            maxReviews: 10000,
-            distance: 5,
-            priceLevel: [1, 2, 3, 4],
-            cuisines: [],
-            openNow: false,
-          },
           excludeIds, // Pass already seen IDs to backend
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Today's Five day boundary
         }),
       })
 
@@ -97,43 +98,35 @@ export default function DiscoverPage() {
     }
   }, [])
 
-  // Start swiping - get location first, then fetch restaurants
-  const handleStartSwiping = useCallback(async () => {
-    setState(s => ({ ...s, loading: true }))
+  // Begin the swiping flow once we have coordinates (from geolocation or manual entry)
+  const startWithLocation = useCallback(async (
+    lat: number,
+    lng: number,
+    name?: string
+  ) => {
+    setState(s => ({
+      ...s,
+      loading: true,
+      locationDenied: false,
+      location: { lat, lng },
+      locationName: name ?? s.locationName,
+    }))
 
-    if (!navigator.geolocation) {
-      setState(s => ({ ...s, error: 'Geolocation not supported', loading: false }))
-      return
-    }
-
-    // Request location permission and get position
-    const position = await new Promise<GeolocationPosition | null>((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve(pos),
-        (error) => {
-          console.error('Geolocation error:', error)
-          setState(s => ({
-            ...s,
-            error: 'Unable to get location. Please enable location services.',
-            loading: false,
-          }))
-          resolve(null)
-        }
-      )
-    })
-
-    if (!position) return
-
-    const { latitude: lat, longitude: lng } = position.coords
-    setState(s => ({ ...s, location: { lat, lng } }))
-
-    // Reverse geocode in background
-    fetch(`/api/geocode?lat=${lat}&lng=${lng}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) setState(s => ({ ...s, locationName: data.city || data.area || 'your area' }))
+    // Reverse geocode in background if we don't have a name yet
+    if (!name) {
+      fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng }),
       })
-      .catch(() => {})
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.formattedAddress) {
+            setState(s => ({ ...s, locationName: data.formattedAddress }))
+          }
+        })
+        .catch(() => {})
+    }
 
     // Fetch first restaurant
     const first = await fetchNextRestaurant(lat, lng, [])
@@ -158,6 +151,64 @@ export default function DiscoverPage() {
       }))
     }
   }, [fetchNextRestaurant])
+
+  // Start swiping - try geolocation, fall back to manual entry if denied
+  const handleStartSwiping = useCallback(async () => {
+    if (!navigator.geolocation) {
+      setState(s => ({ ...s, locationDenied: true }))
+      return
+    }
+
+    setState(s => ({ ...s, loading: true }))
+
+    const position = await new Promise<GeolocationPosition | null>((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos),
+        () => resolve(null)
+      )
+    })
+
+    if (!position) {
+      // Denied or unavailable - offer manual location entry instead of a dead end
+      setState(s => ({ ...s, loading: false, locationDenied: true }))
+      return
+    }
+
+    const { latitude: lat, longitude: lng } = position.coords
+    await startWithLocation(lat, lng)
+  }, [startWithLocation])
+
+  // Manual location entry (geolocation denied or unsupported)
+  const handleManualLocation = useCallback(async () => {
+    if (!locationQuery.trim()) {
+      setLocationError('Enter a city or zip code')
+      return
+    }
+
+    setGeocoding(true)
+    setLocationError(null)
+
+    try {
+      const res = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: locationQuery }),
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.location) {
+        setLocationError(data.error || 'Could not find that location')
+        setGeocoding(false)
+        return
+      }
+
+      setGeocoding(false)
+      await startWithLocation(data.location.lat, data.location.lng, data.formattedAddress)
+    } catch {
+      setLocationError('Could not find that location. Try a different city or zip.')
+      setGeocoding(false)
+    }
+  }, [locationQuery, startWithLocation])
 
   // Handle swipe (like or pass)
   const handleSwipe = useCallback(async (liked: boolean) => {
@@ -323,9 +374,9 @@ export default function DiscoverPage() {
   // Loading state (only during transitions)
   if (!isLoaded || state.loading) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="text-white text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#EA4D19] border-t-transparent mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand border-t-transparent mx-auto mb-4" />
           <p className="text-lg font-medium text-white/80">Finding restaurants near you...</p>
         </div>
       </div>
@@ -335,12 +386,12 @@ export default function DiscoverPage() {
   // Error state
   if (state.error) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <p className="text-red-400 text-lg mb-4">{state.error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="bg-[#EA4D19] text-white px-6 py-2 rounded-lg font-bold hover:bg-orange-600 transition"
+            className="bg-brand text-white px-6 py-2 rounded-lg font-bold hover:bg-brand-hover transition"
           >
             Try Again
           </button>
@@ -352,7 +403,7 @@ export default function DiscoverPage() {
   // Intro screen with card alignment animation
   if (state.phase === 'intro') {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
         <div className="text-center">
           {/* Animated card stack */}
           <div className="relative w-64 h-80 mx-auto mb-8">
@@ -402,12 +453,49 @@ export default function DiscoverPage() {
             Swipe right to like, left to pass. We&apos;ll remember your favorites.
           </p>
 
-          <button
-            onClick={handleStartSwiping}
-            className="px-8 py-4 rounded-2xl font-bold text-lg transition-all bg-[#EA4D19] text-white hover:scale-105 shadow-lg"
-          >
-            Start Swiping
-          </button>
+          {!state.locationDenied ? (
+            <button
+              onClick={handleStartSwiping}
+              className="px-8 py-4 rounded-2xl font-bold text-lg transition-all bg-brand text-white hover:scale-105 shadow-lg"
+            >
+              Start Swiping
+            </button>
+          ) : (
+            <div className="max-w-xs mx-auto space-y-3">
+              <p className="text-white/80 text-sm">
+                No worries — tell us where to look instead:
+              </p>
+              <label htmlFor="discover-location" className="sr-only">
+                City or zip code
+              </label>
+              <input
+                id="discover-location"
+                type="text"
+                value={locationQuery}
+                onChange={(e) => setLocationQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleManualLocation()}
+                placeholder="City or zip code..."
+                autoFocus
+                className="w-full px-4 py-3 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:border-brand"
+              />
+              {locationError && (
+                <p role="alert" className="text-red-400 text-sm">{locationError}</p>
+              )}
+              <button
+                onClick={handleManualLocation}
+                disabled={geocoding}
+                className="w-full px-8 py-3 rounded-xl font-bold text-lg transition-all bg-brand text-white hover:bg-brand-hover disabled:opacity-50 shadow-lg"
+              >
+                {geocoding ? 'Finding...' : 'Start Swiping'}
+              </button>
+              <button
+                onClick={handleStartSwiping}
+                className="w-full text-white/60 text-sm underline hover:text-white"
+              >
+                Try my location again
+              </button>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -416,8 +504,8 @@ export default function DiscoverPage() {
   // Batch complete screen - shown after every 10 cards
   if (state.phase === 'batch-complete') {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <div className="text-5xl mb-4">
             {state.likedCount > 0 ? '🎉' : '👀'}
           </div>
@@ -427,14 +515,14 @@ export default function DiscoverPage() {
           <p className="text-white/60 mb-2">
             You&apos;ve swiped through {state.seenCount} restaurants
           </p>
-          <p className="text-lg font-semibold text-[#EA4D19] mb-6">
+          <p className="text-lg font-semibold text-brand mb-6">
             {state.likedCount} liked so far
           </p>
 
           <div className="space-y-3">
             <button
               onClick={handleContinueSwiping}
-              className="w-full bg-[#EA4D19] text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-600 transition"
+              className="w-full bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-hover transition"
             >
               Continue Swiping
             </button>
@@ -449,9 +537,9 @@ export default function DiscoverPage() {
           {!isSignedIn && state.likedCount > 0 && (
             <div className="mt-4 bg-amber-500/20 border border-amber-500/30 rounded-xl p-3">
               <p className="text-amber-200 text-sm">
-                <a href="/sign-in?redirect_url=/discover" className="font-semibold underline">
+                <Link href="/sign-in?redirect_url=/discover" className="font-semibold underline">
                   Sign in
-                </a>
+                </Link>
                 {' '}to save your favorites permanently
               </p>
             </div>
@@ -464,8 +552,8 @@ export default function DiscoverPage() {
   // All done - no more restaurants
   if (state.phase === 'all-done' || state.noMoreRestaurants) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <div className="text-5xl mb-4">🍽️</div>
           <h2 className="text-2xl font-bold text-white mb-2">
             That&apos;s all for now!
@@ -479,19 +567,19 @@ export default function DiscoverPage() {
               <p className="text-amber-200 text-sm font-medium">
                 Sign in to save your favorites!
               </p>
-              <a
+              <Link
                 href="/sign-in?redirect_url=/saved"
                 className="inline-block mt-2 text-amber-300 underline font-semibold"
               >
                 Sign In →
-              </a>
+              </Link>
             </div>
           )}
           <div className="space-y-3">
             {state.likedCount > 0 && (
               <button
                 onClick={handleDone}
-                className="w-full bg-[#EA4D19] text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-600 transition"
+                className="w-full bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-hover transition"
               >
                 View Saved Restaurants
               </button>
@@ -501,7 +589,7 @@ export default function DiscoverPage() {
               className={`w-full px-6 py-3 rounded-xl font-bold transition ${
                 state.likedCount > 0
                   ? 'bg-white/10 text-white hover:bg-white/20'
-                  : 'bg-[#EA4D19] text-white hover:bg-orange-600'
+                  : 'bg-brand text-white hover:bg-brand-hover'
               }`}
             >
               Start Over
@@ -583,9 +671,9 @@ export default function DiscoverPage() {
         <div className="p-4 bg-white/10 backdrop-blur-sm">
           <p className="text-white text-center text-sm">
             Sign in to save your favorites! →{' '}
-            <a href="/sign-in" className="underline font-semibold">
+            <Link href="/sign-in" className="underline font-semibold">
               Sign In
-            </a>
+            </Link>
           </p>
         </div>
       )}

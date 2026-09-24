@@ -73,6 +73,14 @@ export default function Header({ sessionCode, autoOpenShare = false }: HeaderPro
 
           {/* Right: Session Code Badge + Auth */}
           <div className="flex items-center gap-3">
+            {!sessionCode && (
+              <Link
+                href="/library"
+                className="text-white/90 text-sm font-medium hover:text-white transition"
+              >
+                Library
+              </Link>
+            )}
             {sessionCode && (
               <button
                 onClick={() => setShowOverlay(true)}

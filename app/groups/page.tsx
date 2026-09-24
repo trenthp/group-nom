@@ -109,7 +109,7 @@ export default function GroupsPage() {
   // Auth loading
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent" />
       </div>
     )
@@ -118,9 +118,9 @@ export default function GroupsPage() {
   // Not signed in
   if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-[#EA4D19]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-brand/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <UsersIcon />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
@@ -130,7 +130,7 @@ export default function GroupsPage() {
             Sign in to create groups and start voting sessions with your friends.
           </p>
           <SignInButton mode="modal">
-            <button className="bg-[#EA4D19] text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition">
+            <button className="bg-brand text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-hover transition">
               Sign In to Get Started
             </button>
           </SignInButton>
@@ -142,7 +142,7 @@ export default function GroupsPage() {
   // Loading state
   if (state.loading) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent mx-auto mb-4" />
           <p className="text-white/60">Loading your groups...</p>
@@ -152,7 +152,7 @@ export default function GroupsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#222222]">
+    <div className="min-h-screen bg-surface-page">
       {/* Header */}
       <header className="px-4 py-6">
         <div className="max-w-lg mx-auto flex items-center justify-between">
@@ -164,7 +164,7 @@ export default function GroupsPage() {
           </div>
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-[#EA4D19] text-white px-4 py-2 rounded-lg font-medium hover:bg-orange-600 transition text-sm"
+            className="bg-brand text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-hover transition text-sm"
           >
             + New Group
           </button>
@@ -174,7 +174,7 @@ export default function GroupsPage() {
       {/* Create Group Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#333333] rounded-2xl p-6 max-w-md w-full">
+          <div className="bg-surface-card rounded-2xl p-6 max-w-md w-full">
             <h2 className="text-xl font-bold text-white mb-4">Create Group</h2>
             <form onSubmit={handleCreateGroup}>
               <input
@@ -182,7 +182,7 @@ export default function GroupsPage() {
                 placeholder="Group name (e.g., Friday Lunch Crew)"
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                className="w-full px-4 py-3 bg-[#222222] text-white border border-white/20 rounded-lg focus:ring-2 focus:ring-[#EA4D19] focus:border-[#EA4D19] outline-none placeholder-white/40"
+                className="w-full px-4 py-3 bg-surface-page text-white border border-white/20 rounded-lg focus:ring-2 focus:ring-brand focus:border-brand outline-none placeholder-white/40"
                 maxLength={50}
                 autoFocus
               />
@@ -200,7 +200,7 @@ export default function GroupsPage() {
                 <button
                   type="submit"
                   disabled={!newGroupName.trim() || creating}
-                  className="flex-1 px-4 py-2 bg-[#EA4D19] text-white rounded-lg font-medium hover:bg-orange-600 transition disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-brand text-white rounded-lg font-medium hover:bg-brand-hover transition disabled:opacity-50"
                 >
                   {creating ? 'Creating...' : 'Create'}
                 </button>
@@ -213,7 +213,7 @@ export default function GroupsPage() {
       {/* Groups List */}
       <main className="max-w-lg mx-auto px-4 pb-24">
         {state.error && (
-          <div className="bg-[#333333] rounded-2xl p-6 mb-4">
+          <div className="bg-surface-card rounded-2xl p-6 mb-4">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,7 +225,7 @@ export default function GroupsPage() {
                 <p className="text-white/60 text-sm">{state.error}</p>
                 <button
                   onClick={() => fetchGroups()}
-                  className="mt-3 text-[#EA4D19] text-sm font-medium hover:underline"
+                  className="mt-3 text-brand text-sm font-medium hover:underline"
                 >
                   Try again
                 </button>
@@ -235,8 +235,8 @@ export default function GroupsPage() {
         )}
 
         {!state.error && state.groups.length === 0 ? (
-          <div className="bg-[#333333] rounded-2xl p-8 text-center">
-            <div className="w-16 h-16 bg-[#EA4D19]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="bg-surface-card rounded-2xl p-8 text-center">
+            <div className="w-16 h-16 bg-brand/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <UsersIcon />
             </div>
             <h2 className="text-xl font-bold text-white mb-2">
@@ -247,7 +247,7 @@ export default function GroupsPage() {
             </p>
             <button
               onClick={() => setShowCreate(true)}
-              className="bg-[#EA4D19] text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition"
+              className="bg-brand text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-hover transition"
             >
               Create Your First Group
             </button>
@@ -268,7 +268,7 @@ export default function GroupsPage() {
         <div className="mt-8 space-y-3">
           <Link
             href="/setup"
-            className="block bg-[#333333] rounded-xl p-4 hover:bg-[#3a3a3a] transition"
+            className="block bg-surface-card rounded-xl p-4 hover:bg-surface-card-hover transition"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
@@ -296,7 +296,7 @@ function GroupCard({
   onDelete: () => void
 }) {
   return (
-    <div className="bg-[#333333] rounded-xl overflow-hidden">
+    <div className="bg-surface-card rounded-xl overflow-hidden">
       <div className="p-4">
         <div className="flex items-start justify-between">
           <div>
@@ -311,7 +311,7 @@ function GroupCard({
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
           <Link
             href={`/groups/${group.id}`}
-            className="flex-1 text-center text-sm text-[#EA4D19] hover:text-orange-400 py-2 rounded-lg hover:bg-white/5 transition font-medium"
+            className="flex-1 text-center text-sm text-brand hover:text-orange-400 py-2 rounded-lg hover:bg-white/5 transition font-medium"
           >
             View Details
           </Link>

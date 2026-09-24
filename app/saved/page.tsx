@@ -80,7 +80,7 @@ export default function SavedPage() {
   // Auth loading
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent" />
       </div>
     )
@@ -89,10 +89,10 @@ export default function SavedPage() {
   // Not signed in
   if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-[#EA4D19]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UtensilsIcon size={32} className="text-[#EA4D19]" />
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-brand/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UtensilsIcon size={32} className="text-brand" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
             Your Saved Places
@@ -101,7 +101,7 @@ export default function SavedPage() {
             Sign in to save your favorite restaurants and access them anytime.
           </p>
           <SignInButton mode="modal">
-            <button className="bg-[#EA4D19] text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition">
+            <button className="bg-brand text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-hover transition">
               Sign In to Get Started
             </button>
           </SignInButton>
@@ -113,7 +113,7 @@ export default function SavedPage() {
   // Loading state
   if (state.loading && state.favorites.length === 0) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent mx-auto mb-4" />
           <p className="text-white/60">Loading your favorites...</p>
@@ -125,12 +125,12 @@ export default function SavedPage() {
   // Error state
   if (state.error && state.favorites.length === 0) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
           <p className="text-red-400 mb-4">{state.error}</p>
           <button
             onClick={() => fetchFavorites()}
-            className="bg-[#EA4D19] text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-600 transition"
+            className="bg-brand text-white px-6 py-2 rounded-lg font-medium hover:bg-brand-hover transition"
           >
             Try Again
           </button>
@@ -142,20 +142,20 @@ export default function SavedPage() {
   // Empty state
   if (state.favorites.length === 0) {
     return (
-      <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
-        <div className="bg-[#333333] rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-[#EA4D19]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UtensilsIcon size={32} className="text-[#EA4D19]" />
+      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
+        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-brand/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UtensilsIcon size={32} className="text-brand" />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">
-            No favorites yet
+            Nothing on your try-list yet
           </h2>
           <p className="text-white/60 mb-6">
-            Start discovering restaurants and swipe right to save your favorites!
+            Save the places you want to get to. When you go and love one, nominate it.
           </p>
           <Link
             href="/discover"
-            className="inline-block bg-[#EA4D19] text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition"
+            className="inline-block bg-brand text-white px-6 py-3 rounded-lg font-medium hover:bg-brand-hover transition"
           >
             Start Discovering
           </Link>
@@ -165,13 +165,13 @@ export default function SavedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#222222]">
+    <div className="min-h-screen bg-surface-page">
       {/* Header */}
       <header className="px-4 py-6">
         <div className="max-w-lg mx-auto">
-          <h1 className="text-xl font-bold text-white">Saved Places</h1>
+          <h1 className="text-xl font-bold text-white">Places to try</h1>
           <p className="text-sm text-white/50">
-            {state.favorites.length} restaurant{state.favorites.length !== 1 ? 's' : ''}
+            {state.favorites.length} place{state.favorites.length !== 1 ? 's' : ''} you want to get to
           </p>
         </div>
       </header>
@@ -194,19 +194,13 @@ export default function SavedPage() {
             <button
               onClick={() => fetchFavorites(state.offset)}
               disabled={state.loading}
-              className="bg-[#333333] text-[#EA4D19] px-6 py-2 rounded-lg font-medium border border-white/10 hover:bg-[#3a3a3a] transition disabled:opacity-50"
+              className="bg-surface-card text-brand px-6 py-2 rounded-lg font-medium border border-white/10 hover:bg-surface-card-hover transition disabled:opacity-50"
             >
               {state.loading ? 'Loading...' : 'Load More'}
             </button>
           </div>
         )}
 
-        {/* Google Attribution - Required by Google Maps Platform ToS */}
-        <div className="text-center py-4">
-          <p className="text-white/30 text-xs">
-            Restaurant data powered by Google
-          </p>
-        </div>
       </main>
     </div>
   )
@@ -226,23 +220,19 @@ function FavoriteCard({
     favorite.restaurantName
   )}&query_place_id=${favorite.googlePlaceId || ''}`
 
-  // Mock data availability - in future, these would come from the database
+  // Photos come from community nominations - not wired into favorites yet
   const hasPhoto = false
-  const hasPriceLevel = false
-  const hasHours = false
-  const hasRating = false
-  const hasPhone = false
 
   return (
-    <div className="bg-[#333333] rounded-xl overflow-hidden">
-      {/* Photo Section */}
-      <div className="relative">
+    <div className="bg-surface-card rounded-xl overflow-hidden">
+      {/* Photo Section - links to the restaurant's library page */}
+      <Link href={`/restaurant/${favorite.localId}`} className="block relative">
         {hasPhoto ? (
           // Real photo would go here
           <div className="w-full h-40 bg-gray-700" />
         ) : (
           // Photo skeleton/placeholder
-          <div className="w-full h-32 bg-[#2a2a2a] flex items-center justify-center">
+          <div className="w-full h-32 bg-[#2a2a2a] flex items-center justify-center hover:bg-[#2e2e2e] transition">
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-2">
                 <CameraIcon className="text-white/20" />
@@ -256,14 +246,19 @@ function FavoriteCard({
         <div className="absolute top-3 right-3">
           <LocalBadge likeCount={favorite.likeCount} size="sm" />
         </div>
-      </div>
+      </Link>
 
       {/* Content */}
       <div className="p-4">
         {/* Header: Name & Location */}
         <div className="mb-3">
           <h3 className="font-semibold text-white text-lg leading-tight">
-            {favorite.restaurantName}
+            <Link
+              href={`/restaurant/${favorite.localId}`}
+              className="hover:text-orange-300 transition"
+            >
+              {favorite.restaurantName}
+            </Link>
           </h3>
           {favorite.restaurantCity && (
             <p className="text-sm text-white/50 flex items-center gap-1 mt-1">
@@ -273,31 +268,14 @@ function FavoriteCard({
           )}
         </div>
 
-        {/* Quick Info Row - Real data + Skeletons */}
-        <div className="flex items-center gap-3 mb-3">
-          {/* Price Level */}
-          {hasPriceLevel ? (
-            <span className="text-white/70 text-sm">$$</span>
-          ) : (
-            <SkeletonPill label="$$$" />
-          )}
-
-          {/* Rating */}
-          {hasRating ? (
-            <span className="text-white/70 text-sm flex items-center gap-1">
-              <StarIcon className="text-yellow-500" size={14} />
-              4.5
-            </span>
-          ) : (
-            <SkeletonPill label="★ —" />
-          )}
-
-          {/* Hours */}
-          {hasHours ? (
-            <span className="text-green-400 text-sm">Open now</span>
-          ) : (
-            <SkeletonPill label="Hours" />
-          )}
+        {/* Nominate CTA - you saved it because you love it; tell the community why */}
+        <div className="mb-3">
+          <Link
+            href={`/nominate/${favorite.localId}`}
+            className="inline-flex items-center gap-1.5 bg-green-500/20 text-green-300 hover:bg-green-500/30 px-3 py-1.5 rounded-full text-sm font-semibold transition"
+          >
+            ❤️ Nominate this spot
+          </Link>
         </div>
 
         {/* Categories */}
@@ -333,26 +311,10 @@ function FavoriteCard({
               skeleton="123 Main Street"
             />
 
-            {/* Phone */}
-            <DetailRow
-              icon={<PhoneIcon />}
-              label="Phone"
-              value={hasPhone ? '(555) 123-4567' : null}
-              skeleton="(555) 123-4567"
-            />
-
-            {/* Hours - expanded */}
-            <DetailRow
-              icon={<ClockIcon />}
-              label="Hours"
-              value={hasHours ? 'Open until 10 PM' : null}
-              skeleton="Open · Closes 10 PM"
-            />
-
             {/* More data coming soon hint */}
             <div className="bg-[#2a2a2a] rounded-lg p-3 mt-3">
               <p className="text-white/40 text-xs text-center">
-                More details added as our community grows
+                Hours, menus, and parking tips get added as the community fills them in
               </p>
             </div>
           </div>
@@ -364,7 +326,7 @@ function FavoriteCard({
             href={googleMapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 text-sm text-[#EA4D19] hover:text-orange-400 py-2.5 rounded-lg hover:bg-white/5 transition font-medium"
+            className="flex-1 flex items-center justify-center gap-2 text-sm text-brand hover:text-orange-400 py-2.5 rounded-lg hover:bg-white/5 transition font-medium"
           >
             <GoogleIcon />
             View on Google
@@ -401,14 +363,6 @@ function FavoriteCard({
 }
 
 // Skeleton pill for missing data
-function SkeletonPill({ label }: { label: string }) {
-  return (
-    <span className="text-white/20 text-sm bg-white/5 px-2 py-0.5 rounded border border-dashed border-white/10">
-      {label}
-    </span>
-  )
-}
-
 // Detail row with skeleton support
 function DetailRow({
   icon,
@@ -452,14 +406,6 @@ function CameraIcon({ className = '' }: { className?: string }) {
   )
 }
 
-function StarIcon({ className = '', size = 16 }: { className?: string; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
-    </svg>
-  )
-}
-
 function ChevronIcon({ direction }: { direction: 'up' | 'down' }) {
   return (
     <svg
@@ -472,23 +418,6 @@ function ChevronIcon({ direction }: { direction: 'up' | 'down' }) {
       className={`transition-transform ${direction === 'up' ? 'rotate-180' : ''}`}
     >
       <polyline points="6,9 12,15 18,9" />
-    </svg>
-  )
-}
-
-function PhoneIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-    </svg>
-  )
-}
-
-function ClockIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12,6 12,12 16,14" />
     </svg>
   )
 }

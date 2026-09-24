@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     // The like just won't be saved
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Could not save like',
       // Still return a stub so the UI doesn't break
       favorite: null,
     })

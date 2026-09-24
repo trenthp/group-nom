@@ -10,7 +10,7 @@ import {
   getGroupWithMembers,
   updateGroup,
   deleteGroup,
-  generateInviteCode,
+  getInviteCode,
 } from '@/lib/groups'
 
 export async function GET(
@@ -37,8 +37,8 @@ export async function GET(
       )
     }
 
-    // Include invite code for owner
-    const inviteCode = group.ownerId === userId ? generateInviteCode(group.id) : null
+    // Include invite code for owner (random + stored, migration 014)
+    const inviteCode = group.ownerId === userId ? await getInviteCode(group.id, userId) : null
 
     return NextResponse.json({
       group,

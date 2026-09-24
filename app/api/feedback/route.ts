@@ -50,14 +50,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error submitting feedback:', error)
-    // Debug: check which database/branch we're connected to
-    try {
-      const dbInfo = await sql`SELECT current_database(), current_schema()`
-      const tables = await sql`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'feedback'`
-      console.error('DB debug - database:', dbInfo, 'feedback table exists:', tables)
-    } catch (debugErr) {
-      console.error('DB debug query failed:', debugErr)
-    }
     return NextResponse.json(
       { error: 'Failed to submit feedback' },
       { status: 500 }

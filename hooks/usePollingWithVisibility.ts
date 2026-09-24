@@ -30,8 +30,10 @@ export function usePollingWithVisibility(
   const isVisibleRef = useRef(true)
   const callbackRef = useRef(callback)
 
-  // Keep callback ref updated
-  callbackRef.current = callback
+  // Keep callback ref updated (in an effect - refs must not be written during render)
+  useEffect(() => {
+    callbackRef.current = callback
+  }, [callback])
 
   // Check if session has expired (60 minute limit)
   const checkExpired = useCallback(() => {

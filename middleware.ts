@@ -2,11 +2,39 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { Ratelimit } from '@upstash/ratelimit'
-import { kv } from '@vercel/kv'
+import { kv, isKvConfigured } from '@/lib/kv'
 
 // Define route matchers
 const isAdminRoute = createRouteMatcher(['/admin(.*)'])
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
+// Clerk → us. Authenticated by Svix signature inside the handler, not by a
+// session, and never rate limited (a dropped webhook = a stale profile).
+const isWebhookRoute = createRouteMatcher(['/api/webhooks(.*)'])
+
+// The library is the product's core asset — members only (Aug 2026 decision).
+// Signed-out visitors get teased aggregates on the marketing pages, never content.
+const isMemberRoute = createRouteMatcher([
+  '/library(.*)',
+  '/restaurant(.*)',
+  '/nominate(.*)',
+  '/discover(.*)',
+  '/saved(.*)',
+  '/member(.*)',
+  // Sessions require sign-in too (Aug 2026) — invite links redirect through
+  // sign-in and land back on the session page.
+  '/setup(.*)',
+  '/session(.*)',
+])
+const isMemberApiRoute = createRouteMatcher([
+  '/api/library(.*)',
+  '/api/nominations(.*)',
+  '/api/enrichment(.*)',
+  '/api/restaurants(.*)',
+  '/api/session(.*)',
+  '/api/members(.*)',
+  '/api/reports(.*)',
+  '/api/admin(.*)',
+])
 
 // Create tiered rate limiters: stricter for anonymous, generous for authenticated
 const anonRateLimiters = {
@@ -30,6 +58,16 @@ const anonRateLimiters = {
     limiter: Ratelimit.slidingWindow(5, '60 s'),
     prefix: 'ratelimit:anon:restaurants',
   }),
+  upload: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(5, '3600 s'), // uploads require auth; anon gets a token bucket anyway
+    prefix: 'ratelimit:anon:upload',
+  }),
+  geocode: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(20, '60 s'), // location lookups are chattier than search
+    prefix: 'ratelimit:anon:geocode',
+  }),
 }
 
 const authRateLimiters = {
@@ -52,6 +90,16 @@ const authRateLimiters = {
     redis: kv,
     limiter: Ratelimit.slidingWindow(20, '60 s'),
     prefix: 'ratelimit:auth:restaurants',
+  }),
+  upload: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(30, '3600 s'), // 30 photo uploads per hour
+    prefix: 'ratelimit:auth:upload',
+  }),
+  geocode: new Ratelimit({
+    redis: kv,
+    limiter: Ratelimit.slidingWindow(30, '60 s'),
+    prefix: 'ratelimit:auth:geocode',
   }),
 }
 
@@ -80,7 +128,7 @@ async function handleRateLimit(
   }
 
   // Skip rate limiting in development if KV is not configured
-  if (process.env.NODE_ENV === 'development' && !process.env.KV_REST_API_URL) {
+  if (process.env.NODE_ENV === 'development' && !isKvConfigured()) {
     return null
   }
 
@@ -102,9 +150,15 @@ async function handleRateLimit(
     } else if (pathname.includes('/vote') || pathname.includes('/close-voting')) {
       limiter = rateLimiters.vote
       identifier = `vote:${baseIdentifier}`
-    } else if (pathname === '/api/restaurants/nearby' || pathname === '/api/geocode') {
+    } else if (pathname.startsWith('/api/upload/') || pathname === '/api/restaurants/community') {
+      limiter = rateLimiters.upload
+      identifier = `upload:${baseIdentifier}`
+    } else if (pathname === '/api/restaurants/nearby' || pathname === '/api/restaurants/search') {
       limiter = rateLimiters.restaurants
       identifier = `restaurants:${baseIdentifier}`
+    } else if (pathname === '/api/geocode') {
+      limiter = rateLimiters.geocode
+      identifier = `geocode:${baseIdentifier}`
     } else {
       limiter = rateLimiters.general
       identifier = `general:${baseIdentifier}`
@@ -130,6 +184,10 @@ async function handleRateLimit(
 }
 
 export default clerkMiddleware(async (auth, request) => {
+  if (isWebhookRoute(request)) {
+    return NextResponse.next()
+  }
+
   // Get auth status first for tiered rate limiting
   const { userId } = await auth()
 
@@ -142,6 +200,19 @@ export default clerkMiddleware(async (auth, request) => {
   // Redirect signed-in users away from auth pages to home
   if (userId && isAuthRoute(request)) {
     return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // Member-only APIs return JSON 401 (a redirect would confuse fetch callers)
+  if (!userId && isMemberApiRoute(request)) {
+    return NextResponse.json(
+      { error: 'Sign in to browse the library' },
+      { status: 401 }
+    )
+  }
+
+  // Member-only pages redirect to sign-in and back
+  if (isMemberRoute(request)) {
+    await auth.protect()
   }
 
   // Protect /admin/* routes - require sign in

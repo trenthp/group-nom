@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
 import { voteSchema, parseBody } from '@/lib/validation'
 
@@ -9,6 +10,15 @@ export async function POST(
   try {
     const { code } = await params
 
+    // Voter identity is server-side — a client can only vote as itself
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Sign in to vote' },
+        { status: 401 }
+      )
+    }
+
     const parsed = await parseBody(request, voteSchema)
     if (!parsed.success) {
       return NextResponse.json(
@@ -16,7 +26,7 @@ export async function POST(
         { status: 400 }
       )
     }
-    const { userId, restaurantId, liked } = parsed.data
+    const { restaurantId, liked } = parsed.data
 
     const session = await sessionStore.getSession(code)
     if (!session) {
@@ -30,6 +40,14 @@ export async function POST(
     if (session.status === 'finished') {
       return NextResponse.json(
         { error: 'Session has already ended. Voting is closed.' },
+        { status: 403 }
+      )
+    }
+
+    // Only session members can vote
+    if (!session.users.includes(userId)) {
+      return NextResponse.json(
+        { error: 'You must join the session before voting' },
         { status: 403 }
       )
     }

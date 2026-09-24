@@ -3,12 +3,11 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import RestaurantFilters from '@/components/RestaurantFilters'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { getUserLocation } from '@/lib/googleMaps'
+import { getUserLocation } from '@/lib/geolocation'
 import { USER_TIERS } from '@/lib/userTiers'
 import { DEFAULT_FILTERS } from '@/lib/types'
 
@@ -20,8 +19,7 @@ function SetupPageContent() {
   const reconfigureCode = searchParams.get('reconfigure')
   const { isSignedIn, isLoaded } = useUser()
 
-  // Get restaurant limits for display
-  const anonLimit = USER_TIERS.anonymous.maxRestaurantsPerSession
+  // Get restaurant limit for display (sessions require sign-in)
   const authLimit = USER_TIERS.authenticated.maxRestaurantsPerSession
 
   // Setup mode: prompt (initial screen), auto (filter-based), favorites (pick from saved)
@@ -30,6 +28,17 @@ function SetupPageContent() {
   const [setupMode, setSetupMode] = useState<SetupMode>(skipPrompt ? 'auto' : 'prompt')
 
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS })
+  // Where the deck comes from (Phase 5). Group decks need a saved group.
+  const [deckSource, setDeckSource] = useState<'mix' | 'library' | 'group'>('mix')
+  const [groupId, setGroupId] = useState<string>('')
+  const [groups, setGroups] = useState<Array<{ id: string; name: string; memberCount: number }>>([])
+
+  useEffect(() => {
+    fetch('/api/groups')
+      .then(res => (res.ok ? res.json() : { groups: [] }))
+      .then(json => setGroups(json.groups ?? []))
+      .catch(() => { /* non-fatal */ })
+  }, [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -127,16 +136,15 @@ function SetupPageContent() {
 
     try {
       if (reconfigureCode) {
-        // Reconfigure existing session
-        const userId = localStorage.getItem(`user-${reconfigureCode}`)
-
+        // Reconfigure existing session (host identity verified server-side)
         const response = await fetch(`/api/session/${reconfigureCode}/reconfigure`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId,
             filters,
             location,
+            deckSource,
+            groupId: deckSource === 'group' && groupId ? groupId : undefined,
           }),
         })
 
@@ -155,6 +163,8 @@ function SetupPageContent() {
           body: JSON.stringify({
             filters,
             location,
+            deckSource,
+            groupId: deckSource === 'group' && groupId ? groupId : undefined,
           }),
         })
 
@@ -165,9 +175,6 @@ function SetupPageContent() {
 
         const result = await response.json()
         const sessionCode = result.session.code
-
-        // Store user ID for this session
-        localStorage.setItem(`user-${sessionCode}`, result.userId)
 
         // Navigate to the session
         router.push(`/session/${sessionCode}`)
@@ -235,47 +242,7 @@ function SetupPageContent() {
               <p className="text-orange-100 text-sm opacity-80">How should we find restaurants?</p>
             </div>
 
-            {/* Anonymous User View */}
-            {!isSignedIn && (
-              <div className="space-y-3">
-                {/* Side-by-side comparison */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Quick Start - 5 restaurants */}
-                  <button
-                    onClick={() => setSetupMode('auto')}
-                    className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30 text-center hover:bg-white/30 transition group"
-                  >
-                    <div className="text-5xl font-bold text-white mb-1">{anonLimit}</div>
-                    <div className="text-white/90 text-sm font-medium">restaurants</div>
-                    <div className="mt-3 bg-white text-orange-600 font-semibold py-2.5 rounded-lg group-hover:bg-orange-50 transition text-sm">
-                      Quick Start
-                    </div>
-                  </button>
-
-                  {/* Sign In - 10 restaurants */}
-                  <Link
-                    href="/sign-in?redirect_url=/setup?mode=auto"
-                    className="bg-white rounded-xl p-4 text-center hover:bg-orange-50 transition group"
-                  >
-                    <div className="text-5xl font-bold text-orange-600 mb-1">{authLimit}</div>
-                    <div className="text-orange-600/80 text-sm font-medium">restaurants</div>
-                    <div className="mt-3 bg-orange-600 text-white font-semibold py-2.5 rounded-lg group-hover:bg-orange-700 transition text-sm">
-                      Sign In
-                    </div>
-                  </Link>
-                </div>
-
-                {/* Create account link */}
-                <p className="text-center text-white/80 text-sm">
-                  New here?{' '}
-                  <Link href="/sign-up?redirect_url=/setup?mode=auto" className="underline font-medium hover:text-white">
-                    Create free account
-                  </Link>
-                </p>
-              </div>
-            )}
-
-            {/* Authenticated User View - Mode Selection */}
+            {/* Mode selection (page is members-only via middleware) */}
             {isSignedIn && (
               <div className="space-y-4">
                 <p className="text-orange-100 text-center mb-2">
@@ -392,6 +359,60 @@ function SetupPageContent() {
             locationLoading={locationLoading}
             locationError={locationError}
           />
+
+          {/* Deck source (Phase 5): mix / library only / group favorites */}
+          <fieldset className="mt-4 bg-white/15 backdrop-blur-sm rounded-xl p-4 text-white">
+            <legend className="sr-only">Where the deck comes from</legend>
+            <p className="text-sm font-semibold mb-2">Build the deck from</p>
+            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Deck source">
+              {([
+                { value: 'mix', label: 'Everything', hint: 'Nearby, love-weighted' },
+                { value: 'library', label: 'The Library', hint: 'Only loved places' },
+                { value: 'group', label: 'Group favorites', hint: 'Your group’s picks' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={deckSource === opt.value}
+                  onClick={() => setDeckSource(opt.value)}
+                  className={`rounded-lg px-2 py-2 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                    deckSource === opt.value ? 'bg-white text-orange-700' : 'bg-white/10 hover:bg-white/20'
+                  }`}
+                >
+                  <span className="block text-sm font-semibold leading-tight">{opt.label}</span>
+                  <span className={`block text-[11px] leading-tight ${deckSource === opt.value ? 'text-orange-700/80' : 'text-white/70'}`}>{opt.hint}</span>
+                </button>
+              ))}
+            </div>
+            {deckSource === 'group' && (
+              <div className="mt-3">
+                {groups.length === 0 ? (
+                  <p className="text-white/80 text-sm">
+                    Group favorites need a saved group — create one from the home page first.
+                  </p>
+                ) : (
+                  <>
+                    <label htmlFor="deck-group" className="block text-xs text-white/80 mb-1">Which group?</label>
+                    <select
+                      id="deck-group"
+                      value={groupId}
+                      onChange={(e) => setGroupId(e.target.value)}
+                      className="w-full rounded-lg bg-white text-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white"
+                    >
+                      <option value="">Pick a group</option>
+                      {groups.map(g => (
+                        <option key={g.id} value={g.id}>{g.name} · {g.memberCount} member{g.memberCount === 1 ? '' : 's'}</option>
+                      ))}
+                    </select>
+                    <p className="text-white/70 text-xs mt-1">
+                      Only places your group has nominated. If that&apos;s fewer than three, we fill from everything nearby.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </fieldset>
 
           {error && (
             <div className="mt-4 bg-red-500 text-white p-4 rounded-lg">

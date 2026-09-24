@@ -1,20 +1,9 @@
 import { z } from 'zod'
 
-// Vote request validation
+// Vote request validation — voter identity comes from Clerk auth() server-side
 export const voteSchema = z.object({
-  userId: z.string().min(1, 'userId is required'),
   restaurantId: z.string().min(1, 'restaurantId is required'),
   liked: z.boolean(),
-})
-
-// Close voting request validation (requires host authorization)
-export const closeVotingSchema = z.object({
-  userId: z.string().min(1, 'userId is required'),
-})
-
-// Set reconfiguring request validation
-export const setReconfiguringSchema = z.object({
-  userId: z.string().min(1, 'userId is required'),
 })
 
 // Location validation
@@ -35,16 +24,23 @@ export const filtersSchema = z.object({
 })
 
 // Create session request validation
+// Where the deck comes from (Phase 5): mix (default) | library | group
+const deckSourceSchema = z.enum(['mix', 'library', 'group']).optional()
+const groupIdSchema = z.string().uuid().optional()
+
 export const createSessionSchema = z.object({
   filters: filtersSchema,
   location: locationSchema,
+  deckSource: deckSourceSchema,
+  groupId: groupIdSchema,
 })
 
-// Reconfigure session request validation
+// Reconfigure session request validation — host identity comes from auth()
 export const reconfigureSessionSchema = z.object({
-  userId: z.string().min(1, 'userId is required'),
   filters: filtersSchema,
   location: locationSchema,
+  deckSource: deckSourceSchema,
+  groupId: groupIdSchema,
 })
 
 // Helper to parse and validate request body

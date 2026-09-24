@@ -3,9 +3,11 @@
 // ==============================================
 
 export interface Restaurant {
-  id: string // Google place_id
+  id: string // gers_id (Overture) or cmty_… (community-added)
   name: string
   address: string
+  /** Soft-discourage signal for nominating chains; never blocks */
+  likelyChain?: boolean
   rating: number
   reviewCount: number
   cuisines: string[]
@@ -136,6 +138,66 @@ export interface AggregatedVote {
 }
 
 // ==============================================
+// NOMINATION LAYER TYPES (Community UGC)
+// ==============================================
+
+export interface Nomination {
+  id: string
+  gersId: string
+  clerkUserId: string
+  photoUrl: string
+  whyILoveIt: string
+  myFavoriteDishes: string[]
+  goodFor: GoodForTag[]
+  createdAt: Date
+  // Joined data (optional, populated when fetching)
+  user?: {
+    /** Opaque profile id for /member/[id]; absent for former members */
+    memberId?: string
+    displayName?: string
+    avatarUrl?: string
+  }
+  restaurant?: {
+    name: string
+    city?: string
+  }
+}
+
+export type GoodForTag = 'date_night' | 'family' | 'groups' | 'solo' | 'quick_bite' | 'late_night' | 'brunch'
+
+export interface RestaurantEnrichment {
+  gersId: string
+  hoursNotes?: string
+  hoursUpdatedAt?: Date
+  menuUrl?: string
+  menuUpdatedAt?: Date
+  parkingNotes?: string
+  parkingUpdatedAt?: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface NominationCompleteness {
+  hasNominations: boolean
+  nominationCount: number
+  hasHours: boolean
+  hasMenu: boolean
+  hasParking: boolean
+  hasFavoriteDishes: boolean
+  completenessScore: number // 0-100
+  missingFields: string[]
+}
+
+// Extended restaurant type with nomination data
+export interface RestaurantWithNominations extends Restaurant {
+  nominationCount: number
+  firstNominatedAt?: Date
+  completenessScore: number
+  enrichment?: RestaurantEnrichment
+  nominations?: Nomination[]
+}
+
+// ==============================================
 // USER TIER TYPES
 // ==============================================
 
@@ -146,6 +208,12 @@ export interface SessionMetadata {
   creatorClerkId: string | null
   restaurantLimit: number
   createdAt: number
+  /** Where the deck came from (Phase 5); absent on older sessions = mix */
+  deckSource?: 'mix' | 'library' | 'group'
+  /** Saved group the deck was built from, when deckSource = 'group' */
+  groupId?: string
+  /** The requested source couldn't fill a deck, so mix was used */
+  deckFellBack?: boolean
 }
 
 // Auth types

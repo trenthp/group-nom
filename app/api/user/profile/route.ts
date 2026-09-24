@@ -9,6 +9,8 @@ import {
   getOrCreateProfile,
   updateProfile,
   getUserStats,
+  isUnlocked,
+  canPublish,
 } from '@/lib/userProfile'
 
 export async function GET() {
@@ -51,6 +53,9 @@ export async function GET() {
     return NextResponse.json({
       profile,
       stats,
+      // Ladder state, derived — the client never decides this itself
+      isUnlocked: isUnlocked(profile),
+      canPublish: canPublish(profile),
     })
   } catch (error) {
     console.error('Error fetching profile:', error)
@@ -76,7 +81,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
 
     // Validate update fields
-    const updates: { displayName?: string; avatarUrl?: string } = {}
+    const updates: { displayName?: string; avatarUrl?: string; timezone?: string } = {}
 
     if (typeof body.displayName === 'string') {
       updates.displayName = body.displayName.trim().slice(0, 100)
@@ -84,6 +89,11 @@ export async function PUT(request: NextRequest) {
 
     if (typeof body.avatarUrl === 'string') {
       updates.avatarUrl = body.avatarUrl.trim().slice(0, 500)
+    }
+
+    // IANA zone from the browser (Intl.DateTimeFormat().resolvedOptions().timeZone)
+    if (typeof body.timezone === 'string' && /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)*$/.test(body.timezone)) {
+      updates.timezone = body.timezone.slice(0, 64)
     }
 
     if (Object.keys(updates).length === 0) {

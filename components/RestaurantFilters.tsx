@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { LocationIcon, StarIcon } from '@/components/icons'
+import { LocationIcon } from '@/components/icons'
 import { DEFAULT_FILTERS } from '@/lib/types'
 
 interface FilterValues {
@@ -46,10 +46,6 @@ export default function RestaurantFilters({
 
   const isEdited = {
     distance: filters.distance !== DEFAULT_FILTERS.distance,
-    minRating: filters.minRating !== DEFAULT_FILTERS.minRating,
-    maxReviews: filters.maxReviews !== DEFAULT_FILTERS.maxReviews,
-    openNow: filters.openNow !== DEFAULT_FILTERS.openNow,
-    priceLevel: !arraysEqual(filters.priceLevel, DEFAULT_FILTERS.priceLevel),
     cuisines: !arraysEqual(filters.cuisines, DEFAULT_FILTERS.cuisines),
     preferLocal: filters.preferLocal !== DEFAULT_FILTERS.preferLocal,
   }
@@ -100,26 +96,6 @@ export default function RestaurantFilters({
     return `${opt.miles} mi (${opt.km} km)`
   }
 
-  const getRatingLabel = (rating: number) => {
-    if (rating === 0) return 'any'
-    return `${rating.toFixed(1)}+`
-  }
-
-  const getPopularityLabel = (value: number) => {
-    if (value === 0) return 'any'
-    if (value === 100) return 'hidden gems'
-    if (value === 300) return 'lesser-known'
-    if (value === 500) return 'moderate'
-    if (value === 1000) return 'popular'
-    return 'very popular'
-  }
-
-  const getPriceLabel = () => {
-    const levels = filters.priceLevel || []
-    if (levels.length === 0 || levels.length === 4) return 'any'
-    return levels.map(l => '$'.repeat(l)).join(' ')
-  }
-
   const getCuisineLabel = () => {
     const cuisines = filters.cuisines || []
     if (cuisines.length === 0) return 'any'
@@ -140,15 +116,6 @@ export default function RestaurantFilters({
       onFiltersChange({ ...filters, cuisines: current.filter(c => c !== cuisine) })
     } else {
       onFiltersChange({ ...filters, cuisines: [...current, cuisine] })
-    }
-  }
-
-  const togglePriceLevel = (level: number) => {
-    const current = filters.priceLevel || []
-    if (current.includes(level)) {
-      onFiltersChange({ ...filters, priceLevel: current.filter(l => l !== level) })
-    } else {
-      onFiltersChange({ ...filters, priceLevel: [...current, level].sort() })
     }
   }
 
@@ -379,127 +346,6 @@ export default function RestaurantFilters({
           edited={isEdited.distance}
           onClick={() => setExpandedFilter(expandedFilter === 'distance' ? null : 'distance')}
           expanded={expandedFilter === 'distance'}
-        />
-      </FilterRow>
-
-      {/* Rating */}
-      <FilterRow
-        label="rating"
-        expandedContent={expandedFilter === 'rating' ? (
-          <>
-            <input
-              type="range"
-              min={0}
-              max={4.5}
-              step={0.5}
-              value={filters.minRating}
-              onChange={(e) => onFiltersChange({ ...filters, minRating: Number(e.target.value) })}
-              className="slider-thumb w-full h-2 rounded-full cursor-grab active:cursor-grabbing accent-white bg-white/40"
-            />
-            <div className="flex justify-between text-sm text-white/70 mt-2">
-              <span>Any</span>
-              <span className="font-semibold text-white flex items-center gap-1">
-                {filters.minRating === 0 ? 'Any' : `${filters.minRating}+`}
-                {filters.minRating > 0 && <StarIcon size={12} className="text-yellow-400" />}
-              </span>
-              <span className="flex items-center gap-1">4.5 <StarIcon size={12} className="text-yellow-400" /></span>
-            </div>
-          </>
-        ) : undefined}
-      >
-        <Chip
-          value={getRatingLabel(filters.minRating)}
-          edited={isEdited.minRating}
-          onClick={() => setExpandedFilter(expandedFilter === 'rating' ? null : 'rating')}
-          expanded={expandedFilter === 'rating'}
-        />
-      </FilterRow>
-
-      {/* Popularity */}
-      <FilterRow
-        label="popularity"
-        expandedContent={expandedFilter === 'popularity' ? (
-          <>
-            <p className="text-white/70 mb-3 leading-relaxed">
-              {filters.maxReviews === 0 && 'Any amount of reviews'}
-              {filters.maxReviews === 100 && 'Under 100 reviews — undiscovered'}
-              {filters.maxReviews === 300 && 'Under 300 reviews — off the beaten path'}
-              {filters.maxReviews === 500 && 'Under 500 reviews — known but not crowded'}
-              {filters.maxReviews === 1000 && 'Under 1,000 reviews — local favorites'}
-              {filters.maxReviews === 5000 && '1,000+ reviews — crowd pleasers'}
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {[
-                { value: 0, label: 'Any' },
-                { value: 100, label: 'Hidden gems' },
-                { value: 300, label: 'Lesser-known' },
-                { value: 500, label: 'Moderate' },
-                { value: 1000, label: 'Popular' },
-                { value: 5000, label: 'Very popular' },
-              ].map(opt => (
-                <PanelButton
-                  key={opt.value}
-                  selected={filters.maxReviews === opt.value}
-                  onClick={() => onFiltersChange({ ...filters, maxReviews: opt.value })}
-                >
-                  {opt.label}
-                </PanelButton>
-              ))}
-            </div>
-          </>
-        ) : undefined}
-      >
-        <Chip
-          value={getPopularityLabel(filters.maxReviews)}
-          edited={isEdited.maxReviews}
-          onClick={() => setExpandedFilter(expandedFilter === 'popularity' ? null : 'popularity')}
-          expanded={expandedFilter === 'popularity'}
-        />
-      </FilterRow>
-
-      {/* Hours */}
-      <FilterRow label="hours">
-        <Chip
-          value={filters.openNow ? 'open now' : 'any'}
-          edited={isEdited.openNow}
-          onClick={() => onFiltersChange({ ...filters, openNow: !filters.openNow })}
-          hasDropdown={false}
-        />
-      </FilterRow>
-
-      {/* Price */}
-      <FilterRow
-        label="price"
-        expandedContent={expandedFilter === 'price' ? (
-          <>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4].map((level) => (
-                <button
-                  key={level}
-                  onClick={() => togglePriceLevel(level)}
-                  className={`
-                    flex-1 py-3 rounded-xl font-bold text-base
-                    transition-all duration-150
-                    ${(filters.priceLevel || []).includes(level)
-                      ? 'bg-white text-orange-600 shadow-sm'
-                      : 'bg-white/15 text-white hover:bg-white/25 border border-white/10'
-                    }
-                    hover:scale-[1.03] active:scale-[0.97]
-                  `}
-                >
-                  {'$'.repeat(level)}
-                </button>
-              ))}
-            </div>
-            <p className="text-sm text-white/50 mt-3 text-center">Tap multiple or none for any</p>
-          </>
-        ) : undefined}
-      >
-        <Chip
-          value={getPriceLabel()}
-          edited={isEdited.priceLevel}
-          onClick={() => setExpandedFilter(expandedFilter === 'price' ? null : 'price')}
-          expanded={expandedFilter === 'price'}
         />
       </FilterRow>
 

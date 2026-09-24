@@ -46,6 +46,24 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   const [joinError, setJoinError] = useState('')
   const [isJoining, setIsJoining] = useState(false)
   const [stats, setStats] = useState<{ likes: number; favorites: number } | null>(null)
+  const [draftNudge, setDraftNudge] = useState<{ count: number; href: string } | null>(null)
+  // null until known; the pre-unlock home leads with the first nomination
+  const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null)
+  // Places loved by people you follow (empty until you follow someone)
+  const [feed, setFeed] = useState<Array<{
+    nominationId: string
+    restaurant: { id: string; name: string; city?: string }
+    photoUrl: string
+    whyILoveIt: string
+    member: { id: string; displayName?: string; avatarUrl?: string }
+  }>>([])
+
+  useEffect(() => {
+    fetch('/api/feed?limit=6')
+      .then(res => (res.ok ? res.json() : { items: [] }))
+      .then(json => setFeed(json.items ?? []))
+      .catch(() => { /* non-fatal */ })
+  }, [])
   const [showAccountMenu, setShowAccountMenu] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
 
@@ -55,13 +73,24 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const response = await fetch('/api/user/profile')
-        if (response.ok) {
-          const data = await response.json()
+        const [profileRes, draftsRes] = await Promise.all([
+          fetch('/api/user/profile'),
+          fetch('/api/nominations/drafts'),
+        ])
+        if (profileRes.ok) {
+          const data = await profileRes.json()
           setStats({
             likes: data.stats?.likes || 0,
             favorites: data.stats?.favorites || 0,
           })
+          if (typeof data.isUnlocked === 'boolean') setIsUnlocked(data.isUnlocked)
+          // A draft waiting is the daily reason to come back
+          if (draftsRes.ok && data.profile?.id) {
+            const { drafts } = await draftsRes.json()
+            if (Array.isArray(drafts) && drafts.length > 0) {
+              setDraftNudge({ count: drafts.length, href: `/member/${data.profile.id}` })
+            }
+          }
         }
       } catch {
         // Non-fatal
@@ -98,7 +127,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#222222]">
+    <div className="min-h-screen bg-surface-page">
       {/* Header */}
       <header className="px-4 py-6">
         <div className="max-w-lg mx-auto">
@@ -112,7 +141,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
             <div className="relative">
               <button
                 onClick={() => setShowAccountMenu(!showAccountMenu)}
-                className="flex items-center gap-2 bg-[#333333] hover:bg-[#3a3a3a] rounded-full pl-3 pr-2 py-1.5 transition cursor-pointer"
+                className="flex items-center gap-2 bg-surface-card hover:bg-surface-card-hover rounded-full pl-3 pr-2 py-1.5 transition cursor-pointer"
               >
                 <span className="text-white/70 text-sm font-medium">Account</span>
                 {user?.imageUrl ? (
@@ -122,7 +151,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
                     className="w-7 h-7 rounded-full"
                   />
                 ) : (
-                  <div className="w-7 h-7 rounded-full bg-[#EA4D19] flex items-center justify-center text-white text-xs font-bold">
+                  <div className="w-7 h-7 rounded-full bg-brand flex items-center justify-center text-white text-xs font-bold">
                     {userName[0]?.toUpperCase() || 'U'}
                   </div>
                 )}
@@ -136,7 +165,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
                     className="fixed inset-0 z-40"
                     onClick={() => setShowAccountMenu(false)}
                   />
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-[#333333] rounded-xl shadow-xl border border-white/10 z-50 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-surface-card rounded-xl shadow-xl border border-white/10 z-50 overflow-hidden">
                     {/* User Info */}
                     <div className="px-4 py-3 border-b border-white/10">
                       <p className="text-white font-medium truncate">
@@ -188,7 +217,9 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
             Hey {userName}!
           </h1>
           <p className="text-white/60 text-sm mt-1">
-            Ready to find something good?
+            {isUnlocked === false
+              ? 'Your first nomination opens the whole library.'
+              : 'Ready to find something good?'}
           </p>
         </div>
       </header>
@@ -217,19 +248,101 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
             {/* Saved Card */}
             <Link
               href="/saved"
-              className="bg-[#333333] rounded-2xl p-5 hover:bg-[#3a3a3a] transition group"
+              className="bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition group"
             >
               <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center mb-3">
-                <svg className="w-5 h-5 text-[#EA4D19]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
               </div>
-              <h3 className="font-bold text-white text-lg">Saved</h3>
+              <h3 className="font-bold text-white text-lg">To try</h3>
               <p className="text-white/50 text-sm">
-                {stats ? `${stats.favorites} favorite${stats.favorites !== 1 ? 's' : ''}` : 'Your favorites'}
+                {stats ? `${stats.favorites} place${stats.favorites !== 1 ? 's' : ''} to get to` : 'Places to get to'}
               </p>
             </Link>
           </div>
+        </div>
+
+        {/* Section: From people you follow */}
+        {feed.length > 0 && (
+          <div className="mb-4">
+            <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1">From people you follow</p>
+            <ul className="space-y-2 list-none p-0 m-0">
+              {feed.map((item) => (
+                <li key={item.nominationId}>
+                  <Link
+                    href={`/restaurant/${item.restaurant.id}`}
+                    className="flex gap-3 bg-surface-card rounded-2xl p-3 hover:bg-surface-card-hover transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.photoUrl} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-white font-semibold truncate group-hover:text-orange-300 transition">{item.restaurant.name}</p>
+                      <p className="text-white/70 text-sm italic line-clamp-1">&ldquo;{item.whyILoveIt}&rdquo;</p>
+                      <p className="text-white/40 text-xs mt-0.5">
+                        {item.member.displayName ?? 'A community member'}{item.restaurant.city ? ` · ${item.restaurant.city}` : ''}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Section: Community Library */}
+        <div className="mb-4">
+          <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1">Community</p>
+          <Link
+            href="/nominate"
+            className="block bg-surface-card rounded-2xl p-5 mb-3 hover:bg-surface-card-hover transition group border border-brand/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 bg-brand rounded-xl flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-lg">
+                  {isUnlocked === false ? 'Nominate your first place' : 'Nominate a place'}
+                </h3>
+                <p className="text-white/50 text-sm">
+                  {isUnlocked === false
+                    ? 'Somewhere local you’ve loved lately — a photo and why. Not lately? We’ll hold it while you go back.'
+                    : 'Somewhere local you’ve loved lately'}
+                </p>
+              </div>
+            </div>
+          </Link>
+          {draftNudge && (
+            <Link
+              href={draftNudge.href}
+              className="block -mt-1 mb-3 px-1 text-sm text-orange-300 hover:text-orange-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+            >
+              🔖 {draftNudge.count} draft{draftNudge.count === 1 ? '' : 's'} waiting for you →
+            </Link>
+          )}
+          <Link
+            href="/library"
+            className="block bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-lg">{isUnlocked === false ? "Today's Five" : 'The Library'}</h3>
+                <p className="text-white/50 text-sm">
+                  {isUnlocked === false
+                    ? 'Five loved places near you, new every day'
+                    : 'Places locals love, nominated by the community'}
+                </p>
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Section 2: Groups */}
@@ -239,10 +352,10 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
             {/* Start Group Card */}
             <Link
               href="/setup"
-              className="bg-[#333333] rounded-2xl p-5 hover:bg-[#3a3a3a] transition group"
+              className="bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition group"
             >
               <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center mb-3">
-                <svg className="w-5 h-5 text-[#EA4D19]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </div>
@@ -252,13 +365,13 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
 
             {/* Join Group Card */}
             <div
-              className="bg-[#333333] rounded-2xl p-5 hover:bg-[#3a3a3a] transition cursor-pointer"
+              className="bg-surface-card rounded-2xl p-5 hover:bg-surface-card-hover transition cursor-pointer"
               onClick={() => !showJoinForm && setShowJoinForm(true)}
             >
               {!showJoinForm ? (
                 <>
                   <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center mb-3">
-                    <svg className="w-5 h-5 text-[#EA4D19]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
@@ -275,7 +388,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
                       setSessionCode(e.target.value.toUpperCase())
                       setJoinError('')
                     }}
-                    className="w-full px-3 py-2.5 rounded-xl text-center text-lg font-mono font-bold tracking-[0.15em] bg-[#222] text-white border border-white/20 focus:border-[#EA4D19] focus:outline-none transition"
+                    className="w-full px-3 py-2.5 rounded-xl text-center text-lg font-mono font-bold tracking-[0.15em] bg-[#222] text-white border border-white/20 focus:border-brand focus:outline-none transition"
                     maxLength={6}
                     autoFocus
                     disabled={isJoining}
@@ -295,7 +408,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
                     <button
                       type="submit"
                       disabled={isJoining || sessionCode.length < 6}
-                      className="flex-1 py-2 bg-[#EA4D19] text-white font-bold text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 transition"
+                      className="flex-1 py-2 bg-brand text-white font-bold text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-hover transition"
                     >
                       {isJoining ? '...' : 'Join'}
                     </button>
@@ -471,7 +584,7 @@ function LandingPage() {
           <div className="space-y-3 mb-6">
             <Link
               href="/setup"
-              className="block w-full bg-white text-[#EA4D19] font-bold text-lg py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="block w-full bg-white text-brand font-bold text-lg py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               Start a Group
             </Link>
@@ -509,7 +622,7 @@ function LandingPage() {
                   <button
                     type="submit"
                     disabled={isJoining || sessionCode.length < 6}
-                    className="px-6 py-3 bg-white text-[#EA4D19] font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/90 transition"
+                    className="px-6 py-3 bg-white text-brand font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/90 transition"
                   >
                     {isJoining ? '...' : 'Go'}
                   </button>
@@ -628,7 +741,7 @@ function LandingPage() {
       `}</style>
 
       {/* Value Proposition Section - Dark Background */}
-      <div className="bg-[#222222] pt-10 pb-8 px-4">
+      <div className="bg-surface-page pt-10 pb-8 px-4">
         <div className="max-w-sm mx-auto">
           <h2 className="text-white text-xl font-bold text-center mb-2">
             More than a group thing.
@@ -640,7 +753,7 @@ function LandingPage() {
           {/* Features Grid - with hover effects */}
           <div className="space-y-3 mb-8">
             {/* Discover */}
-            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-[#333333] transition cursor-default">
+            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-surface-card transition cursor-default">
               <div className="w-10 h-10 bg-gradient-to-br from-[#F97316] to-[#DC2626] rounded-xl flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle cx="12" cy="12" r="10" strokeWidth="2" />
@@ -654,7 +767,7 @@ function LandingPage() {
             </div>
 
             {/* Save */}
-            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-[#333333] transition cursor-default">
+            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-surface-card transition cursor-default">
               <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-red-500 rounded-xl flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
@@ -667,7 +780,7 @@ function LandingPage() {
             </div>
 
             {/* Boost locals */}
-            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-[#333333] transition cursor-default">
+            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-surface-card transition cursor-default">
               <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -680,7 +793,7 @@ function LandingPage() {
             </div>
 
             {/* More options */}
-            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-[#333333] transition cursor-default">
+            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-surface-card transition cursor-default">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -696,7 +809,7 @@ function LandingPage() {
           {/* CTA */}
           <Link
             href="/sign-up"
-            className="block w-full bg-[#EA4D19] text-white font-bold text-lg py-4 rounded-2xl text-center hover:bg-orange-600 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+            className="block w-full bg-brand text-white font-bold text-lg py-4 rounded-2xl text-center hover:bg-brand-hover hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
           >
             Create free account
           </Link>
