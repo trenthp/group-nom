@@ -38,3 +38,10 @@ next-env.d.ts
 
 # claude code temp files
 tmpclaude-*
+.env*
+
+# claude code local permissions (personal)
+.claude/settings.local.json
+
+# keep the env template
+!.env*.example
