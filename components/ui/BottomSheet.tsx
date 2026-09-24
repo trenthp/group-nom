@@ -158,7 +158,7 @@ export function BottomSheet({ isOpen, onClose, children, ariaLabel, className }:
         aria-modal="true"
         aria-label={ariaLabel}
         className={cn(
-          'absolute bottom-0 left-0 right-0 bg-surface-card rounded-t-2xl overflow-hidden focus:outline-none',
+          'absolute bottom-0 left-0 right-0 mx-auto max-w-lg bg-surface-card rounded-t-2xl overflow-hidden focus:outline-none',
           className
         )}
         style={{

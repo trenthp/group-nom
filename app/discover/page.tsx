@@ -297,8 +297,8 @@ export default function DiscoverPage() {
         )}
 
         {coordinates && !showManualEntry && view === 'map' && (
-          <div className="flex-1 flex flex-col">
-            <div className="relative flex-1 min-h-[420px]" style={{ height: 'calc(100dvh - 240px)' }}>
+          <div className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4">
+            <div className="relative flex-1 min-h-[420px] rounded-card overflow-hidden" style={{ height: 'calc(100dvh - 250px)' }}>
               <DynamicDiscoverMap
                 center={coordinates}
                 zoom={15}
@@ -316,7 +316,7 @@ export default function DiscoverPage() {
                 </div>
               )}
             </div>
-            <p className="text-center text-xs text-white/50 px-4 py-2" aria-live="polite">
+            <p className="text-center text-xs text-white/50 py-2" aria-live="polite">
               {error ?? caption ?? 'Move the map to explore'}
             </p>
           </div>
