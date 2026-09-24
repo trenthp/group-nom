@@ -7,6 +7,7 @@
 
 import { sql } from './db'
 import { publicNameFor } from './userProfile'
+import { deletePhotoBlob } from '@/lib/photos'
 import type { Nomination, GoodForTag } from './types'
 
 // ============================================================================
@@ -117,10 +118,14 @@ export async function deleteNomination(
   const rows = await sql`
     DELETE FROM nominations
     WHERE id = ${nominationId}::uuid AND clerk_user_id = ${clerkUserId}
-    RETURNING id
+    RETURNING id, photo_url
   `
 
-  return rows.length > 0
+  if (rows.length === 0) return false
+
+  await deletePhotoBlob(rows[0].photo_url as string | null)
+
+  return true
 }
 
 /**

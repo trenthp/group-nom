@@ -6,6 +6,7 @@
  */
 
 import { sql } from './db'
+import { deletePhotoBlob } from '@/lib/photos'
 
 export type ReportTargetType = 'nomination' | 'restaurant'
 export type ReportReason = 'closed' | 'not_a_restaurant' | 'inappropriate' | 'spam' | 'other'
@@ -140,8 +141,10 @@ export async function unhidePlace(gersId: string): Promise<void> {
 
 /** Moderator removal — the count triggers handle the bookkeeping. */
 export async function removeNominationById(nominationId: string): Promise<boolean> {
-  const rows = await sql`DELETE FROM nominations WHERE id = ${nominationId}::uuid RETURNING id`
-  return rows.length > 0
+  const rows = await sql`DELETE FROM nominations WHERE id = ${nominationId}::uuid RETURNING id, photo_url`
+  if (rows.length === 0) return false
+  await deletePhotoBlob(rows[0].photo_url as string | null)
+  return true
 }
 
 export async function setMemberStatus(clerkUserId: string, status: 'active' | 'suspended'): Promise<void> {
