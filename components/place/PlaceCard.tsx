@@ -74,7 +74,13 @@ export function PlacePhoto({ src, alt = '', loved = false, height = 'md', classN
     <div className={cn('relative w-full overflow-hidden', className)}>
       {src ? (
         /* eslint-disable-next-line @next/next/no-img-element */
-        <img src={src} alt={alt} className={cn('w-full object-cover', photoHeights[height])} />
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          className={cn('w-full object-cover', photoHeights[height])}
+        />
       ) : (
         <div
           aria-hidden="true"

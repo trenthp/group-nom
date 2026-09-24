@@ -4,14 +4,16 @@ import { put } from '@vercel/blob'
 import { sql } from '@/lib/db'
 import { getProfile } from '@/lib/userProfile'
 import { getDailyStatus, resolveTimeZone, limitMessage } from '@/lib/dailyLimit'
+import { normalizePhoto, PHOTO_CONTENT_TYPE } from '@/lib/photos'
 
-// No SVG: it can carry scripts and render inline (stored XSS)
-const ALLOWED_IMAGE_TYPES: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
-}
+// No SVG: it can carry scripts and render inline (stored XSS). Whatever
+// comes in, what we store is always a metadata-free WebP (see lib/photos).
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+
+// The client pre-shrinks to well under this (lib/shrinkImage); Vercel
+// refuses request bodies over 4.5MB anyway, so this is the ceiling for
+// browsers that couldn't shrink.
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 const GERS_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/
 
@@ -72,34 +74,47 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type against an explicit allowlist
-    const extension = ALLOWED_IMAGE_TYPES[file.type]
-    if (!extension) {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
       return NextResponse.json(
         { error: 'File must be a JPEG, PNG, WebP, or GIF image' },
         { status: 400 }
       )
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json(
         { error: 'File must be under 10MB' },
         { status: 400 }
       )
     }
 
+    // Normalize: orient, cap at 1600px, WebP, strip EXIF/GPS. The declared
+    // MIME type is client-supplied, so decoding is also the real validation.
+    let photo
+    try {
+      photo = await normalizePhoto(await file.arrayBuffer())
+    } catch {
+      return NextResponse.json(
+        { error: 'That file is not an image we can read' },
+        { status: 400 }
+      )
+    }
+
     const timestamp = Date.now()
-    const filename = `nominations/${gersId}/${userId}-${timestamp}.${extension}`
+    const filename = `nominations/${gersId}/${userId}-${timestamp}.webp`
 
     // Upload to Vercel Blob; random suffix prevents predictable-path overwrites
-    const blob = await put(filename, file, {
+    const blob = await put(filename, photo.buffer, {
       access: 'public',
       addRandomSuffix: true,
+      contentType: PHOTO_CONTENT_TYPE,
     })
 
     return NextResponse.json({
       url: blob.url,
       filename: blob.pathname,
+      width: photo.width,
+      height: photo.height,
     })
   } catch (error) {
     console.error('[API] Error uploading photo:', error)

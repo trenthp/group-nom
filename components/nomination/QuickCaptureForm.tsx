@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import type { Restaurant } from '@/lib/types'
+import { shrinkImageForUpload } from '@/lib/shrinkImage'
 
 interface QuickCaptureFormProps {
   restaurant: Restaurant
@@ -41,17 +42,21 @@ export default function QuickCaptureForm({
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const original = e.target.files?.[0]
+    if (!original) return
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!original.type.startsWith('image/')) {
       setError('Please select an image file')
       return
     }
 
-    // Validate file size (max 10MB)
+    // Camera originals run 3–8MB; shrink in the browser before the size
+    // check so a normal phone photo never trips it (and never hits Vercel's
+    // 4.5MB request ceiling)
+    const file = await shrinkImageForUpload(original)
+
     if (file.size > 10 * 1024 * 1024) {
       setError('Image must be under 10MB')
       return
