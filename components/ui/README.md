@@ -17,6 +17,25 @@ All tokens live in `tailwind.config.ts`. Don't hard-code `#222222` /
 `#333333` / `#EA4D19` in new code — use `surface-page` / `surface-card` /
 `brand`.
 
+## Composition rules (Sep 2026 design audit)
+
+- **Every button-shaped thing is a kit button.** `Button` for actions,
+  `LinkButton` for navigation (`external` for new-tab anchors), or
+  `buttonClassName()` where neither element fits. No hand-rolled
+  `py-3 rounded-lg` buttons on dark surfaces.
+- **Every place is drawn with `components/place`.** `PlaceCard` /
+  `PlacePhoto` / `PlaceBody` / `PlaceTitle` / `PlaceAddress` / `PlaceMeta`
+  compose a list row, a deck card, a sheet, or a map popup; `PlaceActions`
+  with `ActionButton` / `ActionLink` / `QuietLink` is the action row. Same
+  vocabulary everywhere: "Save to try" / "✓ On your list", "❤️ Nominate",
+  "See the page →", "Open in maps ↗".
+- **One love signal**: `NominationBadge`. Never a hand-rolled "Loved by N"
+  pill. Cuisines are `Badge` default, favorite dishes are `Badge` `dish`.
+- **Radii**: cards are `rounded-card`, pills are `rounded-pill`. Don't
+  reach for `rounded-xl` / `rounded-2xl` / `rounded-lg` on new surfaces.
+- **View switching** (list/map, map/cards) is `ViewToggle`, text-only, in
+  the page header's title row on every surface.
+
 ## Accessibility rules (enforced by the kit, keep them when composing)
 
 - **Text contrast on dark surfaces**: meaningful text is `text-white` or

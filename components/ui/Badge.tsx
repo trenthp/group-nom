@@ -8,7 +8,7 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
    * Dark-first tints. `nomination` is the community-love signal (the only
    * count a place accumulates — no ratings anywhere).
    */
-  variant?: 'default' | 'nomination' | 'cuisine' | 'status' | 'local' | 'warning'
+  variant?: 'default' | 'nomination' | 'cuisine' | 'dish' | 'status' | 'local' | 'warning'
   size?: 'sm' | 'md'
   children: ReactNode
 }
@@ -25,6 +25,8 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
       default: 'bg-white/10 text-white/70',
       nomination: 'bg-green-500/20 text-green-300',
       cuisine: 'bg-brand-soft text-orange-300',
+      // A member's favorite dish: the same green as the nomination heart, softer
+      dish: 'bg-green-500/15 text-green-300',
       status: 'bg-blue-500/20 text-blue-300',
       local: 'bg-gradient-to-r from-sunset-from to-sunset-to text-white',
       warning: 'bg-amber-500/20 text-amber-300',

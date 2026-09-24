@@ -56,6 +56,23 @@
   box-sizing: border-box;
 }
 
+/* Fixed bottom bars (BottomNav, CookieConsent) clear the iPhone home
+   indicator. Requires viewport-fit=cover, set in app/layout.tsx. */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Horizontal chip rails scroll on phones without painting a scrollbar
+   (classic desktop scrollbars otherwise show a permanent bar under them) */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 html,
 body {
   height: 100%;

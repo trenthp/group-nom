@@ -3,10 +3,12 @@
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { LocationIcon } from '@/components/icons'
-import { Spinner, NominationBadge, Input, Button } from '@/components/ui'
+import { Spinner, Input, Button, ViewToggle } from '@/components/ui'
 import { LocationPermissionModal } from '@/components/location'
-import { DynamicMap, MapToggle } from '@/components/map'
+import { DynamicMap } from '@/components/map'
+import { PlaceCard, PlacePhoto, PlaceBody, PlaceTitle, PlaceAddress, PlaceMeta } from '@/components/place'
 import { useLocation } from '@/lib/useLocation'
+import { useMediaQuery, DESKTOP_QUERY } from '@/lib/useMediaQuery'
 import type { LibraryEntry } from '@/lib/restaurantDiscovery'
 
 type LibraryPhase = 'idle' | 'loading' | 'ready' | 'error'
@@ -26,6 +28,8 @@ export default function LibraryPage() {
   const [places, setPlaces] = useState<LibraryEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'map'>('list')
+  // Desktop shows the list and the map side by side; the toggle is phone-only
+  const isDesktop = useMediaQuery(DESKTOP_QUERY)
   // Pre-unlock members see Today's Five; the count is the tease
   const [limited, setLimited] = useState<{ totalNearby: number } | null>(null)
 
@@ -102,46 +106,61 @@ export default function LibraryPage() {
         onSkip={() => setManualMode(true)}
       />
 
-      {/* Header - matches app's dark page pattern */}
-      <header className="px-4 py-6">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold text-white">{limited ? "Today's Five" : 'The Library'}</h1>
-              <p className="text-sm text-white/50">
-                {limited
-                  ? 'Five places locals love, picked for you today'
-                  : 'Places locals love, nominated by the community'}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Link
-                href="/nominate"
-                className="px-3 py-1.5 rounded-pill bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
-              >
-                + Nominate
-              </Link>
-              {phase === 'ready' && places.length > 0 && (
-                <MapToggle view={view} onViewChange={setView} />
-              )}
-            </div>
+      {/* Header: title + view toggle on one row, subtitle full width beneath,
+          then the location line with the primary action. Same shape as
+          Discover, and nothing in it can outgrow a 390px screen. */}
+      <header className="px-4 pt-6 pb-3">
+        <div className="max-w-lg md:max-w-3xl lg:max-w-6xl mx-auto">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-xl font-bold text-white min-w-0">
+              {limited ? "Today's Five" : 'The Library'}
+            </h1>
+            {coordinates && (
+              <ViewToggle
+                options={[
+                  { value: 'list', label: 'List' },
+                  { value: 'map', label: 'Map' },
+                ]}
+                value={view}
+                onChange={setView}
+                ariaLabel="View as list or map"
+                disabled={phase !== 'ready' || places.length === 0}
+                className="lg:hidden"
+              />
+            )}
           </div>
-          {locationName && !showManualEntry && (
-            <p className="text-white/50 text-sm mt-2 flex items-center gap-1">
-              <LocationIcon size={12} />
-              {locationName}
-              <button
-                onClick={() => setManualMode(true)}
-                className="ml-2 underline hover:text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
-              >
-                change
-              </button>
-            </p>
-          )}
+          <p className="text-sm text-white/50 mt-1">
+            {limited
+              ? 'Five places locals love, picked for you today'
+              : 'Places locals love, nominated by the community'}
+          </p>
+          <div className="flex items-center justify-between gap-3 mt-3">
+            {locationName && !showManualEntry ? (
+              <p className="text-white/50 text-sm flex items-center gap-1 min-w-0">
+                <LocationIcon size={12} className="shrink-0" />
+                <span className="truncate">{locationName}</span>
+                <button
+                  onClick={() => setManualMode(true)}
+                  className="ml-2 shrink-0 underline hover:text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
+                >
+                  Change
+                </button>
+              </p>
+            ) : (
+              <span />
+            )}
+            {/* Phone only: from md up the top bar carries Nominate */}
+            <Link
+              href="/nominate"
+              className="md:hidden shrink-0 px-3 py-1.5 rounded-pill bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+            >
+              + Nominate
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 pb-24">
+      <main className="max-w-lg md:max-w-3xl lg:max-w-6xl mx-auto px-4 pb-24">
 
         {(locating || phase === 'loading') && !showManualEntry && (
           <div className="flex items-center justify-center py-20">
@@ -150,6 +169,14 @@ export default function LibraryPage() {
               <p className="text-white/60">
                 {phase === 'loading' ? 'Opening the library...' : 'Finding your area...'}
               </p>
+              {locating && (
+                <button
+                  onClick={() => setManualMode(true)}
+                  className="mt-4 text-sm text-white/50 underline underline-offset-2 hover:text-white/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
+                >
+                  Enter a city instead
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -209,7 +236,11 @@ export default function LibraryPage() {
 
         {/* Shelves — only once the library is open; the five are the five */}
         {!limited && coordinates && !showManualEntry && phase !== 'error' && (
-          <div className="flex gap-2 overflow-x-auto pb-3 mb-3 -mx-4 px-4" role="group" aria-label="Shelves">
+          <div
+            className="flex gap-2 overflow-x-auto scrollbar-none sm:flex-wrap pb-3 mb-3 -mx-4 px-4"
+            role="group"
+            aria-label="Shelves"
+          >
             {([
               [null, 'Everything'],
               ['date_night', 'Date night'],
@@ -293,61 +324,47 @@ export default function LibraryPage() {
           </div>
         )}
 
-        {phase === 'ready' && !showManualEntry && places.length > 0 && view === 'map' && (
-          <DynamicMap
-            places={places}
-            userLocation={coordinates ?? undefined}
-            detailHref={(place) => `/restaurant/${place.id}`}
-            height="65vh"
-            className="rounded-card overflow-hidden"
-          />
-        )}
+        {/* Phone: list or map. md: a two-column card grid. lg: list beside
+            a sticky map, which is the desktop use of the space (and why the
+            toggle hides there). */}
+        {phase === 'ready' && !showManualEntry && places.length > 0 && (
+          <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
+            {(view === 'map' || isDesktop) && (
+              /* isolate: Leaflet panes are z-index 400 and would otherwise paint over the nav (z-50) */
+              <div className="isolate rounded-card overflow-hidden h-[65vh] lg:h-[calc(100dvh-7rem)] lg:sticky lg:top-20 lg:order-last">
+                <DynamicMap
+                  places={places}
+                  userLocation={coordinates ?? undefined}
+                  detailHref={(place) => `/restaurant/${place.id}`}
+                  height="100%"
+                  className="h-full"
+                />
+              </div>
+            )}
 
-        {phase === 'ready' && !showManualEntry && places.length > 0 && view === 'list' && (
-          <div className="space-y-4">
+            {(view === 'list' || isDesktop) && (
+          <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 lg:block lg:space-y-4">
             {places.map((place) => (
-              <Link
-                key={place.id}
-                href={`/restaurant/${place.id}`}
-                className="block bg-surface-card rounded-xl overflow-hidden hover:bg-surface-card-hover transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                {place.photoUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={place.photoUrl}
-                    alt={place.name}
-                    className="w-full h-40 object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-24 bg-gradient-to-br from-orange-900/40 to-red-900/40 flex items-center justify-center">
-                    <span aria-hidden="true" className="text-3xl">🍽️</span>
-                  </div>
-                )}
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3 className="font-semibold text-white text-lg leading-tight group-hover:text-orange-300 transition">
-                      {place.name}
-                    </h3>
-                    <span className="text-white/50 text-xs whitespace-nowrap pt-1">
+              <PlaceCard key={place.id} href={`/restaurant/${place.id}`}>
+                <PlacePhoto src={place.photoUrl} alt={place.name} loved height="md" />
+                <PlaceBody>
+                  <div className="flex items-start justify-between gap-2">
+                    <PlaceTitle>{place.name}</PlaceTitle>
+                    <span className="text-white/60 text-xs whitespace-nowrap shrink-0 pt-1">
                       {place.distanceKm} km
                     </span>
                   </div>
-                  <p className="text-white/50 text-sm mb-2">{place.address}</p>
-
-                  <NominationBadge count={place.nominationCount} className="mb-2" />
-
-                  {place.favoriteDishes.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {place.favoriteDishes.slice(0, 3).map((dish) => (
-                        <span key={dish} className="bg-white/10 text-white/70 px-2 py-0.5 rounded text-xs">
-                          {dish}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Link>
+                  <PlaceAddress>{place.address}</PlaceAddress>
+                  <PlaceMeta
+                    nominationCount={place.nominationCount}
+                    dishes={place.favoriteDishes}
+                    maxChips={3}
+                  />
+                </PlaceBody>
+              </PlaceCard>
             ))}
+          </div>
+            )}
           </div>
         )}
       </main>

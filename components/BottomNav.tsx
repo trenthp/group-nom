@@ -22,6 +22,14 @@ const navItems: NavItem[] = [
   { href: '/profile', label: 'Profile', icon: <UserIcon />, also: ['/member', '/to-try', '/groups'] },
 ]
 
+/**
+ * The app's navigation. A tab bar pinned to the bottom on phones; from
+ * `md` up it becomes a top bar (wordmark, the same four items inline, and
+ * Nominate as the global primary action) so a wide screen isn't wearing a
+ * phone tab bar. Rendered before the page in the root layout so the top bar
+ * can be sticky in normal flow; on phones it's fixed and the body reserves
+ * its height (pb-16).
+ */
 export default function BottomNav() {
   const pathname = usePathname()
   const { isSignedIn, isLoaded } = useUser()
@@ -38,32 +46,52 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 bg-[#1a1a1a] border-t border-white/10 z-50 pb-safe"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-[#1a1a1a] border-t border-white/10 pb-safe md:sticky md:top-0 md:bottom-auto md:border-t-0 md:border-b md:pb-0"
       aria-label="Main navigation"
     >
-      <div className="flex items-center justify-around max-w-lg mx-auto">
-        {navItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== '/' && pathname?.startsWith(item.href)) ||
-            (item.also?.some((p) => pathname?.startsWith(p)) ?? false)
+      <div className="max-w-lg mx-auto flex items-center md:max-w-6xl md:px-4 md:h-16 md:gap-6">
+        <Link
+          href="/"
+          className="hidden md:flex items-center gap-2 shrink-0 text-white font-bold text-lg rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/favicon_groupNom.svg" alt="" className="w-7 h-7" />
+          Group Nom
+        </Link>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive ? 'page' : undefined}
-              className={`flex flex-col items-center py-2 px-4 min-w-[64px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-lg ${
-                isActive
-                  ? 'text-brand'
-                  : 'text-white/40 hover:text-white/60'
-              }`}
-            >
-              <span className={isActive ? 'scale-110' : ''} aria-hidden="true">{item.icon}</span>
-              <span className="text-xs mt-1 font-medium">{item.label}</span>
-            </Link>
-          )
-        })}
+        <div className="flex-1 flex items-center justify-around md:justify-start md:gap-1">
+          {navItems.map((item) => {
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/' && pathname?.startsWith(item.href)) ||
+              (item.also?.some((p) => pathname?.startsWith(p)) ?? false)
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex flex-col items-center py-2 px-4 min-w-[64px] rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand md:flex-row md:gap-2 md:px-3 md:min-w-0 ${
+                  isActive
+                    ? 'text-brand md:bg-white/5'
+                    : 'text-white/40 hover:text-white/60 md:text-white/70 md:hover:text-white md:hover:bg-white/5'
+                }`}
+              >
+                <span className={isActive ? 'scale-110 md:scale-100' : ''} aria-hidden="true">
+                  {item.icon}
+                </span>
+                <span className="text-xs mt-1 font-medium md:text-sm md:mt-0">{item.label}</span>
+              </Link>
+            )
+          })}
+        </div>
+
+        <Link
+          href="/nominate"
+          className="hidden md:inline-flex shrink-0 px-3 py-1.5 rounded-pill bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
+        >
+          + Nominate
+        </Link>
       </div>
     </nav>
   )

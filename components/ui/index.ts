@@ -1,8 +1,15 @@
 // Group Nom UI kit — dark-first (Dark Ember), with Sunset Glass variants for
 // the voting-session "game mode". See README.md in this directory.
 
-export { Button, Chip, PanelButton } from './Button'
-export type { ButtonProps, ChipProps, PanelButtonProps } from './Button'
+export { Button, LinkButton, buttonClassName, Chip, PanelButton } from './Button'
+export type {
+  ButtonProps,
+  ButtonVariant,
+  ButtonSize,
+  LinkButtonProps,
+  ChipProps,
+  PanelButtonProps,
+} from './Button'
 
 export { Card, CardHeader, CardContent, CardFooter } from './Card'
 export type { CardProps, CardHeaderProps, CardContentProps, CardFooterProps } from './Card'
@@ -25,8 +32,14 @@ export type { TooltipProps } from './Tooltip'
 export { Spinner, LoadingDots } from './Spinner'
 export type { SpinnerProps, LoadingDotsProps } from './Spinner'
 
-export { Toggle, ToggleGroup, ToggleGroupItem } from './Toggle'
-export type { ToggleProps, ToggleGroupProps, ToggleGroupItemProps } from './Toggle'
+export { Toggle, ToggleGroup, ToggleGroupItem, ViewToggle } from './Toggle'
+export type {
+  ToggleProps,
+  ToggleGroupProps,
+  ToggleGroupItemProps,
+  ViewToggleProps,
+  ViewToggleOption,
+} from './Toggle'
 
 export { Select } from './Select'
 export type { SelectProps, SelectOption } from './Select'

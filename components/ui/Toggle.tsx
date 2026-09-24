@@ -111,3 +111,50 @@ const ToggleGroupItem = forwardRef<HTMLButtonElement, ToggleGroupItemProps>(
 ToggleGroupItem.displayName = 'ToggleGroupItem'
 
 export { ToggleGroupItem }
+
+// ViewToggle - the one way a surface switches between two or three views
+// (Library list/map, Discover map/cards). Text-only, same size and place on
+// every page, so the switch reads as the same control everywhere.
+export interface ViewToggleOption<V extends string> {
+  value: V
+  label: string
+}
+
+export interface ViewToggleProps<V extends string> {
+  options: ReadonlyArray<ViewToggleOption<V>>
+  value: V
+  onChange: (value: V) => void
+  /** Accessible name for the group, e.g. "View as list or map". */
+  ariaLabel: string
+  /** Keeps the control in place (no layout pop) while the view has nothing to show yet. */
+  disabled?: boolean
+  className?: string
+}
+
+function ViewToggle<V extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  disabled = false,
+  className,
+}: ViewToggleProps<V>) {
+  return (
+    <ToggleGroup ariaLabel={ariaLabel} className={cn('shrink-0', className)}>
+      {options.map((opt) => (
+        <ToggleGroupItem
+          key={opt.value}
+          value={opt.value}
+          selected={value === opt.value}
+          onValueSelect={() => onChange(opt.value)}
+          disabled={disabled}
+          className="disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {opt.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  )
+}
+
+export { ViewToggle }

@@ -26,8 +26,8 @@ export default function CookieConsent() {
   if (!showBanner) return null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 pb-safe">
-      <div className="max-w-lg mx-auto bg-surface-card rounded-xl shadow-xl border border-white/10 p-4">
+    <div className="fixed bottom-0 left-0 right-0 z-[100] px-4 pt-4 pb-safe">
+      <div className="max-w-lg mx-auto mb-4 bg-surface-card rounded-xl shadow-xl border border-white/10 p-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex-1">
             <p className="text-white text-sm">

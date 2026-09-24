@@ -2,7 +2,15 @@
 
 import { Marker, Popup } from 'react-leaflet'
 import { DivIcon } from 'leaflet'
-import { NominationBadge } from '@/components/ui'
+import {
+  PlacePhoto,
+  PlaceBody,
+  PlaceTitle,
+  PlaceAddress,
+  PlaceMeta,
+  PlaceActions,
+  ActionLink,
+} from '@/components/place'
 
 /**
  * Minimal shape a map marker needs. LibraryEntry satisfies this; session
@@ -150,68 +158,30 @@ export function RestaurantMarker({
     >
       <Popup>
         <div className="min-w-[240px] max-w-[280px]">
-          {place.photoUrl ? (
-            <div className="w-full h-32 overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={place.photoUrl}
-                alt={place.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="w-full h-20 bg-gradient-to-br from-orange-900/40 to-red-900/40 flex items-center justify-center">
-              <span aria-hidden="true" className="text-3xl">🍽️</span>
-            </div>
-          )}
-
-          <div className="p-4">
-            <h3 className="font-bold text-white text-base leading-tight mb-2">
-              {place.name}
-            </h3>
-
-            {isNominated && (
-              <div className="mb-2">
-                <NominationBadge count={place.nominationCount!} />
-              </div>
-            )}
-
-            {place.favoriteDishes && place.favoriteDishes.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {place.favoriteDishes.slice(0, 3).map((dish) => (
-                  <span
-                    key={dish}
-                    className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded"
-                  >
-                    {dish}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {place.address && (
-              <p className="text-xs text-white/50 mb-3">{place.address}</p>
-            )}
-
-            <div className="flex gap-2 pt-3 border-t border-white/10">
+          <PlacePhoto src={place.photoUrl} alt={place.name} loved={isNominated} height="sm" />
+          <PlaceBody padding="sm">
+            <PlaceTitle className="text-base">{place.name}</PlaceTitle>
+            {place.address && <PlaceAddress className="text-xs">{place.address}</PlaceAddress>}
+            <PlaceMeta
+              nominationCount={place.nominationCount ?? 0}
+              dishes={place.favoriteDishes}
+              maxChips={3}
+            />
+            <PlaceActions className="mt-3">
               {detailHref && (
-                <a
-                  href={detailHref}
-                  className="flex-1 text-center text-xs bg-brand text-white font-medium py-2.5 px-3 rounded-lg hover:bg-brand-hover transition"
-                >
-                  View page
-                </a>
+                <ActionLink href={detailHref} variant="primary" className="text-xs">
+                  See the page →
+                </ActionLink>
               )}
-              <a
+              <ActionLink
                 href={`https://www.openstreetmap.org/directions?to=${place.lat}%2C${place.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 text-center text-xs bg-white/10 text-white font-medium py-2.5 px-3 rounded-lg hover:bg-white/20 transition"
+                external
+                className="text-xs"
               >
-                Directions
-              </a>
-            </div>
-          </div>
+                Directions ↗
+              </ActionLink>
+            </PlaceActions>
+          </PlaceBody>
         </div>
       </Popup>
     </Marker>

@@ -8,6 +8,8 @@ import Link from 'next/link'
 import FactualDataForm from '@/components/restaurant/FactualDataForm'
 import { calculateCompleteness, getMissingFieldsDescription } from '@/lib/completeness'
 import { LocationIcon } from '@/components/icons'
+import { LinkButton, NominationBadge } from '@/components/ui'
+import { PlaceMeta } from '@/components/place'
 import type { Restaurant, Nomination, RestaurantEnrichment } from '@/lib/types'
 
 function formatGoodFor(tag: string): string {
@@ -187,7 +189,7 @@ export default function RestaurantPage() {
       <div className="relative">
         {heroPhoto ? (
           /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={heroPhoto} alt={restaurant.name} className="w-full h-56 sm:h-72 object-cover" />
+          <img src={heroPhoto} alt={restaurant.name} className="w-full h-56 sm:h-72 lg:h-96 object-cover" />
         ) : (
           <div className="w-full h-40 bg-gradient-to-br from-orange-900/50 to-red-900/50 flex items-center justify-center">
             <span className="text-5xl">🍽️</span>
@@ -196,7 +198,10 @@ export default function RestaurantPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-surface-page via-transparent to-transparent" />
       </div>
 
-      <main className="max-w-lg mx-auto px-4 pb-24 -mt-10 relative">
+      {/* Phone: one column in story order. lg: the story (title, signal,
+          nominations) on the left, the facts docked and sticky on the right. */}
+      <main className="max-w-lg md:max-w-3xl lg:max-w-5xl mx-auto px-4 pb-24 -mt-10 relative lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8 lg:items-start">
+        <div className="lg:col-start-1 lg:row-start-1">
         {/* Title block */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-white mb-1">{restaurant.name}</h1>
@@ -212,33 +217,20 @@ export default function RestaurantPage() {
               map
             </a>
           </p>
-          {restaurant.cuisines && restaurant.cuisines.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {restaurant.cuisines.map((c) => (
-                <span key={c} className="bg-white/10 text-white/70 px-2.5 py-0.5 rounded-full text-xs">
-                  {c}
-                </span>
-              ))}
-            </div>
-          )}
+          <PlaceMeta cuisines={restaurant.cuisines ?? []} maxChips={8} className="mt-3" />
         </div>
 
         {/* Community signal + CTA */}
-        <div className="bg-surface-card rounded-xl p-4 mb-6">
+        <div className="bg-surface-card rounded-card p-4 mb-6">
           {nominationCount > 0 ? (
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm font-semibold">
-                ❤️ Nominated by {nominationCount} local{nominationCount === 1 ? '' : 's'}
-              </span>
+              <NominationBadge count={nominationCount} />
               {userNomination ? (
                 <span className="text-white/50 text-sm">You&apos;ve nominated this spot ✓</span>
               ) : (
-                <Link
-                  href={`/nominate/${restaurantId}`}
-                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-brand text-white hover:bg-brand-hover transition"
-                >
-                  I love it too
-                </Link>
+                <LinkButton href={`/nominate/${restaurantId}`} size="sm">
+                  ❤️ I love it too
+                </LinkButton>
               )}
             </div>
           ) : (
@@ -246,16 +238,16 @@ export default function RestaurantPage() {
               <p className="text-white/70 mb-3">
                 No one has told this place&apos;s story yet.
               </p>
-              <Link
-                href={`/nominate/${restaurantId}`}
-                className="inline-block px-6 py-2.5 rounded-lg font-semibold bg-brand text-white hover:bg-brand-hover transition"
-              >
+              <LinkButton href={`/nominate/${restaurantId}`}>
                 ❤️ Be the first to nominate it
-              </Link>
+              </LinkButton>
             </div>
           )}
         </div>
 
+        </div>
+
+        <aside className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-20" aria-label="The facts">
         {/* Completeness (only shows once nominated) */}
         {completeness.hasNominations && (
           <div className="bg-surface-card rounded-xl p-4 mb-6">
@@ -336,6 +328,9 @@ export default function RestaurantPage() {
           )}
         </div>
 
+        </aside>
+
+        <div className="lg:col-start-1 lg:row-start-2">
         {/* Nominations wall */}
         {nominations.length > 0 && (
           <div className="mb-6">
@@ -406,6 +401,7 @@ export default function RestaurantPage() {
           <div>
             <ReportButton targetType="restaurant" targetId={restaurantId} label="Closed or not a restaurant? Let us know" />
           </div>
+        </div>
         </div>
       </main>
     </div>

@@ -13,7 +13,8 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LocationIcon } from '@/components/icons'
-import { Spinner, NominationBadge, Input, Button } from '@/components/ui'
+import { Spinner, Input, Button } from '@/components/ui'
+import { PlaceCard, PlaceBody, PlaceTitle, PlaceAddress, PlaceMeta } from '@/components/place'
 import { LocationPermissionModal } from '@/components/location'
 import { useLocation } from '@/lib/useLocation'
 import type { SearchHit } from '@/lib/restaurantSearch'
@@ -299,30 +300,22 @@ export default function NominateSearchPage() {
               <ul className="space-y-2 list-none p-0 m-0" aria-label="Matching places">
                 {results.map((hit) => (
                   <li key={hit.id}>
-                    <Link
-                      href={`/nominate/${hit.id}`}
-                      className="block bg-surface-card rounded-xl p-4 hover:bg-surface-card-hover transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-white leading-tight group-hover:text-orange-300 transition truncate">
-                            {hit.name}
-                          </h3>
-                          <p className="text-white/50 text-sm truncate">
-                            {[hit.address, hit.city].filter(Boolean).join(', ') || 'Address unknown'}
-                          </p>
-                          {hit.cuisines.length > 0 && (
-                            <p className="text-white/40 text-xs mt-1">{hit.cuisines.join(' · ')}</p>
-                          )}
+                    <PlaceCard href={`/nominate/${hit.id}`}>
+                      <PlaceBody>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <PlaceTitle className="truncate">{hit.name}</PlaceTitle>
+                            <PlaceAddress truncate>
+                              {[hit.address, hit.city].filter(Boolean).join(', ') || 'Address unknown'}
+                            </PlaceAddress>
+                          </div>
+                          <span className="text-white/60 text-xs whitespace-nowrap shrink-0 pt-1">
+                            {hit.distanceKm} km
+                          </span>
                         </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-white/50 text-xs whitespace-nowrap block">{hit.distanceKm} km</span>
-                          {hit.nominationCount > 0 && (
-                            <NominationBadge count={hit.nominationCount} size="sm" className="mt-1" />
-                          )}
-                        </div>
-                      </div>
-                    </Link>
+                        <PlaceMeta nominationCount={hit.nominationCount} cuisines={hit.cuisines} maxChips={3} />
+                      </PlaceBody>
+                    </PlaceCard>
                   </li>
                 ))}
               </ul>

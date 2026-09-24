@@ -5,6 +5,17 @@ import { useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { FavoriteWithRestaurant } from '@/lib/favorites'
 import { LocationIcon, UtensilsIcon } from '@/components/icons'
+import {
+  PlaceCard,
+  PlacePhoto,
+  PlaceBody,
+  PlaceTitle,
+  PlaceAddress,
+  PlaceMeta,
+  PlaceActions,
+  ActionLink,
+  QuietLink,
+} from '@/components/place'
 
 interface SavedState {
   favorites: FavoriteWithRestaurant[]
@@ -194,79 +205,37 @@ function FavoriteCard({
 
   const mapUrl = `https://www.openstreetmap.org/?mlat=${favorite.restaurantLat}&mlon=${favorite.restaurantLng}#map=17/${favorite.restaurantLat}/${favorite.restaurantLng}`
 
-  // Photos come from community nominations - not wired into favorites yet
-  const hasPhoto = false
 
   return (
-    <div className="bg-surface-card rounded-xl overflow-hidden">
-      {/* Photo Section - links to the restaurant's library page */}
-      <Link href={`/restaurant/${favorite.localId}`} className="block relative">
-        {hasPhoto ? (
-          // Real photo would go here
-          <div className="w-full h-40 bg-gray-700" />
-        ) : (
-          // Photo skeleton/placeholder
-          <div className="w-full h-32 bg-[#2a2a2a] flex items-center justify-center hover:bg-[#2e2e2e] transition">
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-2">
-                <CameraIcon className="text-white/20" />
-              </div>
-              <p className="text-white/20 text-xs">No photo yet</p>
-            </div>
-          </div>
-        )}
-
-        {/* Love count — the only public signal */}
-        {favorite.nominationCount > 0 && (
-          <div className="absolute top-3 right-3 bg-black/60 text-white text-xs font-semibold px-2 py-1 rounded-pill">
-            ❤️ Loved by {favorite.nominationCount} local{favorite.nominationCount !== 1 ? 's' : ''}
-          </div>
-        )}
+    <PlaceCard>
+      {/* Photo links to the place page. Photos come from nominations and
+          aren't wired into favorites yet, so this is the placeholder for now. */}
+      <Link
+        href={`/restaurant/${favorite.localId}`}
+        className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+      >
+        <PlacePhoto
+          alt={favorite.restaurantName}
+          loved={favorite.nominationCount > 0}
+          height="md"
+        />
       </Link>
 
-      {/* Content */}
-      <div className="p-4">
-        {/* Header: Name & Location */}
-        <div className="mb-3">
-          <h3 className="font-semibold text-white text-lg leading-tight">
-            <Link
-              href={`/restaurant/${favorite.localId}`}
-              className="hover:text-orange-300 transition"
-            >
-              {favorite.restaurantName}
-            </Link>
-          </h3>
-          {favorite.restaurantCity && (
-            <p className="text-sm text-white/50 flex items-center gap-1 mt-1">
-              <LocationIcon size={12} />
-              {favorite.restaurantCity}
-            </p>
-          )}
-        </div>
-
-        {/* Nominate CTA - you saved it because you love it; tell the community why */}
-        <div className="mb-3">
+      <PlaceBody>
+        <PlaceTitle>
           <Link
-            href={`/nominate/${favorite.localId}`}
-            className="inline-flex items-center gap-1.5 bg-green-500/20 text-green-300 hover:bg-green-500/30 px-3 py-1.5 rounded-full text-sm font-semibold transition"
+            href={`/restaurant/${favorite.localId}`}
+            className="hover:text-brand transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
           >
-            ❤️ Nominate this spot
+            {favorite.restaurantName}
           </Link>
-        </div>
-
-        {/* Categories */}
-        {favorite.restaurantCategories && favorite.restaurantCategories.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {favorite.restaurantCategories.slice(0, 3).map((cat) => (
-              <span
-                key={cat}
-                className="bg-white/10 text-white/70 px-2 py-0.5 rounded text-xs"
-              >
-                {cat}
-              </span>
-            ))}
-          </div>
-        )}
+        </PlaceTitle>
+        {favorite.restaurantCity && <PlaceAddress>{favorite.restaurantCity}</PlaceAddress>}
+        <PlaceMeta
+          nominationCount={favorite.nominationCount}
+          cuisines={favorite.restaurantCategories ?? []}
+          maxChips={3}
+        />
 
         {/* Expandable Details Section */}
         <button
@@ -296,18 +265,16 @@ function FavoriteCard({
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
-          <a
-            href={mapUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 text-sm text-brand hover:text-orange-400 py-2.5 rounded-lg hover:bg-white/5 transition font-medium"
-          >
-            <LocationIcon size={14} />
-            Open map
-          </a>
-          <div className="w-px h-6 bg-white/10" />
+        {/* Actions: nominate is the follow-through (you saved it because you
+            think you'll love it); the map is the quiet way there */}
+        <PlaceActions className="mt-3">
+          <ActionLink href={`/nominate/${favorite.localId}`}>❤️ Nominate</ActionLink>
+          <QuietLink href={mapUrl} external>
+            Open in maps ↗
+          </QuietLink>
+        </PlaceActions>
+
+        <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-white/10">
           {showConfirm ? (
             <div className="flex items-center gap-1">
               <button
@@ -333,8 +300,8 @@ function FavoriteCard({
             </button>
           )}
         </div>
-      </div>
-    </div>
+      </PlaceBody>
+    </PlaceCard>
   )
 }
 
@@ -373,14 +340,6 @@ function DetailRow({
 }
 
 // Icons
-function CameraIcon({ className = '' }: { className?: string }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className}>
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-      <circle cx="12" cy="13" r="4" />
-    </svg>
-  )
-}
 
 function ChevronIcon({ direction }: { direction: 'up' | 'down' }) {
   return (

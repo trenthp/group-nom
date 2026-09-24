@@ -1,9 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { NominationBadge, Spinner } from '@/components/ui'
-import { LocationIcon } from '@/components/icons'
+import { Button, Spinner } from '@/components/ui'
+import {
+  PlaceCard,
+  PlacePhoto,
+  PlaceBody,
+  PlaceTitle,
+  PlaceAddress,
+  PlaceMeta,
+  PlaceActions,
+  ActionButton,
+  ActionLink,
+} from '@/components/place'
 import type { BBox, DiscoverPlace } from '@/lib/discover'
 
 /**
@@ -137,13 +146,9 @@ export function DiscoverCards({ bbox, saved, onToggleSave }: DiscoverCardsProps)
             : 'Keep going, or switch to the map to pick a new neighborhood.'}
         </p>
         {!nothingLeft && (
-          <button
-            onClick={deal}
-            disabled={loading}
-            className="px-5 py-2.5 rounded-lg bg-brand text-white font-semibold text-sm hover:bg-brand-hover transition disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
-          >
+          <Button variant="primary" onClick={deal} disabled={loading}>
             {loading ? 'Dealing…' : 'Ten more'}
-          </button>
+          </Button>
         )}
       </div>
     )
@@ -164,10 +169,10 @@ export function DiscoverCards({ bbox, saved, onToggleSave }: DiscoverCardsProps)
         {index + 1} of {hand.length} · drag right to save, left to skip
       </p>
 
-      <div
+      <PlaceCard
         role="group"
         aria-label={current.name}
-        className="bg-surface-card rounded-card overflow-hidden shadow-card touch-pan-y cursor-grab active:cursor-grabbing"
+        className="relative shadow-card touch-pan-y cursor-grab active:cursor-grabbing"
         style={{
           transform,
           transition: drag.active ? 'none' : 'transform 220ms ease-out',
@@ -177,19 +182,7 @@ export function DiscoverCards({ bbox, saved, onToggleSave }: DiscoverCardsProps)
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        {current.photoUrl ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={current.photoUrl} alt="" className="w-full h-56 object-cover pointer-events-none" />
-        ) : (
-          <div
-            className={`w-full h-40 flex items-center justify-center ${
-              loved ? 'bg-gradient-to-br from-orange-900/40 to-red-900/40' : 'bg-[#2a2a2a]'
-            }`}
-            aria-hidden="true"
-          >
-            <span className="text-5xl">{loved ? '❤️' : '🍽️'}</span>
-          </div>
-        )}
+        <PlacePhoto src={current.photoUrl} loved={loved} height="lg" className="pointer-events-none" />
 
         {/* Drag feedback */}
         {drag.x > 30 && (
@@ -203,51 +196,25 @@ export function DiscoverCards({ bbox, saved, onToggleSave }: DiscoverCardsProps)
           </div>
         )}
 
-        <div className="p-5">
-          <h2 className="text-xl font-bold text-white leading-tight">{current.name}</h2>
-          {current.address && (
-            <p className="text-white/60 text-sm mt-1 flex items-start gap-1.5">
-              <LocationIcon size={14} className="mt-0.5 shrink-0" />
-              {current.address}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center gap-1.5 mt-3">
-            {loved && <NominationBadge count={current.nominationCount} size="sm" />}
-            {current.cuisines.map((c) => (
-              <span key={c} className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded">
-                {c}
-              </span>
-            ))}
-          </div>
-          <p className="text-white/50 text-sm mt-3">
+        <PlaceBody>
+          <PlaceTitle size="lg" as="h2">{current.name}</PlaceTitle>
+          {current.address && <PlaceAddress>{current.address}</PlaceAddress>}
+          <PlaceMeta nominationCount={current.nominationCount} cuisines={current.cuisines} />
+          <p className="text-white/60 text-sm mt-3">
             {loved ? 'On the shelf already. Been? Add your own.' : 'Not on the shelf yet.'}
           </p>
-        </div>
-      </div>
+        </PlaceBody>
+      </PlaceCard>
 
-      <div className="grid grid-cols-3 gap-2 mt-4">
-        <button
-          type="button"
-          onClick={handleSkip}
-          className="py-3 rounded-lg bg-white/10 text-white/80 font-semibold text-sm hover:bg-white/15 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-        >
+      <PlaceActions>
+        <ActionButton type="button" onClick={handleSkip}>
           Skip
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          aria-pressed={isSaved}
-          className="py-3 rounded-lg bg-brand text-white font-semibold text-sm hover:bg-brand-hover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
-        >
-          {isSaved ? '✓ Saved' : 'Save to try'}
-        </button>
-        <Link
-          href={`/nominate/${current.id}`}
-          className="py-3 rounded-lg bg-white/10 text-white font-semibold text-sm text-center hover:bg-white/15 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          ❤️ Nominate
-        </Link>
-      </div>
+        </ActionButton>
+        <ActionButton type="button" variant="primary" onClick={handleSave} aria-pressed={isSaved}>
+          {isSaved ? '✓ On your list' : 'Save to try'}
+        </ActionButton>
+        <ActionLink href={`/nominate/${current.id}`}>❤️ Nominate</ActionLink>
+      </PlaceActions>
     </div>
   )
 }

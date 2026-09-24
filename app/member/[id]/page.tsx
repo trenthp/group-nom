@@ -14,7 +14,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Spinner, NominationBadge } from '@/components/ui'
+import { Spinner } from '@/components/ui'
+import { PlaceCard, PlacePhoto, PlaceBody, PlaceTitle, PlaceAddress, PlaceMeta } from '@/components/place'
 import type { Nomination } from '@/lib/types'
 import type { NominationDraft } from '@/lib/drafts'
 
@@ -327,35 +328,17 @@ export default function MemberPage() {
             </h2>
             <ul className="space-y-4 list-none p-0 m-0">
               {nominations.map((nom) => (
-                <li key={nom.id} className="bg-surface-card rounded-card overflow-hidden">
-                  <Link href={`/restaurant/${nom.gersId}`} className="block group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={nom.photoUrl} alt="" className="w-full h-44 object-cover" />
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-white font-semibold group-hover:text-brand transition">
-                            {nom.restaurant?.name ?? 'A loved place'}
-                          </h3>
-                          {nom.restaurant?.city && (
-                            <p className="text-white/50 text-xs">{nom.restaurant.city}</p>
-                          )}
-                        </div>
-                        <NominationBadge count={1} />
-                      </div>
+                <li key={nom.id}>
+                  <PlaceCard href={`/restaurant/${nom.gersId}`}>
+                    <PlacePhoto src={nom.photoUrl} loved height="lg" />
+                    <PlaceBody>
+                      <PlaceTitle>{nom.restaurant?.name ?? 'A loved place'}</PlaceTitle>
+                      {nom.restaurant?.city && <PlaceAddress>{nom.restaurant.city}</PlaceAddress>}
                       <p className="text-white/80 italic text-sm mt-2">&ldquo;{nom.whyILoveIt}&rdquo;</p>
-                      {nom.myFavoriteDishes.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {nom.myFavoriteDishes.map((dish) => (
-                            <span key={dish} className="bg-green-500/15 text-green-300 px-2 py-0.5 rounded text-xs">
-                              🍴 {dish}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-white/40 text-xs mt-2">{formatDate(nom.createdAt)}</p>
-                    </div>
-                  </Link>
+                      <PlaceMeta dishes={nom.myFavoriteDishes} maxChips={6} />
+                      <p className="text-white/60 text-xs mt-2">{formatDate(nom.createdAt)}</p>
+                    </PlaceBody>
+                  </PlaceCard>
                 </li>
               ))}
             </ul>

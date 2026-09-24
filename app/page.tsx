@@ -126,7 +126,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
     <div className="min-h-screen bg-surface-page">
       {/* Header */}
       <header className="px-4 py-6">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg md:max-w-3xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <Image
               src="/logo_groupNom.svg"
@@ -226,12 +226,12 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-lg mx-auto px-4 pb-24">
+      <main className="max-w-lg md:max-w-3xl mx-auto px-4 pb-24">
         {/* Section: From people you follow */}
         {feed.length > 0 && (
           <div className="mb-4">
             <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1">From people you follow</p>
-            <ul className="space-y-2 list-none p-0 m-0">
+            <ul className="space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-3 list-none p-0 m-0">
               {feed.map((item) => (
                 <li key={item.nominationId}>
                   <Link
@@ -255,11 +255,11 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
         )}
 
         {/* Section: Community Library */}
-        <div className="mb-4">
-          <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1">Community</p>
+        <div className="mb-4 md:grid md:grid-cols-2 md:gap-3">
+          <p className="text-white/40 text-xs uppercase tracking-wider mb-3 px-1 md:col-span-2 md:mb-0">Community</p>
           <Link
             href="/nominate"
-            className="block bg-surface-card rounded-2xl p-5 mb-3 hover:bg-surface-card-hover transition group border border-brand/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+            className="block bg-surface-card rounded-2xl p-5 mb-3 md:mb-0 hover:bg-surface-card-hover transition group border border-brand/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
           >
             <div className="flex items-center gap-4">
               <div className="w-11 h-11 bg-brand rounded-xl flex items-center justify-center shrink-0">
@@ -282,7 +282,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
           {draftNudge && (
             <Link
               href={draftNudge.href}
-              className="block -mt-1 mb-3 px-1 text-sm text-orange-300 hover:text-orange-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+              className="block -mt-1 mb-3 px-1 text-sm text-orange-300 hover:text-orange-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded md:col-span-2 md:order-last md:mt-0 md:mb-0"
             >
               🔖 {draftNudge.count} draft{draftNudge.count === 1 ? '' : 's'} waiting for you →
             </Link>

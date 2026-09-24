@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LocationIcon } from '@/components/icons'
-import { Spinner, Input, Button, ToggleGroup, ToggleGroupItem } from '@/components/ui'
+import { Spinner, Input, Button, ViewToggle } from '@/components/ui'
 import { LocationPermissionModal } from '@/components/location'
 import { DynamicDiscoverMap } from '@/components/map/DynamicDiscoverMap'
 import { DiscoverSheet } from '@/components/discover/DiscoverSheet'
 import { DiscoverCards } from '@/components/discover/DiscoverCards'
+import { DiscoverPlacePanel } from '@/components/discover/DiscoverPlaceDetail'
 import { useLocation } from '@/lib/useLocation'
+import { useMediaQuery, DESKTOP_QUERY } from '@/lib/useMediaQuery'
 import type { BBox, DiscoverPlace, DiscoverViewport } from '@/lib/discover'
 
 /**
@@ -30,6 +32,9 @@ export default function DiscoverPage() {
   } = useLocation()
 
   const [view, setView] = useState<View>('map')
+  // Desktop shows the map and a docked panel (deck, or the tapped place)
+  // side by side; the Map/Cards toggle and the bottom sheet are phone-only.
+  const isDesktop = useMediaQuery(DESKTOP_QUERY)
   const [bbox, setBbox] = useState<BBox | null>(null)
   const [data, setData] = useState<DiscoverViewport | null>(null)
   const [loading, setLoading] = useState(false)
@@ -201,40 +206,44 @@ export default function DiscoverPage() {
   })()
 
   return (
-    <div className="min-h-screen bg-surface-page flex flex-col">
+    // The body already reserves 4rem for BottomNav (pb-16), so the page
+    // fills exactly the space above it and the map can take the remainder
+    // without any viewport arithmetic.
+    <div className="min-h-[calc(100dvh-4rem)] bg-surface-page flex flex-col">
       <LocationPermissionModal
         isOpen={showPermissionModal}
         onRequestPermission={requestPermission}
         onSkip={() => setManualMode(true)}
       />
 
+      {/* Header: same shape as the Library — title + view toggle, subtitle, location */}
       <header className="px-4 pt-6 pb-3">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold text-white">Discover</h1>
-              <p className="text-sm text-white/50">
-                The map as we have it. Ember is loved. The rest is waiting.
-              </p>
-            </div>
+        <div className="max-w-lg md:max-w-3xl lg:max-w-6xl mx-auto">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-xl font-bold text-white min-w-0">Discover</h1>
             {coordinates && (
-              <ToggleGroup ariaLabel="View as map or cards">
-                <ToggleGroupItem value="map" selected={view === 'map'} onValueSelect={() => setView('map')}>
-                  Map
-                </ToggleGroupItem>
-                <ToggleGroupItem value="cards" selected={view === 'cards'} onValueSelect={() => setView('cards')}>
-                  Cards
-                </ToggleGroupItem>
-              </ToggleGroup>
+              <ViewToggle
+                options={[
+                  { value: 'map', label: 'Map' },
+                  { value: 'cards', label: 'Cards' },
+                ]}
+                value={view}
+                onChange={setView}
+                ariaLabel="View as map or cards"
+                className="lg:hidden"
+              />
             )}
           </div>
+          <p className="text-sm text-white/50 mt-1">
+            The map as we have it. Ember is loved. The rest is waiting.
+          </p>
           {locationName && !showManualEntry && (
-            <p className="text-white/50 text-sm mt-2 flex items-center gap-1">
-              <LocationIcon size={12} />
-              {locationName}
+            <p className="text-white/50 text-sm mt-3 flex items-center gap-1 min-w-0">
+              <LocationIcon size={12} className="shrink-0" />
+              <span className="truncate">{locationName}</span>
               <button
                 onClick={() => setManualMode(true)}
-                className="ml-2 underline hover:text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
+                className="ml-2 shrink-0 underline hover:text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
               >
                 Change
               </button>
@@ -243,7 +252,7 @@ export default function DiscoverPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col pb-20">
+      <main className="flex-1 flex flex-col pb-6">
         {showManualEntry && (
           <div className="max-w-lg mx-auto w-full px-4 py-8">
             <div className="bg-surface-card rounded-card p-6">
@@ -296,42 +305,65 @@ export default function DiscoverPage() {
           </div>
         )}
 
-        {coordinates && !showManualEntry && view === 'map' && (
-          <div className="flex-1 flex flex-col max-w-lg mx-auto w-full px-4">
-            <div className="relative flex-1 min-h-[420px] rounded-card overflow-hidden" style={{ height: 'calc(100dvh - 250px)' }}>
-              <DynamicDiscoverMap
-                center={coordinates}
-                zoom={15}
-                data={data}
-                userLocation={coordinates}
-                highlightedId={selectedId ?? undefined}
-                onViewportChange={handleViewportChange}
-                onPlaceClick={setSelectedId}
-                flyTo={flyTo}
-                className="absolute inset-0"
-              />
-              {loading && (
-                <div className="absolute top-3 right-3 z-[1000] bg-black/60 rounded-pill px-3 py-1.5" aria-live="polite">
-                  <Spinner size="sm" />
+        {coordinates && !showManualEntry && (
+          <div className="flex-1 flex flex-col lg:flex-row lg:gap-4 lg:min-h-0 max-w-lg md:max-w-3xl lg:max-w-6xl mx-auto w-full px-4">
+            {/* The map: the phone's map view, and always on desktop */}
+            {(view === 'map' || isDesktop) && (
+              <div className="flex-1 flex flex-col min-w-0">
+                {/* flex-1: the map takes whatever the header and caption leave.
+                    isolate: Leaflet panes are z-index 400 and would otherwise
+                    paint over the nav (z-50) whenever the two overlap. */}
+                <div className="relative isolate flex-1 min-h-[320px] rounded-card overflow-hidden">
+                  <DynamicDiscoverMap
+                    center={coordinates}
+                    zoom={15}
+                    data={data}
+                    userLocation={coordinates}
+                    highlightedId={selectedId ?? undefined}
+                    onViewportChange={handleViewportChange}
+                    onPlaceClick={setSelectedId}
+                    flyTo={flyTo}
+                    className="absolute inset-0"
+                  />
+                  {loading && (
+                    <div className="absolute top-3 right-3 z-[1000] bg-black/60 rounded-pill px-3 py-1.5" aria-live="polite">
+                      <Spinner size="sm" />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <p className="text-center text-xs text-white/50 py-2" aria-live="polite">
-              {error ?? caption ?? 'Move the map to explore'}
-            </p>
-          </div>
-        )}
+                <p className="text-center text-xs text-white/50 py-2" aria-live="polite">
+                  {error ?? caption ?? 'Move the map to explore'}
+                </p>
+              </div>
+            )}
 
-        {coordinates && !showManualEntry && view === 'cards' && (
-          <div className="max-w-lg mx-auto w-full px-4 pt-2">
-            <DiscoverCards bbox={bbox} saved={saved} onToggleSave={toggleSave} />
+            {/* The panel: the phone's cards view; on desktop it's docked
+                beside the map and holds the deck, or the place you tapped */}
+            {(view === 'cards' || isDesktop) && (
+              <aside
+                className="flex flex-col pt-2 lg:pt-0 lg:w-96 lg:shrink-0 lg:min-h-0 lg:overflow-y-auto scrollbar-none"
+                aria-label={isDesktop && selected ? selected.name : 'Cards'}
+              >
+                {isDesktop && selected ? (
+                  <DiscoverPlacePanel
+                    place={selected}
+                    saved={saved.has(selected.id)}
+                    saving={saving}
+                    onToggleSave={toggleSave}
+                    onClose={() => setSelectedId(null)}
+                  />
+                ) : (
+                  <DiscoverCards bbox={bbox} saved={saved} onToggleSave={toggleSave} />
+                )}
+              </aside>
+            )}
           </div>
         )}
       </main>
 
       <DiscoverSheet
-        place={selected}
-        isOpen={!!selected}
+        place={isDesktop ? null : selected}
+        isOpen={!!selected && !isDesktop}
         onClose={() => setSelectedId(null)}
         saved={selected ? saved.has(selected.id) : false}
         saving={saving}
