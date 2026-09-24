@@ -33,6 +33,9 @@ export default function LibraryPage() {
   const [manualMode, setManualMode] = useState(false)
   const [locationQuery, setLocationQuery] = useState('')
   const [inputError, setInputError] = useState<string | null>(null)
+  // Own flag: the hook's isLoading also covers a GPS lookup that may be
+  // hanging, and that must never lock the manual entry
+  const [geocoding, setGeocoding] = useState(false)
   // Situational shelves (Phase 6): good-for tags members put on nominations
   const [shelf, setShelf] = useState<string | null>(null)
 
@@ -66,16 +69,23 @@ export default function LibraryPage() {
       return
     }
     setInputError(null)
-    const ok = await geocodeAddress(locationQuery.trim())
+    setGeocoding(true)
+    const ok = await geocodeAddress(locationQuery.trim()).finally(() => setGeocoding(false))
     if (ok) {
       setManualMode(false)
       setLocationQuery('')
     }
   }, [locationQuery, geocodeAddress])
 
+  // Manual entry whenever we cannot get coordinates and are not waiting on
+  // the member: denied, unsupported, or granted-but-the-lookup-failed.
   const showManualEntry =
     manualMode ||
-    ((permissionState === 'denied' || permissionState === 'unsupported') && !coordinates)
+    (!coordinates &&
+      !locationLoading &&
+      (permissionState === 'denied' ||
+        permissionState === 'unsupported' ||
+        (permissionState === 'granted' && !!locationError)))
 
   const showPermissionModal =
     permissionState === 'prompt' && !manualMode && !coordinates
@@ -167,9 +177,9 @@ export default function LibraryPage() {
               variant="primary"
               className="w-full"
               onClick={handleManualLocation}
-              disabled={locationLoading}
+              disabled={geocoding}
             >
-              {locationLoading ? 'Searching...' : 'Browse the Library'}
+              {geocoding ? 'Searching...' : 'Browse the Library'}
             </Button>
             {coordinates && (
               <Button variant="ghost" className="w-full" onClick={() => setManualMode(false)}>

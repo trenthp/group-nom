@@ -43,6 +43,9 @@ export default function DiscoverPage() {
   const [manualMode, setManualMode] = useState(false)
   const [locationQuery, setLocationQuery] = useState('')
   const [inputError, setInputError] = useState<string | null>(null)
+  // Own flag: the hook's isLoading also covers a GPS lookup that may be
+  // hanging, and that must never lock the manual entry
+  const [geocoding, setGeocoding] = useState(false)
 
   const requestSeq = useRef(0)
 
@@ -121,7 +124,8 @@ export default function DiscoverPage() {
       return
     }
     setInputError(null)
-    const ok = await geocodeAddress(locationQuery.trim())
+    setGeocoding(true)
+    const ok = await geocodeAddress(locationQuery.trim()).finally(() => setGeocoding(false))
     if (ok) {
       setManualMode(false)
       setLocationQuery('')
@@ -164,9 +168,15 @@ export default function DiscoverPage() {
     }
   }, [saved])
 
+  // Manual entry whenever we cannot get coordinates and are not waiting on
+  // the member: denied, unsupported, or granted-but-the-lookup-failed.
   const showManualEntry =
     manualMode ||
-    ((permissionState === 'denied' || permissionState === 'unsupported') && !coordinates)
+    (!coordinates &&
+      !locationLoading &&
+      (permissionState === 'denied' ||
+        permissionState === 'unsupported' ||
+        (permissionState === 'granted' && !!locationError)))
 
   const showPermissionModal =
     permissionState === 'prompt' && !manualMode && !coordinates
@@ -252,8 +262,8 @@ export default function DiscoverPage() {
                   aria-label="City or zip code"
                   aria-invalid={!!inputError}
                 />
-                <Button onClick={handleManualLocation} disabled={locationLoading}>
-                  {locationLoading ? 'Finding…' : 'Go'}
+                <Button onClick={handleManualLocation} disabled={geocoding}>
+                  {geocoding ? 'Finding…' : 'Go'}
                 </Button>
               </div>
               {(inputError || locationError) && (
@@ -276,6 +286,12 @@ export default function DiscoverPage() {
             <div className="text-center">
               <Spinner size="lg" className="mx-auto" />
               <p className="mt-3 text-white/50 text-sm">Finding your neighborhood…</p>
+              <button
+                onClick={() => setManualMode(true)}
+                className="mt-4 text-sm text-white/50 underline underline-offset-2 hover:text-white/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
+              >
+                Enter a city instead
+              </button>
             </div>
           </div>
         )}

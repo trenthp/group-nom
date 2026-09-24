@@ -15,7 +15,7 @@ const live = (list) => (isPreview ? " " + list : "")
 
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.groupnom.com https://challenges.cloudflare.com" + live("https://vercel.live"),
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.groupnom.com https://challenges.cloudflare.com https://va.vercel-scripts.com" + live("https://vercel.live"),
   "connect-src 'self' https://*.clerk.accounts.dev https://clerk.groupnom.com https://clerk-telemetry.com" + live("https://vercel.live wss://ws-us3.pusher.com"),
   "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com https://img.clerk.com https://tile.openstreetmap.org" + live("https://vercel.live https://vercel.com"),
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com" + live("https://vercel.live"),

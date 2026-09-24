@@ -128,12 +128,14 @@ function PointLayer({
             key={place.id}
             center={[place.lat, place.lng]}
             radius={place.id === highlightedId ? 8 : 5}
+            // A wide, near-invisible stroke: SVG hit-tests the stroke too,
+            // so a thumb can land on a 5px dot
             pathOptions={{
               color: place.id === highlightedId ? EMBER : '#ffffff',
-              weight: 1,
-              opacity: 0.6,
+              weight: 14,
+              opacity: place.id === highlightedId ? 0.35 : 0.06,
               fillColor: '#ffffff',
-              fillOpacity: place.id === highlightedId ? 0.9 : 0.35,
+              fillOpacity: place.id === highlightedId ? 0.9 : 0.5,
             }}
             eventHandlers={{ click: () => onPlaceClick(place.id) }}
           />
@@ -155,7 +157,7 @@ export function DiscoverMap({
   className = '',
 }: DiscoverMapProps) {
   return (
-    <div className={`relative ${className}`}>
+    <div className={`h-full w-full ${className}`}>
       <MapContainer
         center={[center.lat, center.lng]}
         zoom={zoom}
