@@ -96,8 +96,6 @@ function toRestaurant(row: DeckRow): Restaurant {
     id: row.gers_id,
     name: row.name,
     address: [row.address, row.city].filter(Boolean).join(', ') || 'Address not available',
-    rating: 0,
-    reviewCount: 0,
     cuisines: cuisines.length > 0 ? cuisines : ['Restaurant'],
     lat: row.lat,
     lng: row.lng,

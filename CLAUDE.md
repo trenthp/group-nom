@@ -23,53 +23,53 @@ A community library of loved places. Members nominate the restaurants they love 
 
 ```
 app/
-├── page.tsx              # Landing page (start/join session)
-├── layout.tsx            # Root layout with SessionProvider
-├── setup/                # Session setup flow (host creates session)
-├── session/              # Active session pages (voting UI)
-├── sign-in/              # Clerk sign-in page
-├── sign-up/              # Clerk sign-up page
-├── about/                # About page
+├── page.tsx              # Signed-out landing (tease) / member dashboard
+├── layout.tsx            # Root layout
+├── library/              # The Library (loved places; Today's Five pre-unlock)
+├── discover/             # The whole map — hexes/dots/ember markers, cards view
+├── nominate/             # Search-first nominate + [restaurantId] capture flow
+├── restaurant/[id]/      # Place page (gated), p/[id] is the public share page
+├── member/[id]/          # Member page; /profile redirects to your own
+├── to-try/               # Try-list ("To try")
+├── groups/               # Saved rosters for sessions
+├── setup/                # Session setup (deck source first)
+├── session/[code]/       # Voting UI ("game mode", sunset skin)
+├── admin/                # Moderation queue (Clerk role admin/moderator)
+├── about/ privacy/ terms/
 └── api/
-    ├── geocode/          # Location geocoding
-    ├── restaurants/      # Restaurant search endpoints
-    └── session/          # Session CRUD and voting
-        └── [code]/       # Dynamic routes for session operations
-            ├── route.ts          # Get/create session
-            ├── status/           # Session status polling
-            ├── vote/             # Submit votes
-            ├── close-voting/     # End voting phase
-            └── set-reconfiguring/ # Host reconfigure session
+    ├── tease/            # Public: loved-count near the visitor (Vercel geo)
+    ├── discover/         # Viewport (hexes|points) + cards
+    ├── library/ nominations/ enrichment/ restaurants/ favorites/
+    ├── members/ feed/ reports/ admin/ user/ groups/ upload/
+    ├── geocode/          # LocationIQ
+    ├── session/          # create + [code]/{status,vote,close-voting,reconfigure,...}
+    └── webhooks/clerk/   # Profile sync + anonymize on delete
 
 components/
-├── auth/                 # SessionProvider, UserMenu
-├── icons/                # Custom SVG icons
-├── landing/              # Landing page components
-├── Header.tsx            # App header
-├── Footer.tsx            # App footer
-├── LocationInput.tsx     # Location search input
-├── ShareCode.tsx         # Session code sharing UI
-├── WaitingScreen.tsx     # Waiting for host/results
-└── HostStatusPanel.tsx   # Host controls panel
+├── BottomNav.tsx         # Home / Library / Discover / Profile
+├── discover/             # DiscoverSheet, DiscoverCards
+├── map/                  # Leaflet maps (import via the barrel; SSR-safe entries only)
+├── location/             # Permission-aware location flow
+├── nomination/ restaurant/ results/ ui/   # ui/ is the dark-first kit (see README)
+├── Header.tsx Footer.tsx ReportButton.tsx RestaurantCard.tsx ...
 
 lib/
-├── types.ts              # TypeScript interfaces (Session, Restaurant, Nomination, etc.)
-├── sessionStore.ts       # Vercel KV session operations
-├── db.ts                 # Neon Postgres client
-├── restaurantDiscovery.ts # Own-DB voting deck builder (H3 + nomination weighting)
-├── nominations.ts        # Nomination CRUD (positive-only endorsements)
-├── restaurantEnrichment.ts # Wiki-style factual data (hours, menu, parking)
-├── social.ts             # Co-nominators and backers
-├── completeness.ts       # Restaurant page completeness scoring
-├── h3.ts                 # H3 geospatial utilities
-└── geolocation.ts        # Browser geolocation helper
+├── types.ts              # Session, Restaurant, Nomination, Filters
+├── discover.ts           # Viewport + cards queries (H3 rollup)
+├── restaurantDiscovery.ts # Deck builder + getLibraryNearby
+├── deckSources.ts        # mix / library / group decks
+├── gate.ts               # Today's Five + canOpenRestaurant
+├── nominations.ts drafts.ts dailyLimit.ts chains.ts
+├── follows.ts trust.ts reports.ts favorites.ts groups.ts
+├── userProfile.ts        # ensureProfile, isUnlocked, publicNameFor
+├── teaser.ts photos.ts sessionStore.ts kv.ts db.ts h3.ts geocode.ts
 ```
 
 ## Key Concepts
 
 ### Session Flow
 1. **Host** starts a new session at `/setup`
-2. Host configures filters (location, cuisine, rating, price)
+2. Host picks the deck source (everything / library / group) and location, distance, cuisine
 3. System generates a 6-character session code
 4. **Participants** join via code at `/session/[code]`
 5. Once host starts voting, everyone swipes on restaurants

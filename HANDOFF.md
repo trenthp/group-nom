@@ -394,67 +394,65 @@ Parallel any time: marketing rewrite (hero = ad-free community library of
 loved local places; group voting is the second act; stale rating/price copy
 dies).
 
+## Frontend restructure (Sep 24, 2026)
+
+Done in one sitting after the merge to `main`, once the owner had
+human-tested nominate + sessions on production. Decisions in
+`memory/frontend-restructure.md`.
+
+- **Nav is four tabs**: Home / Library / Discover / Profile
+  (`components/BottomNav.tsx`). Nominate is the primary action on Library,
+  not a tab. `/profile` (server component) resolves the member's own page.
+  `/saved` became `/to-try` (permanent redirect kept); the list is called
+  "To try" everywhere. Groups hang off Home and the profile page.
+- **Discover is the curation surface**, not a swipe deck. `lib/discover.ts`
+  picks hexes vs points from the bbox size (never trusted from the client):
+  H3 res-8 groups rolled up to res 5–8 in Node, dim CircleMarkers for
+  unlit places, the ember marker for loved ones, tap a hex to zoom in.
+  Cards view deals ten random places from the view; skip records nothing.
+  Save to try is primary, Nominate secondary, report (closed / not a
+  restaurant / duplicate — migration 015) under a quiet link. Open to
+  pre-unlock members: dots are public seed data; photos only when unlocked.
+  Verified on live data: 65 ms neighborhood, <500 ms metro.
+- **Landing rewritten** around the mission with a teased aggregate from
+  `GET /api/tease` (public; reads Vercel's `x-vercel-ip-*` geo headers, so
+  it says "N places loved near Orlando" without a browser prompt; falls
+  back to a global count locally). Primary CTA is Join; the session code
+  box is the second act. `/about` is a dark mission page linked from the
+  footer. Sign-in/up copy pitches the library, not saving.
+- **Setup** is one screen: deck source first, then where/how far. The
+  "pick from favorites" fork and the NYC fallback are gone.
+- **Legal pages** rewritten for the pivot (Overture/OSM/LocationIQ, what is
+  public vs never shown, delete = anonymize). Deleting a nomination now
+  deletes its Blob photo (`lib/photos.ts`).
+- **Dead code removed**: the like signal and its route, the old nearby deck
+  route, LocalBadge, the anonymous tier (`lib/userTiers.ts` is one
+  constant), `Restaurant.rating/reviewCount/priceLevel`, the rating/price
+  filter fields, the Google directions links (OSM now), the landing
+  components, and every signed-out branch behind the member gate.
+
 ## Remaining work, in rough priority order
 
-1. **`map` branch reconciliation** — mostly done (Aug 2026). Decision: dark
-   library everywhere; sunset gradient survives only as the voting-session
-   "game mode". Landed: design tokens in `tailwind.config.ts` (never hard-code
-   `#222222`/`#333333`/`#EA4D19` again — use `surface-page`/`surface-card`/
-   `brand`), dark-first UI kit in `components/ui/` (see its README for a11y
-   rules), permission-aware location flow (`lib/useLocation.ts` +
-   `components/location/`), and the Leaflet map view (`components/map/`)
-   with a list/map toggle on `/library`. **Basemap (Aug 27, 2026)**:
-   CARTO's tiles started requiring an API key (they serve "API KEY
-   REQUIRED" watermark tiles anonymously), so the map now uses plain OSM
-   raster tiles darkened by a CSS filter (`.map-tiles-dark` in
-   globals.css) — keyless and verified visually, but OSM's tile policy
-   frowns on production load. Before growth, sign up for a free CARTO
-   basemaps key or Stadia's `alidade_smooth_dark` and swap the TileLayer
-   URL back (one line in `RestaurantMap.tsx` + the host in the CSP
-   img-src). Import map pieces
-   via the `components/map` barrel only — it exports just the SSR-safe
-   entries; importing `RestaurantMap`/`RestaurantMarker` directly outside a
-   `ssr:false` dynamic breaks prerendering. Also landed: results decomposed
-   into `components/results/` (sunset skin, positive-only, focus rings) and
-   the dedicated geocode rate limiter in middleware. Still unharvested from
-   the `map` branch: `RestaurantDetailSheet` (pairs with BottomSheet for
-   map-browse previews), and the rest of the session-flow restyle onto kit
-   variants (setup/voting screens still use raw sunset classes;
-   `RestaurantFilters` carries the components-defined-during-render lint
-   debt).
-2. **Deferred security items** (from `SECURITY_AUDIT.md`):
-   - ~~Host authorization / hostId exposure~~ — fixed Aug 2026: sessions
-     require sign-in, host actions verify `auth()` server-side, and the
-     session GET returns `isHost` instead of the raw hostId.
-   - ~~Group invite codes reversible~~ — fixed Aug 27 (migration 014):
-     codes are random, stored, unique (`groups.invite_code`); lookup by
-     code, never derived from the id. **Old base64 invite links stopped
-     working by design.**
-   - ~~Session transitions not atomic~~ — fixed Aug 27: every
-     get-modify-set in `lib/sessionStore.ts` runs under a per-session
-     Redis lock (`SET NX PX`, 3s TTL, retry then proceed-unlocked so a
-     KV hiccup can't fail a request).
-   - ~~No CSP~~ — added Aug 27 in `next.config.js` (Clerk dev+prod
-     domains, Turnstile, Vercel Blob, Clerk avatars, CARTO tiles, Google
-     Fonts; `frame-ancestors 'none'`). **Verify after deploy**: watch the
-     browser console on sign-in, map view, and photo upload for CSP
-     violations — Clerk's prod frontend domain is assumed to be
-     `clerk.groupnom.com`; if the Clerk Dashboard shows a different
-     frontend API host, add it to script-src/connect-src.
-3. **Tech debt visible in lint** (33 warnings, `npm run lint`): components
-   defined during render in `RestaurantFilters`/`ResultsPage` (identity
-   changes every render), setState-in-effect patterns, `<img>` vs
-   `next/image`. Fix when touching those files.
-4. **Session flow styling** (setup/voting/results) still uses the orange
-   gradient + white cards — internally consistent, but decide its fate with
-   the design system.
-5. **Product/copy pass**: the owner has ideas about how the community change
-   is *communicated* (landing copy, about page, framing) — deliberately
-   deferred until the build settles. `components/landing/Features.tsx` still
-   mentions rating/price filters that no longer exist.
-6. Types still carry dead Google-era fields (`Restaurant.rating`,
-   `reviewCount`, `priceLevel`, `Filters.minRating` etc.) kept for KV-stored
-   session compatibility — safe to strip once old sessions expire (24h TTL).
+1. **Human pass on the new surfaces**: Discover (map + cards + sheet +
+   report), the landing tease on production (geo headers only exist on
+   Vercel), the profile tab, the to-try list, and setup.
+2. **Nightly trust recompute** — still no scheduler. A Vercel cron hitting
+   `SELECT recompute_trust_score(clerk_user_id) FROM user_profiles WHERE nomination_count > 0`
+   is the whole job.
+3. **Keyed basemap before growth** (CARTO or Stadia) — one line in
+   `RestaurantMap.tsx` + `DiscoverMap.tsx` and the host in the CSP img-src.
+4. **Owner setup still outstanding**: Clerk webhook endpoint +
+   `CLERK_WEBHOOK_SIGNING_SECRET`; `publicMetadata.role=admin` on the
+   owner's user; delete dead Google/TripAdvisor/Foursquare keys from Vercel
+   env; Preview scope should carry Clerk **test** keys (live keys are
+   domain-locked, so previews can never sign in as configured).
+5. The owner has two profiles (dev-instance user with the August
+   nominations, prod-instance user with the rest). Reassign the two August
+   nominations with one UPDATE on `nominations.clerk_user_id` if wanted.
+6. Lint debt: `<img>` vs `next/image` in a few places, setState-in-effect
+   patterns in the session page. Fix when touching those files.
+7. Session voting screens still use raw sunset classes rather than the
+   kit's glass variants — consistent, just not tokenized.
 
 ## Development
 

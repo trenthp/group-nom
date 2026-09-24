@@ -8,13 +8,10 @@ export interface Restaurant {
   address: string
   /** Soft-discourage signal for nominating chains; never blocks */
   likelyChain?: boolean
-  rating: number
-  reviewCount: number
   cuisines: string[]
   imageUrl?: string
   lat: number
   lng: number
-  priceLevel?: string
   phone?: string
   website?: string
   // Local database enrichment (added after matching)
@@ -94,22 +91,14 @@ export interface Vote {
 }
 
 export interface Filters {
-  minRating: number
-  openNow: boolean
-  maxReviews: number
   distance: number
-  priceLevel: number[] // [1, 2, 3, 4] for $, $$, $$$, $$$$
   cuisines: string[]
   preferLocal: boolean // true = prioritize local restaurants over chains
 }
 
 // Default filter values
 export const DEFAULT_FILTERS: Filters = {
-  minRating: 0,
-  openNow: false,
-  maxReviews: 0,
   distance: 8, // 5 miles - matches snap point in RestaurantFilters
-  priceLevel: [],
   cuisines: [],
   preferLocal: true, // Default to preferring local restaurants
 }
@@ -201,10 +190,8 @@ export interface RestaurantWithNominations extends Restaurant {
 // USER TIER TYPES
 // ==============================================
 
-export type UserTier = 'anonymous' | 'authenticated'
 
 export interface SessionMetadata {
-  creatorTier: UserTier
   creatorClerkId: string | null
   restaurantLimit: number
   createdAt: number

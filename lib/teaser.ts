@@ -32,6 +32,34 @@ export async function getPlaceTeaser(gersId: string): Promise<PlaceTeaser | null
   }
 }
 
+export interface LocalTease {
+  count: number
+  scope: 'nearby' | 'everywhere'
+}
+
+/**
+ * How many places are loved near a point (~25km box), or everywhere when
+ * there is no point or nothing nearby. Counts only — this feeds the
+ * signed-out landing page.
+ */
+export async function getLocalTease(near: { lat: number; lng: number } | null): Promise<LocalTease> {
+  if (near) {
+    const d = 0.23 // ~25km
+    const rows = await sql`
+      SELECT COUNT(*)::int AS count FROM restaurants
+      WHERE nomination_count > 0 AND hidden_at IS NULL
+        AND lat BETWEEN ${near.lat - d} AND ${near.lat + d}
+        AND lng BETWEEN ${near.lng - d} AND ${near.lng + d}
+    `
+    const count = (rows[0]?.count as number) ?? 0
+    return { count, scope: 'nearby' }
+  }
+  const rows = await sql`
+    SELECT COUNT(*)::int AS count FROM restaurants WHERE nomination_count > 0 AND hidden_at IS NULL
+  `
+  return { count: (rows[0]?.count as number) ?? 0, scope: 'everywhere' }
+}
+
 export function lovedByLine(count: number): string {
   if (count === 0) return 'Not on the shelf yet'
   return `Loved by ${count} local${count === 1 ? '' : 's'}`

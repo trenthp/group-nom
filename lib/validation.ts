@@ -13,12 +13,10 @@ export const locationSchema = z.object({
 })
 
 // Filters validation
+// Google-era fields (rating, price, open-now) are gone; unknown keys from
+// old clients are stripped by Zod, not rejected.
 export const filtersSchema = z.object({
-  minRating: z.number().min(0).max(5),
-  openNow: z.boolean(),
-  maxReviews: z.number().min(0),
   distance: z.number().min(0).max(80), // km (50 miles max)
-  priceLevel: z.array(z.number().min(1).max(4)),
   cuisines: z.array(z.string()),
   preferLocal: z.boolean().default(true), // Prefer local restaurants over chains
 })

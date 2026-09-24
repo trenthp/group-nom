@@ -71,7 +71,7 @@ export function WinnerCard({ winner, resultMessage, sessionCode }: WinnerCardPro
         {/* Primary Actions */}
         <div className="space-y-3 mb-4">
           <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${winner.lat},${winner.lng}`}
+            href={`https://www.openstreetmap.org/directions?to=${winner.lat}%2C${winner.lng}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full bg-brand-hover text-white font-semibold py-3 rounded-lg hover:bg-orange-700 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { sessionStore } from '@/lib/sessionStore'
 import { createSessionSchema, parseBody } from '@/lib/validation'
-import { getRestaurantLimit, getUserTier } from '@/lib/userTiers'
+import { SESSION_DECK_SIZE } from '@/lib/userTiers'
 import { ensureProfile } from '@/lib/userProfile'
 import { buildDeck } from '@/lib/deckSources'
 import { getGroupWithMembers } from '@/lib/groups'
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       )
     }
     await ensureProfile(clerkUserId)
-    const restaurantLimit = getRestaurantLimit(true)
+    const restaurantLimit = SESSION_DECK_SIZE
 
     const parsed = await parseBody(request, createSessionSchema)
     if (!parsed.success) {
@@ -90,7 +90,6 @@ export async function POST(request: NextRequest) {
 
     // Create session metadata for tracking user tier
     const metadata: SessionMetadata = {
-      creatorTier: getUserTier(true),
       creatorClerkId: clerkUserId,
       restaurantLimit,
       createdAt: Date.now(),

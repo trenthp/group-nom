@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useUser, useClerk } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 import Footer from '@/components/Footer'
 import SupportPage from '@/components/auth/SupportPage'
-import { USER_TIERS } from '@/lib/userTiers'
 
 export default function HomePage() {
   const { isSignedIn, isLoaded, user } = useUser()
@@ -39,6 +39,7 @@ export default function HomePage() {
 // AUTHENTICATED DASHBOARD
 // ============================================
 function AuthenticatedDashboard({ userName }: { userName: string }) {
+  const router = useRouter()
   const { signOut } = useClerk()
   const { user } = useUser()
   const [sessionCode, setSessionCode] = useState('')
@@ -114,7 +115,7 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
         setIsJoining(false)
         return
       }
-      window.location.href = `/session/${code}`
+      router.push(`/session/${code}`)
     } catch {
       setJoinError('Connection failed')
       setIsJoining(false)
@@ -455,24 +456,31 @@ function AuthenticatedDashboard({ userName }: { userName: string }) {
 }
 
 // ============================================
-// LANDING PAGE (Anonymous Users)
+// LANDING PAGE (signed-out visitors — the "tease" rung)
 // ============================================
 function LandingPage() {
+  const router = useRouter()
   const [sessionCode, setSessionCode] = useState('')
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [isSpinning, setIsSpinning] = useState(false)
   const [joinError, setJoinError] = useState('')
   const [isJoining, setIsJoining] = useState(false)
+  // Teased aggregate: a count near the visitor, never a name or a photo
+  const [tease, setTease] = useState<{ count: number; city: string | null; scope: 'nearby' | 'everywhere' } | null>(null)
 
-  const anonLimit = USER_TIERS.anonymous.maxRestaurantsPerSession
-  const authLimit = USER_TIERS.authenticated.maxRestaurantsPerSession
+  useEffect(() => {
+    fetch('/api/tease')
+      .then(res => (res.ok ? res.json() : null))
+      .then(json => json && setTease(json))
+      .catch(() => { /* the hero reads fine without it */ })
+  }, [])
 
   // Trigger hero logo spin animation once on page load
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsSpinning(true)
       setTimeout(() => setIsSpinning(false), 1200)
-    }, 300) // Small delay for smoother UX after page renders
+    }, 300)
     return () => clearTimeout(timer)
   }, [])
 
@@ -494,7 +502,7 @@ function LandingPage() {
     try {
       const response = await fetch(`/api/session/${code}/status`)
       if (response.status === 404) {
-        setJoinError('Group not found. Check your code.')
+        setJoinError('Session not found. Check the code.')
         setIsJoining(false)
         return
       }
@@ -503,16 +511,28 @@ function LandingPage() {
         setIsJoining(false)
         return
       }
-      window.location.href = `/session/${code}`
+      router.push(`/session/${code}`)
     } catch {
       setJoinError('Connection failed. Try again.')
       setIsJoining(false)
     }
   }
 
+  const teaseLine = (() => {
+    if (!tease) return null
+    if (tease.scope === 'nearby' && tease.city) {
+      return tease.count > 0
+        ? `${tease.count} place${tease.count === 1 ? '' : 's'} loved near ${tease.city}`
+        : `Nobody has lit up ${tease.city} yet. Be the first.`
+    }
+    return tease.count > 0
+      ? `${tease.count} place${tease.count === 1 ? '' : 's'} loved by members so far`
+      : null
+  })()
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316] to-[#DC2626]">
-      {/* Header with logo */}
+      {/* Header */}
       <header className="w-full px-4 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <Image
@@ -529,27 +549,26 @@ function LandingPage() {
             href="/sign-in"
             className="text-white/90 text-sm font-medium hover:text-white transition"
           >
-            Sign In
+            Sign in
           </Link>
           <Link
             href="/sign-up"
             className="bg-white/20 text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-white/30 transition"
           >
-            Sign Up
+            Join
           </Link>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <div className="flex items-center justify-center p-4 pb-8">
+      {/* Hero */}
+      <div className="flex items-center justify-center p-4 pb-10">
         <div className="w-full max-w-sm text-center">
-          {/* Big Bold Logo */}
           <div className="mb-8">
             <div className="relative w-40 h-40 mx-auto mb-5">
-              {/* Rotating circular text */}
               <svg
                 className={`absolute inset-0 w-full h-full ${isSpinning ? 'spin-once-reverse' : ''}`}
                 viewBox="0 0 200 200"
+                aria-hidden="true"
               >
                 <defs>
                   <path
@@ -564,7 +583,6 @@ function LandingPage() {
                   </textPath>
                 </text>
               </svg>
-              {/* Logo */}
               <Image
                 src="/logo_groupNom.svg"
                 alt="Group Nom"
@@ -575,50 +593,133 @@ function LandingPage() {
               />
             </div>
 
-            {/* Tagline */}
-            <h1 className="text-white text-3xl font-extrabold mb-2 leading-tight">
-              Find your next<br />favorite restaurant.
+            <h1 className="text-white text-3xl font-extrabold mb-3 leading-tight">
+              The places your neighbors actually love.
             </h1>
-            <p className="text-white/80 text-base font-medium">
-              Or at least a rebound.
+            <p className="text-white/85 text-base">
+              A community library of local restaurants. No ads, no ratings, no reviews.
+              Just people nominating what they love.
             </p>
           </div>
 
-          {/* Main Actions */}
-          <div className="space-y-3 mb-6">
+          {teaseLine && (
+            <p className="text-white font-semibold text-sm mb-5 bg-white/15 rounded-pill px-4 py-2 inline-block" aria-live="polite">
+              ❤️ {teaseLine}
+            </p>
+          )}
+
+          <div className="space-y-3 mb-4">
             <Link
-              href="/setup"
-              className="block w-full bg-white text-brand font-bold text-lg py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+              href="/sign-up"
+              className="block w-full bg-white text-brand font-bold text-lg py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-orange-500"
             >
-              Start a Group
+              Join the library
             </Link>
-
             <p className="text-white/70 text-sm">
-              {anonLimit} restaurants free · {authLimit} with account
+              Free. Your first nomination opens everything.
             </p>
           </div>
+        </div>
+      </div>
 
-          {/* Join Group */}
-          <div className="mb-6">
+      {/* How it works */}
+      <div className="bg-[#1a1a1a] py-12 px-4">
+        <div className="max-w-sm mx-auto">
+          <p className="text-white/40 text-xs uppercase tracking-wider mb-6 text-center">How it works</p>
+          <ol className="space-y-5 list-none p-0 m-0">
+            {[
+              {
+                n: 1,
+                title: 'Nominate one place you love',
+                body: 'A photo and why. That’s the whole form. Only places you’ve actually been.',
+              },
+              {
+                n: 2,
+                title: 'The library opens',
+                body: 'Every place someone near you loves, on a map, with their photos and their reasons.',
+              },
+              {
+                n: 3,
+                title: 'Decide together',
+                body: 'Start a session, share a code, everyone swipes the same deck. Matches win.',
+              },
+            ].map((step) => (
+              <li key={step.n} className="flex gap-4">
+                <div className="w-9 h-9 rounded-full bg-brand text-white font-bold flex items-center justify-center shrink-0" aria-hidden="true">
+                  {step.n}
+                </div>
+                <div>
+                  <h2 className="text-white font-semibold">{step.title}</h2>
+                  <p className="text-white/60 text-sm">{step.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+
+      {/* Positive-only */}
+      <div className="bg-surface-page pt-10 pb-8 px-4">
+        <div className="max-w-sm mx-auto">
+          <h2 className="text-white text-xl font-bold text-center mb-2">
+            No stars. No one-star rants.
+          </h2>
+          <p className="text-white/50 text-sm text-center mb-8">
+            The only thing a place can collect here is love.
+          </p>
+
+          <div className="space-y-3 mb-8">
+            {[
+              {
+                title: 'Nominations, not reviews',
+                body: 'Members put places on the shelf. Nobody takes them down with a paragraph.',
+              },
+              {
+                title: 'Places that fade just fade',
+                body: 'If somewhere isn’t good anymore, it quietly stops being surfaced. No pile-on.',
+              },
+              {
+                title: 'No follower counts, ever',
+                body: 'Ranking people by influence is the same disease as star ratings. We don’t.',
+              },
+              {
+                title: 'Your own data',
+                body: 'Built on open map data and what members add. Nothing bought, nothing sold.',
+              },
+            ].map((item) => (
+              <div key={item.title} className="bg-[#2a2a2a] rounded-xl p-4">
+                <h3 className="text-white font-semibold">{item.title}</h3>
+                <p className="text-white/50 text-sm">{item.body}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Sessions — the second act */}
+          <div className="bg-[#2a2a2a] rounded-xl p-4 mb-8">
+            <h3 className="text-white font-semibold mb-1">Got a session code?</h3>
+            <p className="text-white/50 text-sm mb-3">
+              Someone started a vote on where to eat. Sign in and the code drops you straight in.
+            </p>
             {!showJoinForm ? (
               <button
                 onClick={() => setShowJoinForm(true)}
-                className="text-white font-semibold underline underline-offset-4 decoration-white/50 hover:decoration-white transition"
+                className="text-brand font-semibold text-sm hover:text-orange-400 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
               >
-                Have a code? Join a group
+                Enter a code →
               </button>
             ) : (
-              <form onSubmit={joinSession} className="space-y-3">
+              <form onSubmit={joinSession} className="space-y-2">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="ABC123"
+                    aria-label="Session code"
                     value={sessionCode}
                     onChange={(e) => {
                       setSessionCode(e.target.value.toUpperCase())
                       setJoinError('')
                     }}
-                    className="flex-1 px-4 py-3 rounded-xl text-center text-xl font-mono font-bold tracking-[0.2em] bg-white/20 text-white placeholder-white/50 border-2 border-white/30 focus:border-white focus:outline-none transition"
+                    className="flex-1 px-4 py-3 rounded-xl text-center text-lg font-mono font-bold tracking-[0.2em] bg-[#222] text-white placeholder-white/30 border border-white/20 focus:border-brand focus:outline-none transition"
                     maxLength={6}
                     autoFocus
                     disabled={isJoining}
@@ -626,197 +727,27 @@ function LandingPage() {
                   <button
                     type="submit"
                     disabled={isJoining || sessionCode.length < 6}
-                    className="px-6 py-3 bg-white text-brand font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/90 transition"
+                    className="px-5 py-3 bg-brand text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-hover transition"
                   >
                     {isJoining ? '...' : 'Go'}
                   </button>
                 </div>
                 {joinError && (
-                  <p className="text-white text-sm bg-red-500/30 rounded-lg py-2 px-3">
-                    {joinError}
-                  </p>
+                  <p className="text-red-400 text-sm" role="alert">{joinError}</p>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowJoinForm(false)
-                    setSessionCode('')
-                    setJoinError('')
-                  }}
-                  className="text-white/70 text-sm hover:text-white transition"
-                >
-                  Cancel
-                </button>
               </form>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Swipe Demo Section */}
-      <div className="bg-[#1a1a1a] py-12 px-4">
-        <div className="max-w-sm mx-auto">
-          <p className="text-white/40 text-xs uppercase tracking-wider mb-4 text-center">How it works</p>
-
-          {/* Card Stack Animation with Swipe Demo */}
-          <div className="relative h-72 mb-6">
-            {/* Animated card stack */}
-            <div className="relative w-52 h-64 mx-auto">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="absolute inset-0 bg-white rounded-2xl shadow-xl overflow-hidden"
-                  style={{
-                    animation: i === 0 ? 'cardSwipeDemo 3s ease-in-out infinite' : undefined,
-                    transform: i === 0 ? undefined : `translateY(${i * 8}px) scale(${1 - i * 0.05})`,
-                    zIndex: 3 - i,
-                    opacity: i === 0 ? 1 : 0.7 - i * 0.2,
-                  }}
-                >
-                  {/* Mini restaurant card preview */}
-                  <div className="h-28 bg-gradient-to-br from-orange-300 to-red-400 flex items-center justify-center">
-                    <svg className="w-10 h-10 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                  </div>
-                  <div className="p-3">
-                    <div className="bg-gray-200 rounded h-4 w-3/4 mb-2" />
-                    <div className="bg-gray-100 rounded h-3 w-1/2 mb-3" />
-                    <div className="flex gap-1.5">
-                      <div className="bg-orange-100 rounded-full h-4 w-12" />
-                      <div className="bg-orange-100 rounded-full h-4 w-10" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Swipe indicators that appear during animation */}
-              <div className="absolute -left-16 top-1/2 -translate-y-1/2 text-red-400 opacity-0 animate-swipeHintLeft">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <div className="absolute -right-16 top-1/2 -translate-y-1/2 text-green-400 opacity-0 animate-swipeHintRight">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Swipe instructions */}
-          <div className="flex justify-center gap-8 text-sm mb-2">
-            <div className="text-center">
-              <div className="text-red-400 font-bold">← Pass</div>
-            </div>
-            <div className="text-center">
-              <div className="text-green-400 font-bold">Like →</div>
-            </div>
-          </div>
-          <p className="text-white/40 text-xs text-center">
-            Swipe through restaurants. Match with your group.
-          </p>
-        </div>
-      </div>
-
-      {/* CSS for animations */}
-      <style jsx>{`
-        @keyframes cardSwipeDemo {
-          0%, 100% { transform: translateX(0) rotate(0deg); }
-          15% { transform: translateX(80px) rotate(8deg); }
-          30% { transform: translateX(0) rotate(0deg); }
-          45% { transform: translateX(-80px) rotate(-8deg); }
-          60% { transform: translateX(0) rotate(0deg); }
-        }
-        @keyframes swipeHintRight {
-          0%, 100% { opacity: 0; }
-          10%, 25% { opacity: 1; }
-        }
-        @keyframes swipeHintLeft {
-          0%, 100% { opacity: 0; }
-          40%, 55% { opacity: 1; }
-        }
-        .animate-swipeHintRight {
-          animation: swipeHintRight 3s ease-in-out infinite;
-        }
-        .animate-swipeHintLeft {
-          animation: swipeHintLeft 3s ease-in-out infinite;
-        }
-      `}</style>
-
-      {/* Value Proposition Section - Dark Background */}
-      <div className="bg-surface-page pt-10 pb-8 px-4">
-        <div className="max-w-sm mx-auto">
-          <h2 className="text-white text-xl font-bold text-center mb-2">
-            More than a group thing.
-          </h2>
-          <p className="text-white/50 text-sm text-center mb-8">
-            Create an account to unlock all features
-          </p>
-
-          {/* Features Grid - with hover effects */}
-          <div className="space-y-3 mb-8">
-            {/* Discover */}
-            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-surface-card transition cursor-default">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#F97316] to-[#DC2626] rounded-xl flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                  <polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88" fill="currentColor" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">Discover solo</h3>
-                <p className="text-white/50 text-sm">Swipe on your own to find hidden gems.</p>
-              </div>
-            </div>
-
-            {/* Save */}
-            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-surface-card transition cursor-default">
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-red-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">Save the good ones</h3>
-                <p className="text-white/50 text-sm">Build a collection you'll actually remember.</p>
-              </div>
-            </div>
-
-            {/* Boost locals */}
-            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-surface-card transition cursor-default">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">Boost local favorites</h3>
-                <p className="text-white/50 text-sm">Help others discover your go-to spots.</p>
-              </div>
-            </div>
-
-            {/* More options */}
-            <div className="flex items-start gap-4 bg-[#2a2a2a] rounded-xl p-4 hover:bg-surface-card transition cursor-default">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">{authLimit} restaurants per group</h3>
-                <p className="text-white/50 text-sm">Guests only get {anonLimit}. More options = better matches.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* CTA */}
           <Link
             href="/sign-up"
-            className="block w-full bg-brand text-white font-bold text-lg py-4 rounded-2xl text-center hover:bg-brand-hover hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+            className="block w-full bg-brand text-white font-bold text-lg py-4 rounded-2xl text-center hover:bg-brand-hover hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
           >
-            Create free account
+            Join the library
           </Link>
+          <p className="text-center mt-3 text-sm text-white/50">
+            <Link href="/about" className="hover:text-white/80 underline underline-offset-2">Why we built it</Link>
+          </p>
 
           <Footer />
         </div>

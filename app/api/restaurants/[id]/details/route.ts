@@ -70,8 +70,6 @@ export async function GET(
         id: r.gers_id,
         name: r.name,
         address: [r.address, r.city, r.state].filter(Boolean).join(', '),
-        rating: 0,
-        reviewCount: 0,
         cuisines: (r.categories ?? [])
           .map((c: string) => c.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()))
           .slice(0, 3),

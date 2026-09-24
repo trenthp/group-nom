@@ -203,7 +203,7 @@ export function RestaurantMarker({
                 </a>
               )}
               <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`}
+                href={`https://www.openstreetmap.org/directions?to=${place.lat}%2C${place.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 text-center text-xs bg-white/10 text-white font-medium py-2.5 px-3 rounded-lg hover:bg-white/20 transition"

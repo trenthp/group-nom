@@ -29,8 +29,8 @@ export default function SignUpPage() {
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center p-4 pt-8">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Join the crew!</h1>
-          <p className="text-orange-100">Save your favorites & never forget a gem</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Join the library</h1>
+          <p className="text-orange-100">Nominate one place you love. Everything your neighbors love opens up.</p>
         </div>
 
         <SignUp

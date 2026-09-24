@@ -30,7 +30,7 @@ export default function SignInPage() {
       <div className="flex-1 flex flex-col items-center p-4 pt-8">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-white mb-2">Welcome back!</h1>
-          <p className="text-orange-100">Sign in to see your saved restaurants</p>
+          <p className="text-orange-100">The library is where you left it</p>
         </div>
 
         <SignIn
