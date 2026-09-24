@@ -81,9 +81,15 @@ export default function NominatePage() {
         }
         const { restaurant: restaurantData } = await restaurantRes.json()
         setRestaurant(restaurantData)
+        // The count is public (it is on the share page); the wall is not.
+        setNominationCount(restaurantData?.nominationCount ?? 0)
 
-        // Fetch existing nominations
-        const nominationsRes = await fetch(`/api/nominations/restaurant/${restaurantId}`)
+        // Fetch existing nominations. Pre-unlock members get a 403 here for
+        // places outside their Today's Five — expected, the form still works.
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        const nominationsRes = await fetch(
+          `/api/nominations/restaurant/${restaurantId}?tz=${encodeURIComponent(tz)}`
+        )
         if (nominationsRes.ok) {
           const data = await nominationsRes.json()
           setNominationCount(data.nominationCount)
@@ -99,7 +105,6 @@ export default function NominatePage() {
 
         // One per local day — check before showing the form so a blocked
         // publish never gets as far as uploading a photo
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
         const [todayRes, draftRes] = await Promise.all([
           fetch(`/api/nominations/today?tz=${encodeURIComponent(tz)}`),
           fetch(`/api/nominations/drafts/${restaurantId}`),
