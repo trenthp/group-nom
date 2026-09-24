@@ -2,11 +2,11 @@ import Link from 'next/link'
 
 export const metadata = {
   title: 'Terms of Service | Group Nom',
-  description: 'Terms and conditions for using Group Nom.',
+  description: 'The rules of the library.',
 }
 
 export default function TermsOfServicePage() {
-  const lastUpdated = 'January 2025'
+  const lastUpdated = 'September 2026'
 
   return (
     <div className="min-h-screen bg-surface-page">
@@ -27,178 +27,174 @@ export default function TermsOfServicePage() {
         <div className="prose prose-invert prose-sm max-w-none space-y-6">
           <Section title="Agreement to Terms">
             <p>
-              By accessing or using Group Nom ("the Service"), you agree to be bound by these
-              Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Service.
+              By using Group Nom (&quot;the Service&quot;) you agree to these Terms. If you
+              do not agree, do not use the Service.
             </p>
           </Section>
 
-          <Section title="Description of Service">
+          <Section title="What Group Nom Is">
             <p>
-              Group Nom is a restaurant discovery platform that allows you to:
+              Group Nom is a community library of loved places, built by its members. On
+              Group Nom you can:
             </p>
             <ul>
-              <li>Discover restaurants through a swipe-based interface</li>
-              <li>Save favorite restaurants to your personal collection</li>
-              <li>Create and participate in group voting sessions to decide where to eat</li>
-              <li>View aggregate data about restaurant popularity</li>
-            </ul>
-          </Section>
-
-          <Section title="Account Registration">
-            <p>
-              To access certain features, you must create an account. You agree to:
-            </p>
-            <ul>
-              <li>Provide accurate and complete information</li>
-              <li>Maintain the security of your account credentials</li>
-              <li>Notify us immediately of any unauthorized access</li>
-              <li>Accept responsibility for all activity under your account</li>
+              <li>Nominate a local restaurant you love, with a photo and why you love it</li>
+              <li>Add shared facts to a place&apos;s page, such as hours notes, menu links, and parking tips</li>
+              <li>Browse the map of your area, keep a to-try list, and follow other members</li>
+              <li>Run a group session to decide where to eat together</li>
             </ul>
             <p>
-              You must be at least 13 years old to create an account.
+              The library is positive-only by design. There are no ratings and no reviews.
+              The only thing a place can accumulate on Group Nom is love.
             </p>
           </Section>
 
-          <Section title="Acceptable Use">
-            <p>You agree NOT to:</p>
+          <Section title="Your Account">
+            <p>You need an account to use the library. You agree to:</p>
             <ul>
-              <li>Use the Service for any illegal purpose</li>
-              <li>Harass, abuse, or harm other users</li>
-              <li>Attempt to access other users' accounts</li>
-              <li>Interfere with or disrupt the Service</li>
-              <li>Use automated systems (bots, scrapers) to access the Service</li>
-              <li>Circumvent rate limits or security measures</li>
-              <li>Submit false, misleading, or spam content</li>
-              <li>Impersonate another person or entity</li>
+              <li>Be at least 13 years old</li>
+              <li>Provide accurate information and keep one account</li>
+              <li>Keep your sign-in credentials secure and tell us about any unauthorized use</li>
+              <li>Take responsibility for what happens under your account</li>
             </ul>
           </Section>
 
-          <Section title="User Content">
-            <p>
-              By using Group Nom, you contribute data such as restaurant likes and votes.
-              You grant us a non-exclusive, royalty-free license to use this data to:
-            </p>
+          <Section title="Community Rules">
+            <p>Group Nom works because members are honest about what they love. You agree to:</p>
             <ul>
-              <li>Operate and improve the Service</li>
-              <li>Generate aggregate statistics and recommendations</li>
-              <li>Display popularity metrics to other users</li>
+              <li>Nominate only places you have actually been to and genuinely love</li>
+              <li>Not nominate a place you own, work for, or are paid to promote</li>
+              <li>Upload only photos you took or have the right to share, and not photos of other people without their consent</li>
+              <li>Keep it positive: ratings, reviews, complaints, and criticism of a place or its staff are not allowed and will be removed</li>
+              <li>Keep place facts accurate and free of promotion</li>
             </ul>
+            <p>You also agree not to:</p>
+            <ul>
+              <li>Use the Service for anything illegal</li>
+              <li>Harass, threaten, or harm other members</li>
+              <li>Impersonate anyone or misrepresent your connection to a place</li>
+              <li>Post spam, false, or misleading content, or file reports in bad faith</li>
+              <li>Use bots or scrapers, or try to circumvent rate limits, the library gate, or other security measures</li>
+              <li>Try to access other members&apos; accounts or private information</li>
+            </ul>
+          </Section>
+
+          <Section title="Your Content">
             <p>
-              You retain ownership of your personal data and can request its deletion
-              at any time by deleting your account.
+              You own the photos and words you publish. By publishing them you give us a
+              worldwide, non-exclusive, royalty-free license to store, display, and
+              distribute them as part of the Service, including on place pages, in
+              members&apos; feeds, and in aggregate counts on public share pages. This license
+              ends when you delete the content, except where it has already been
+              shared in ways we cannot recall, such as cached link previews.
+            </p>
+            <p>
+              Your nominations are shown with your first name and last initial. If you
+              delete your account, nominations and place facts you published stay in the
+              library attributed to &quot;a former member,&quot; unless you delete them
+              first or ask us to remove them.
+            </p>
+            <p>
+              Place facts are shared, wiki-style. Other members can edit them, and no
+              member&apos;s name is attached to them.
             </p>
           </Section>
 
-          <Section title="Restaurant Information">
+          <Section title="Moderation">
             <p>
-              Restaurant data displayed in Group Nom is sourced from third-party providers,
-              including Google Maps. We make no guarantees about the accuracy, completeness,
-              or timeliness of this information, including but not limited to:
+              Members can report nominations and places. We may remove content, hide a
+              place, or suspend or terminate an account if we believe these Terms have
+              been broken, and we may do so without notice. We never edit a member&apos;s
+              words; we remove them or leave them. A place that closes or turns out not to
+              be a restaurant is quietly hidden, not marked down.
             </p>
-            <ul>
-              <li>Business hours and availability</li>
-              <li>Menu items and prices</li>
-              <li>Ratings and reviews</li>
-              <li>Location and contact information</li>
-            </ul>
+          </Section>
+
+          <Section title="Place Information">
             <p>
-              Always verify important details directly with the restaurant before visiting.
+              The base list of places comes from open data published by the Overture Maps
+              Foundation. Everything else about a place is contributed by members. We make
+              no guarantee that any of it is accurate, complete, or current, including
+              hours, menus, prices, location, and whether a place is still open. Check with
+              the restaurant before you go.
             </p>
           </Section>
 
           <Section title="Group Sessions">
-            <p>
-              When you create or join a group voting session:
-            </p>
+            <p>When you create or join a group session:</p>
             <ul>
-              <li>Your votes are visible to other participants in that session</li>
-              <li>Session codes should be shared only with intended participants</li>
-              <li>Sessions expire after 24 hours</li>
-              <li>We are not responsible for group decisions or dining experiences</li>
+              <li>Other participants can see that you joined and whether you have finished voting</li>
+              <li>The group sees which places matched; individual votes are not shown</li>
+              <li>Share the session code only with the people you want in the session</li>
+              <li>Sessions are deleted 24 hours after they are created</li>
+              <li>The group&apos;s decision and the meal that follows are the group&apos;s own</li>
             </ul>
           </Section>
 
           <Section title="Intellectual Property">
             <p>
-              The Group Nom service, including its design, features, and branding, is owned
-              by us and protected by intellectual property laws. You may not copy, modify,
-              distribute, or create derivative works without our permission.
+              The Group Nom name, design, and software are ours. You may not copy, modify,
+              or redistribute them without permission.
             </p>
             <p>
-              Restaurant data and images are property of their respective owners and are
-              used under license from third-party providers.
+              Map tiles are © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">OpenStreetMap contributors</a>,
+              used under the Open Database License. Base place data is from the{' '}
+              <a href="https://overturemaps.org" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">Overture Maps Foundation</a>.
+              Photos and words belong to the members who published them.
             </p>
           </Section>
 
           <Section title="Third-Party Services">
-            <p>
-              Group Nom integrates with third-party services including:
-            </p>
+            <p>Group Nom runs on these services, each under its own terms:</p>
             <ul>
-              <li>Clerk (authentication)</li>
-              <li>Google Maps Platform (restaurant data and maps)</li>
-              <li>Vercel (hosting)</li>
+              <li>Clerk (sign-in)</li>
+              <li>Vercel (hosting, photo storage, analytics)</li>
+              <li>Neon (database)</li>
+              <li>Upstash (sessions and rate limits)</li>
+              <li>LocationIQ (geocoding)</li>
             </ul>
-            <p>
-              Your use of these services is subject to their respective terms and policies.
-              In particular, by using Group Nom you also agree to be bound by the{' '}
-              <a href="https://maps.google.com/help/terms_maps/" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
-                Google Maps/Google Earth Additional Terms of Service
-              </a>{' '}
-              and{' '}
-              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
-                Google Privacy Policy
-              </a>.
-            </p>
           </Section>
 
           <Section title="Disclaimer of Warranties">
             <p>
-              THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND,
-              EXPRESS OR IMPLIED. WE DO NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED,
-              ERROR-FREE, OR SECURE.
+              THE SERVICE IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT
+              WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED. WE DO NOT WARRANT THAT THE SERVICE
+              WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE, OR THAT ANY INFORMATION ABOUT A
+              PLACE IS ACCURATE. WE ARE NOT RESPONSIBLE FOR THE QUALITY OF ANY DINING
+              EXPERIENCE, FOR THE ACTIONS OF OTHER MEMBERS, OR FOR LOSS OF DATA.
             </p>
-            <p>
-              WE DISCLAIM ALL LIABILITY FOR:
-            </p>
-            <ul>
-              <li>Accuracy of restaurant information</li>
-              <li>Quality of dining experiences</li>
-              <li>Actions of other users</li>
-              <li>Data loss or service interruptions</li>
-            </ul>
           </Section>
 
           <Section title="Limitation of Liability">
             <p>
               TO THE MAXIMUM EXTENT PERMITTED BY LAW, GROUP NOM AND ITS OPERATORS SHALL NOT
               BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE
-              DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR
-              INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES.
+              DAMAGES, OR ANY LOSS OF PROFITS, REVENUES, DATA, USE, OR GOODWILL, ARISING
+              FROM YOUR USE OF THE SERVICE.
             </p>
           </Section>
 
           <Section title="Indemnification">
             <p>
               You agree to indemnify and hold harmless Group Nom and its operators from any
-              claims, damages, or expenses arising from your use of the Service or violation
-              of these Terms.
+              claims, damages, or expenses arising from content you publish, your use of
+              the Service, or your violation of these Terms.
             </p>
           </Section>
 
-          <Section title="Account Termination">
+          <Section title="Ending Your Account">
             <p>
-              We reserve the right to suspend or terminate your account at any time for
-              violation of these Terms or for any other reason at our discretion. You may
-              delete your account at any time through your account settings.
+              You can delete your account at any time from your account settings or by
+              emailing us. What happens to your content is described above and in our{' '}
+              <Link href="/privacy" className="text-brand hover:underline">Privacy Policy</Link>.
+              We may suspend or terminate accounts that break these Terms.
             </p>
           </Section>
 
-          <Section title="Changes to Terms">
+          <Section title="Changes to These Terms">
             <p>
-              We may modify these Terms at any time. We will notify you of significant
-              changes by posting a notice on the Service. Continued use after changes
-              constitutes acceptance of the new Terms.
+              We may change these Terms. Significant changes will be announced in the app.
+              Continued use after a change means you accept the new Terms.
             </p>
           </Section>
 
@@ -210,9 +206,7 @@ export default function TermsOfServicePage() {
           </Section>
 
           <Section title="Contact">
-            <p>
-              For questions about these Terms, contact us at:
-            </p>
+            <p>Questions about these Terms:</p>
             <p className="text-brand">hello@groupnom.com</p>
           </Section>
         </div>
