@@ -1,6 +1,6 @@
 # Developer Handoff — Community Library Pivot
 
-_Last updated: August 2026, on branch `community-library`_
+_Last updated: September 24, 2026, on branch `community-library`_
 
 This document is for the developer picking up the community-library pivot.
 Read `CLAUDE.md` first for the product vision and tech stack; this file covers
@@ -21,9 +21,9 @@ remain: Overture (free bulk), LocationIQ (free tier), Neon, Vercel KV/Blob.
 
 ## Branch state
 
-- **`community-library`** is the active branch. Everything below happened here.
-  Origin has it up to `1b876c1`; **commits after that are local-only** —
-  the owner wanted to test before pushing. Check `git log origin/community-library..community-library`.
+- **`community-library`** is the active branch. Everything below happened here
+  and is pushed to origin as of September 24, 2026. Before that push the
+  branch had been local-only for six weeks; keep it pushed.
 - **`main`** is pre-pivot (Google-based). Do not merge main forward without
   understanding the pivot removed Google entirely.
 - **`map`** branch: a UI component library (`components/ui/`, 14 components),
