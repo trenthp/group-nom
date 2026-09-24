@@ -32,6 +32,7 @@ type Action = 'dismiss' | 'remove_nomination' | 'hide_place' | 'suspend_member'
 const REASON_LABEL: Record<string, string> = {
   closed: 'Permanently closed',
   not_a_restaurant: 'Not a restaurant',
+  duplicate: 'Duplicate entry',
   inappropriate: 'Inappropriate',
   spam: 'Spam / self-promotion',
   other: 'Other',

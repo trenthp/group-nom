@@ -1,682 +1,326 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
-import Link from 'next/link'
-import { useUser } from '@clerk/nextjs'
-import { Restaurant } from '@/lib/types'
-import RestaurantCard from '@/components/RestaurantCard'
-import LocalBadge from '@/components/LocalBadge'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LocationIcon } from '@/components/icons'
+import { Spinner, Input, Button, ToggleGroup, ToggleGroupItem } from '@/components/ui'
+import { LocationPermissionModal } from '@/components/location'
+import { DynamicDiscoverMap } from '@/components/map/DynamicDiscoverMap'
+import { DiscoverSheet } from '@/components/discover/DiscoverSheet'
+import { DiscoverCards } from '@/components/discover/DiscoverCards'
+import { useLocation } from '@/lib/useLocation'
+import type { BBox, DiscoverPlace, DiscoverViewport } from '@/lib/discover'
 
-type DiscoverPhase = 'intro' | 'swiping' | 'batch-complete' | 'all-done'
-
-const BATCH_SIZE = 10
-
-interface DiscoverState {
-  phase: DiscoverPhase
-  currentRestaurant: Restaurant | null
-  nextRestaurant: Restaurant | null // Buffer one ahead
-  loading: boolean
-  loadingNext: boolean
-  error: string | null
-  location: { lat: number; lng: number } | null
-  locationName: string
-  locationDenied: boolean // Geolocation unavailable - offer manual entry
-  likedCount: number
-  seenCount: number
-  batchCount: number // Count within current batch (0-9)
-  totalBatches: number // How many batches completed
-  noMoreRestaurants: boolean
-}
+/**
+ * Discover — the map as we have it. The library shows what's loved;
+ * this shows everything, so members can find what's good and light it up.
+ * Open to every member, pre-unlock included (it's public seed data plus a
+ * count). Map by default, cards as an optional way through the same view.
+ */
+type View = 'map' | 'cards'
 
 export default function DiscoverPage() {
-  const { isSignedIn, isLoaded } = useUser()
-  const [state, setState] = useState<DiscoverState>({
-    phase: 'intro',
-    currentRestaurant: null,
-    nextRestaurant: null,
-    loading: false,
-    loadingNext: false,
-    error: null,
-    location: null,
-    locationName: '',
-    locationDenied: false,
-    likedCount: 0,
-    seenCount: 0,
-    batchCount: 0,
-    totalBatches: 0,
-    noMoreRestaurants: false,
-  })
+  const {
+    permissionState,
+    coordinates,
+    locationName,
+    isLoading: locationLoading,
+    error: locationError,
+    requestPermission,
+    geocodeAddress,
+  } = useLocation()
 
-  // Track seen restaurant IDs to avoid duplicates
-  const seenIds = useRef<Set<string>>(new Set())
+  const [view, setView] = useState<View>('map')
+  const [bbox, setBbox] = useState<BBox | null>(null)
+  const [data, setData] = useState<DiscoverViewport | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [saved, setSaved] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState(false)
+  const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; key: number } | undefined>()
 
-  // Manual location entry (fallback when geolocation is denied)
+  // Manual location entry (chosen via skip, forced when denied/unsupported)
+  const [manualMode, setManualMode] = useState(false)
   const [locationQuery, setLocationQuery] = useState('')
-  const [locationError, setLocationError] = useState<string | null>(null)
-  const [geocoding, setGeocoding] = useState(false)
+  const [inputError, setInputError] = useState<string | null>(null)
 
-  // Fetch a single restaurant
-  const fetchNextRestaurant = useCallback(async (
-    lat: number,
-    lng: number,
-    excludeIds: string[]
-  ): Promise<Restaurant | null> => {
+  const requestSeq = useRef(0)
+
+  // Load whatever the map is looking at
+  const loadViewport = useCallback(async (box: BBox) => {
+    const seq = ++requestSeq.current
+    setLoading(true)
     try {
-      const response = await fetch('/api/restaurants/nearby', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lat,
-          lng,
-          radius: 5000,
-          limit: 1, // Only fetch 1 restaurant at a time
-          excludeIds, // Pass already seen IDs to backend
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Today's Five day boundary
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch restaurant')
-      }
-
-      const data = await response.json()
-      const restaurants = data.restaurants || []
-
-      // Find first restaurant we haven't seen
-      for (const restaurant of restaurants) {
-        if (!seenIds.current.has(restaurant.id)) {
-          seenIds.current.add(restaurant.id)
-          return restaurant
-        }
-      }
-
-      return null // No new restaurants
-    } catch (error) {
-      console.error('Error fetching restaurant:', error)
-      return null
-    }
-  }, [])
-
-  // Begin the swiping flow once we have coordinates (from geolocation or manual entry)
-  const startWithLocation = useCallback(async (
-    lat: number,
-    lng: number,
-    name?: string
-  ) => {
-    setState(s => ({
-      ...s,
-      loading: true,
-      locationDenied: false,
-      location: { lat, lng },
-      locationName: name ?? s.locationName,
-    }))
-
-    // Reverse geocode in background if we don't have a name yet
-    if (!name) {
-      fetch('/api/geocode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng }),
-      })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.formattedAddress) {
-            setState(s => ({ ...s, locationName: data.formattedAddress }))
-          }
-        })
-        .catch(() => {})
-    }
-
-    // Fetch first restaurant
-    const first = await fetchNextRestaurant(lat, lng, [])
-    if (first) {
-      setState(s => ({
-        ...s,
-        phase: 'swiping',
-        currentRestaurant: first,
-        loading: false,
-        batchCount: 0,
-      }))
-
-      // Pre-fetch the next one in the background
-      const second = await fetchNextRestaurant(lat, lng, [first.id])
-      setState(s => ({ ...s, nextRestaurant: second }))
-    } else {
-      setState(s => ({
-        ...s,
-        phase: 'all-done',
-        loading: false,
-        noMoreRestaurants: true,
-      }))
-    }
-  }, [fetchNextRestaurant])
-
-  // Start swiping - try geolocation, fall back to manual entry if denied
-  const handleStartSwiping = useCallback(async () => {
-    if (!navigator.geolocation) {
-      setState(s => ({ ...s, locationDenied: true }))
-      return
-    }
-
-    setState(s => ({ ...s, loading: true }))
-
-    const position = await new Promise<GeolocationPosition | null>((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve(pos),
-        () => resolve(null)
-      )
-    })
-
-    if (!position) {
-      // Denied or unavailable - offer manual location entry instead of a dead end
-      setState(s => ({ ...s, loading: false, locationDenied: true }))
-      return
-    }
-
-    const { latitude: lat, longitude: lng } = position.coords
-    await startWithLocation(lat, lng)
-  }, [startWithLocation])
-
-  // Manual location entry (geolocation denied or unsupported)
-  const handleManualLocation = useCallback(async () => {
-    if (!locationQuery.trim()) {
-      setLocationError('Enter a city or zip code')
-      return
-    }
-
-    setGeocoding(true)
-    setLocationError(null)
-
-    try {
-      const res = await fetch('/api/geocode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: locationQuery }),
-      })
-      const data = await res.json()
-
-      if (!res.ok || !data.location) {
-        setLocationError(data.error || 'Could not find that location')
-        setGeocoding(false)
+      const qs = `${box.minLng},${box.minLat},${box.maxLng},${box.maxLat}`
+      const res = await fetch(`/api/discover?bbox=${encodeURIComponent(qs)}`)
+      if (seq !== requestSeq.current) return
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setError(body.error || 'Could not load the map')
         return
       }
-
-      setGeocoding(false)
-      await startWithLocation(data.location.lat, data.location.lng, data.formattedAddress)
+      const json = (await res.json()) as DiscoverViewport
+      setError(null)
+      setData(json)
+      if (json.mode === 'points' && json.places.length > 0) {
+        const ids = json.places.map(p => p.id)
+        fetch('/api/favorites/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        })
+          .then(r => (r.ok ? r.json() : { saved: [] }))
+          .then(({ saved: list }: { saved: string[] }) =>
+            setSaved(prev => {
+              const next = new Set(prev)
+              list.forEach(id => next.add(id))
+              return next
+            })
+          )
+          .catch(() => { /* non-fatal */ })
+      }
     } catch {
-      setLocationError('Could not find that location. Try a different city or zip.')
-      setGeocoding(false)
+      if (seq === requestSeq.current) setError('Could not load the map')
+    } finally {
+      if (seq === requestSeq.current) setLoading(false)
     }
-  }, [locationQuery, startWithLocation])
+  }, [])
 
-  // Handle swipe (like or pass)
-  const handleSwipe = useCallback(async (liked: boolean) => {
-    const restaurant = state.currentRestaurant
-    if (!restaurant || !state.location) return
+  const handleViewportChange = useCallback((box: BBox) => {
+    setBbox(box)
+    loadViewport(box)
+  }, [loadViewport])
 
-    const newBatchCount = state.batchCount + 1
-    const batchComplete = newBatchCount >= BATCH_SIZE
-    const next = state.nextRestaurant
-
-    // Save the like in the background (only for signed-in users)
-    if (liked && isSignedIn) {
-      fetch('/api/restaurants/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          place_id: restaurant.id,
-          name: restaurant.name,
-          address: restaurant.address,
-          lat: restaurant.lat,
-          lng: restaurant.lng,
-          cuisines: restaurant.cuisines,
-          source: 'swipe',
-        }),
-      }).catch(error => console.error('Error saving like:', error))
+  // Cards without a map yet: a neighborhood around the member
+  useEffect(() => {
+    if (coordinates && !bbox) {
+      const d = 0.03
+      setBbox({
+        minLng: coordinates.lng - d,
+        minLat: coordinates.lat - d,
+        maxLng: coordinates.lng + d,
+        maxLat: coordinates.lat + d,
+      })
     }
+  }, [coordinates, bbox])
 
-    // If batch is complete, go to batch-complete screen
-    if (batchComplete) {
-      setState(s => ({
-        ...s,
-        phase: 'batch-complete',
-        currentRestaurant: null,
-        nextRestaurant: next, // Keep the buffered one for continue
-        likedCount: liked ? s.likedCount + 1 : s.likedCount,
-        seenCount: s.seenCount + 1,
-        batchCount: newBatchCount,
-      }))
+  // Manual location → fly the map there
+  const lastCoords = useRef<string | null>(null)
+  useEffect(() => {
+    if (!coordinates) return
+    const key = `${coordinates.lat},${coordinates.lng}`
+    if (lastCoords.current && lastCoords.current !== key) {
+      setFlyTo({ lat: coordinates.lat, lng: coordinates.lng, key: Date.now() })
+    }
+    lastCoords.current = key
+  }, [coordinates])
+
+  const handleManualLocation = useCallback(async () => {
+    if (!locationQuery.trim()) {
+      setInputError('Enter a city or zip code')
       return
     }
+    setInputError(null)
+    const ok = await geocodeAddress(locationQuery.trim())
+    if (ok) {
+      setManualMode(false)
+      setLocationQuery('')
+    }
+  }, [locationQuery, geocodeAddress])
 
-    // If we have a buffered next restaurant, show it immediately
-    if (next) {
-      setState(s => ({
-        ...s,
-        currentRestaurant: next,
-        nextRestaurant: null,
-        loadingNext: true,
-        likedCount: liked ? s.likedCount + 1 : s.likedCount,
-        seenCount: s.seenCount + 1,
-        batchCount: newBatchCount,
-      }))
+  const selected = useMemo<DiscoverPlace | null>(() => {
+    if (!selectedId || data?.mode !== 'points') return null
+    return data.places.find(p => p.id === selectedId) ?? null
+  }, [selectedId, data])
 
-      // Fetch the next restaurant in the background
-      const { lat, lng } = state.location
-      const excludeIds = Array.from(seenIds.current)
-      const newNext = await fetchNextRestaurant(lat, lng, excludeIds)
-      setState(s => ({
-        ...s,
-        nextRestaurant: newNext,
-        loadingNext: false,
-      }))
-    } else {
-      // No buffered restaurant - need to fetch one
-      setState(s => ({
-        ...s,
-        currentRestaurant: null,
-        loadingNext: true,
-        likedCount: liked ? s.likedCount + 1 : s.likedCount,
-        seenCount: s.seenCount + 1,
-        batchCount: newBatchCount,
-      }))
+  const toggleSave = useCallback(async (place: DiscoverPlace) => {
+    const isSaved = saved.has(place.id)
+    setSaving(true)
+    // Optimistic
+    setSaved(prev => {
+      const next = new Set(prev)
+      if (isSaved) next.delete(place.id)
+      else next.add(place.id)
+      return next
+    })
+    try {
+      const res = isSaved
+        ? await fetch(`/api/favorites?localId=${encodeURIComponent(place.id)}`, { method: 'DELETE' })
+        : await fetch('/api/favorites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ localId: place.id }),
+          })
+      if (!res.ok) throw new Error('save failed')
+    } catch {
+      setSaved(prev => {
+        const next = new Set(prev)
+        if (isSaved) next.add(place.id)
+        else next.delete(place.id)
+        return next
+      })
+    } finally {
+      setSaving(false)
+    }
+  }, [saved])
 
-      const { lat, lng } = state.location
-      const excludeIds = Array.from(seenIds.current)
-      const newCurrent = await fetchNextRestaurant(lat, lng, excludeIds)
+  const showManualEntry =
+    manualMode ||
+    ((permissionState === 'denied' || permissionState === 'unsupported') && !coordinates)
 
-      if (newCurrent) {
-        setState(s => ({
-          ...s,
-          currentRestaurant: newCurrent,
-          loadingNext: false,
-        }))
-        // Also prefetch next
-        const newNext = await fetchNextRestaurant(lat, lng, [...excludeIds, newCurrent.id])
-        setState(s => ({ ...s, nextRestaurant: newNext }))
-      } else {
-        // Truly no more restaurants
-        setState(s => ({
-          ...s,
-          phase: 'all-done',
-          noMoreRestaurants: true,
-          loadingNext: false,
-        }))
+  const showPermissionModal =
+    permissionState === 'prompt' && !manualMode && !coordinates
+
+  const locating =
+    !coordinates && !showManualEntry &&
+    (permissionState === 'checking' || permissionState === 'prompt' || locationLoading)
+
+  const caption = (() => {
+    if (!data) return null
+    if (data.mode === 'hexes') {
+      if (data.lovedOnly) {
+        return `${data.totals.loved} loved place${data.totals.loved === 1 ? '' : 's'} in view · zoom in to see the unlit map`
       }
+      const waiting = data.totals.total - data.totals.loved
+      return `${data.totals.loved} loved · ${waiting} waiting in view · tap a hex to zoom in`
     }
-  }, [state.currentRestaurant, state.nextRestaurant, state.location, state.batchCount, isSignedIn, fetchNextRestaurant])
+    const waiting = data.totals.total - data.totals.loved
+    return data.truncated
+      ? `Showing ${data.totals.total} places · zoom in to see them all`
+      : `${data.totals.loved} loved · ${waiting} waiting · tap a dot`
+  })()
 
-  const handleLike = useCallback(() => handleSwipe(true), [handleSwipe])
-  const handlePass = useCallback(() => handleSwipe(false), [handleSwipe])
-
-  // Continue swiping after batch completion (keeps progress)
-  const handleContinueSwiping = useCallback(async () => {
-    if (!state.location) return
-
-    setState(s => ({
-      ...s,
-      loading: true,
-      totalBatches: s.totalBatches + 1,
-    }))
-
-    const { lat, lng } = state.location
-    const excludeIds = Array.from(seenIds.current)
-
-    // Use the buffered next restaurant if available
-    const first = state.nextRestaurant || await fetchNextRestaurant(lat, lng, excludeIds)
-    if (first) {
-      setState(s => ({
-        ...s,
-        phase: 'swiping',
-        currentRestaurant: first,
-        nextRestaurant: null,
-        loading: false,
-        batchCount: 0,
-      }))
-
-      // Pre-fetch the next one
-      const second = await fetchNextRestaurant(lat, lng, [...excludeIds, first.id])
-      setState(s => ({ ...s, nextRestaurant: second }))
-    } else {
-      setState(s => ({
-        ...s,
-        phase: 'all-done',
-        loading: false,
-        noMoreRestaurants: true,
-      }))
-    }
-  }, [state.location, state.nextRestaurant, fetchNextRestaurant])
-
-  // User is done - go to saved restaurants
-  const handleDone = useCallback(() => {
-    window.location.href = '/to-try'
-  }, [])
-
-  // Full refresh - reset everything
-  const handleRefresh = useCallback(() => {
-    // Reset seen IDs and start fresh
-    seenIds.current.clear()
-    setState(s => ({
-      ...s,
-      phase: 'intro',
-      loading: false,
-      currentRestaurant: null,
-      nextRestaurant: null,
-      noMoreRestaurants: false,
-      batchCount: 0,
-      totalBatches: 0,
-      likedCount: 0,
-      seenCount: 0,
-    }))
-  }, [])
-
-  // Loading state (only during transitions)
-  if (!isLoaded || state.loading) {
-    return (
-      <div className="min-h-screen bg-surface-page flex items-center justify-center">
-        <div className="text-white text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand border-t-transparent mx-auto mb-4" />
-          <p className="text-lg font-medium text-white/80">Finding restaurants near you...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Error state
-  if (state.error) {
-    return (
-      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
-        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
-          <p className="text-red-400 text-lg mb-4">{state.error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-brand text-white px-6 py-2 rounded-lg font-bold hover:bg-brand-hover transition"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Intro screen with card alignment animation
-  if (state.phase === 'intro') {
-    return (
-      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
-        <div className="text-center">
-          {/* Animated card stack */}
-          <div className="relative w-64 h-80 mx-auto mb-8">
-            {/* 5 cards that animate from scattered to aligned stack */}
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="absolute inset-0 bg-white rounded-2xl shadow-xl"
-                style={{
-                  animation: `cardAlign 0.6s ease-out ${i * 0.08}s forwards`,
-                  transform: `rotate(${(i - 2) * 12}deg) translateX(${(i - 2) * 15}px) translateY(${i * 6}px)`,
-                  zIndex: 5 - i,
-                }}
-              >
-                {/* Card content placeholder */}
-                <div className="p-4 h-full flex flex-col">
-                  <div className="bg-gray-200 rounded-xl h-32 mb-3 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                  </div>
-                  <div className="bg-gray-200 rounded h-4 w-3/4 mb-2" />
-                  <div className="bg-gray-100 rounded h-3 w-1/2" />
-                  <div className="mt-auto flex gap-2">
-                    <div className="bg-orange-100 rounded-full h-5 w-16" />
-                    <div className="bg-orange-100 rounded-full h-5 w-12" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* CSS for alignment animation */}
-          <style jsx>{`
-            @keyframes cardAlign {
-              to {
-                transform: rotate(0deg) translateX(0) translateY(0);
-              }
-            }
-          `}</style>
-
-          {/* Title and CTA */}
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Discover Restaurants
-          </h1>
-          <p className="text-white/60 mb-8 max-w-xs mx-auto">
-            Swipe right to like, left to pass. We&apos;ll remember your favorites.
-          </p>
-
-          {!state.locationDenied ? (
-            <button
-              onClick={handleStartSwiping}
-              className="px-8 py-4 rounded-2xl font-bold text-lg transition-all bg-brand text-white hover:scale-105 shadow-lg"
-            >
-              Start Swiping
-            </button>
-          ) : (
-            <div className="max-w-xs mx-auto space-y-3">
-              <p className="text-white/80 text-sm">
-                No worries — tell us where to look instead:
-              </p>
-              <label htmlFor="discover-location" className="sr-only">
-                City or zip code
-              </label>
-              <input
-                id="discover-location"
-                type="text"
-                value={locationQuery}
-                onChange={(e) => setLocationQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleManualLocation()}
-                placeholder="City or zip code..."
-                autoFocus
-                className="w-full px-4 py-3 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:border-brand"
-              />
-              {locationError && (
-                <p role="alert" className="text-red-400 text-sm">{locationError}</p>
-              )}
-              <button
-                onClick={handleManualLocation}
-                disabled={geocoding}
-                className="w-full px-8 py-3 rounded-xl font-bold text-lg transition-all bg-brand text-white hover:bg-brand-hover disabled:opacity-50 shadow-lg"
-              >
-                {geocoding ? 'Finding...' : 'Start Swiping'}
-              </button>
-              <button
-                onClick={handleStartSwiping}
-                className="w-full text-white/60 text-sm underline hover:text-white"
-              >
-                Try my location again
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Batch complete screen - shown after every 10 cards
-  if (state.phase === 'batch-complete') {
-    return (
-      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
-        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
-          <div className="text-5xl mb-4">
-            {state.likedCount > 0 ? '🎉' : '👀'}
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            Nice work!
-          </h2>
-          <p className="text-white/60 mb-2">
-            You&apos;ve swiped through {state.seenCount} restaurants
-          </p>
-          <p className="text-lg font-semibold text-brand mb-6">
-            {state.likedCount} liked so far
-          </p>
-
-          <div className="space-y-3">
-            <button
-              onClick={handleContinueSwiping}
-              className="w-full bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-hover transition"
-            >
-              Continue Swiping
-            </button>
-            <button
-              onClick={handleDone}
-              className="w-full bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition"
-            >
-              {state.likedCount > 0 ? "I'm done · To try" : "I'm Done"}
-            </button>
-          </div>
-
-          {!isSignedIn && state.likedCount > 0 && (
-            <div className="mt-4 bg-amber-500/20 border border-amber-500/30 rounded-xl p-3">
-              <p className="text-amber-200 text-sm">
-                <Link href="/sign-in?redirect_url=/discover" className="font-semibold underline">
-                  Sign in
-                </Link>
-                {' '}to save your favorites permanently
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // All done - no more restaurants
-  if (state.phase === 'all-done' || state.noMoreRestaurants) {
-    return (
-      <div className="min-h-screen bg-surface-page flex items-center justify-center p-4">
-        <div className="bg-surface-card rounded-2xl p-8 max-w-md text-center">
-          <div className="text-5xl mb-4">🍽️</div>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            That&apos;s all for now!
-          </h2>
-          <p className="text-white/60 mb-4">
-            You&apos;ve seen {state.seenCount} restaurant{state.seenCount !== 1 ? 's' : ''} and liked {state.likedCount}{' '}
-            in {state.locationName || 'your area'}.
-          </p>
-          {!isSignedIn && state.likedCount > 0 && (
-            <div className="bg-amber-500/20 border border-amber-500/30 rounded-xl p-4 mb-4">
-              <p className="text-amber-200 text-sm font-medium">
-                Sign in to save your favorites!
-              </p>
-              <Link
-                href="/sign-in?redirect_url=/to-try"
-                className="inline-block mt-2 text-amber-300 underline font-semibold"
-              >
-                Sign In →
-              </Link>
-            </div>
-          )}
-          <div className="space-y-3">
-            {state.likedCount > 0 && (
-              <button
-                onClick={handleDone}
-                className="w-full bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-hover transition"
-              >
-                See your to-try list
-              </button>
-            )}
-            <button
-              onClick={handleRefresh}
-              className={`w-full px-6 py-3 rounded-xl font-bold transition ${
-                state.likedCount > 0
-                  ? 'bg-white/10 text-white hover:bg-white/20'
-                  : 'bg-brand text-white hover:bg-brand-hover'
-              }`}
-            >
-              Start Over
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Guard: If we're in swiping phase but have no restaurant, show loading
-  if (state.phase === 'swiping' && !state.currentRestaurant) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#F97316] to-[#DC2626] flex items-center justify-center">
-        <div className="text-white text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4" />
-          <p className="text-lg font-medium">Loading next restaurant...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Main swiping view - we know currentRestaurant is not null at this point
-  const restaurant = state.currentRestaurant!
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F97316] to-[#DC2626] flex flex-col">
-      {/* Header */}
-      <header className="p-4 flex items-center justify-between">
-        <div className="text-white">
-          <h1 className="text-xl font-bold">Discover</h1>
-          {state.locationName && (
-            <p className="text-sm opacity-80 flex items-center gap-1">
-              <LocationIcon size={12} />
-              {state.locationName}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Batch progress */}
-          <div className="bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium">
-            {state.batchCount + 1} of {BATCH_SIZE}
-          </div>
-          {state.likedCount > 0 && (
-            <div className="bg-green-500/80 text-white px-3 py-1 rounded-full text-sm font-medium">
-              {state.likedCount} liked
+    <div className="min-h-screen bg-surface-page flex flex-col">
+      <LocationPermissionModal
+        isOpen={showPermissionModal}
+        onRequestPermission={requestPermission}
+        onSkip={() => setManualMode(true)}
+      />
+
+      <header className="px-4 pt-6 pb-3">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-white">Discover</h1>
+              <p className="text-sm text-white/50">
+                The map as we have it. Ember is loved. The rest is waiting.
+              </p>
             </div>
-          )}
-          {state.loadingNext && (
-            <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+            {coordinates && (
+              <ToggleGroup ariaLabel="View as map or cards">
+                <ToggleGroupItem value="map" selected={view === 'map'} onValueSelect={() => setView('map')}>
+                  Map
+                </ToggleGroupItem>
+                <ToggleGroupItem value="cards" selected={view === 'cards'} onValueSelect={() => setView('cards')}>
+                  Cards
+                </ToggleGroupItem>
+              </ToggleGroup>
+            )}
+          </div>
+          {locationName && !showManualEntry && (
+            <p className="text-white/50 text-sm mt-2 flex items-center gap-1">
+              <LocationIcon size={12} />
+              {locationName}
+              <button
+                onClick={() => setManualMode(true)}
+                className="ml-2 underline hover:text-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded"
+              >
+                Change
+              </button>
+            </p>
           )}
         </div>
       </header>
 
-      {/* Card Stack */}
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm">
-          {/* Local Badge above card */}
-          {(restaurant.likeCount || restaurant.pickRate) && (
-            <div className="mb-3">
-              <LocalBadge
-                likeCount={restaurant.likeCount || 0}
-                pickRate={restaurant.pickRate}
-                size="md"
-              />
+      <main className="flex-1 flex flex-col pb-20">
+        {showManualEntry && (
+          <div className="max-w-lg mx-auto w-full px-4 py-8">
+            <div className="bg-surface-card rounded-card p-6">
+              <h2 className="text-white font-semibold mb-1">Where should we look?</h2>
+              <p className="text-white/60 text-sm mb-4">
+                {permissionState === 'denied'
+                  ? 'Location is off for this site. Enter a city or zip instead.'
+                  : 'Enter a city or zip code.'}
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={locationQuery}
+                  onChange={(e) => setLocationQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleManualLocation()}
+                  placeholder="Orlando, FL or 32801"
+                  aria-label="City or zip code"
+                  aria-invalid={!!inputError}
+                />
+                <Button onClick={handleManualLocation} disabled={locationLoading}>
+                  {locationLoading ? 'Finding…' : 'Go'}
+                </Button>
+              </div>
+              {(inputError || locationError) && (
+                <p className="text-red-400 text-sm mt-2" role="alert">{inputError || locationError}</p>
+              )}
+              {coordinates && (
+                <button
+                  onClick={() => setManualMode(false)}
+                  className="mt-3 text-sm text-white/50 underline hover:text-white/70"
+                >
+                  Keep {locationName || 'current location'}
+                </button>
+              )}
             </div>
-          )}
+          </div>
+        )}
 
-          <RestaurantCard
-            restaurant={restaurant}
-            onYes={handleLike}
-            onNo={handlePass}
-            progress={`${state.batchCount + 1}/${BATCH_SIZE}`}
-          />
-        </div>
+        {locating && !showManualEntry && (
+          <div className="flex-1 flex items-center justify-center py-16">
+            <div className="text-center">
+              <Spinner size="lg" className="mx-auto" />
+              <p className="mt-3 text-white/50 text-sm">Finding your neighborhood…</p>
+            </div>
+          </div>
+        )}
+
+        {coordinates && !showManualEntry && view === 'map' && (
+          <div className="flex-1 flex flex-col">
+            <div className="relative flex-1 min-h-[420px]" style={{ height: 'calc(100dvh - 240px)' }}>
+              <DynamicDiscoverMap
+                center={coordinates}
+                zoom={15}
+                data={data}
+                userLocation={coordinates}
+                highlightedId={selectedId ?? undefined}
+                onViewportChange={handleViewportChange}
+                onPlaceClick={setSelectedId}
+                flyTo={flyTo}
+                className="absolute inset-0"
+              />
+              {loading && (
+                <div className="absolute top-3 right-3 z-[1000] bg-black/60 rounded-pill px-3 py-1.5" aria-live="polite">
+                  <Spinner size="sm" />
+                </div>
+              )}
+            </div>
+            <p className="text-center text-xs text-white/50 px-4 py-2" aria-live="polite">
+              {error ?? caption ?? 'Move the map to explore'}
+            </p>
+          </div>
+        )}
+
+        {coordinates && !showManualEntry && view === 'cards' && (
+          <div className="max-w-lg mx-auto w-full px-4 pt-2">
+            <DiscoverCards bbox={bbox} saved={saved} onToggleSave={toggleSave} />
+          </div>
+        )}
       </main>
 
-      {/* Guest prompt */}
-      {!isSignedIn && state.likedCount >= 3 && (
-        <div className="p-4 bg-white/10 backdrop-blur-sm">
-          <p className="text-white text-center text-sm">
-            Sign in to save your favorites! →{' '}
-            <Link href="/sign-in" className="underline font-semibold">
-              Sign In
-            </Link>
-          </p>
-        </div>
-      )}
+      <DiscoverSheet
+        place={selected}
+        isOpen={!!selected}
+        onClose={() => setSelectedId(null)}
+        saved={selected ? saved.has(selected.id) : false}
+        saving={saving}
+        onToggleSave={toggleSave}
+      />
     </div>
   )
 }

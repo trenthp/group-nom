@@ -9,12 +9,13 @@
 import { useId, useState } from 'react'
 
 type TargetType = 'nomination' | 'restaurant'
-type Reason = 'closed' | 'not_a_restaurant' | 'inappropriate' | 'spam' | 'other'
+type Reason = 'closed' | 'not_a_restaurant' | 'duplicate' | 'inappropriate' | 'spam' | 'other'
 
 const REASONS: Record<TargetType, Array<{ value: Reason; label: string }>> = {
   restaurant: [
     { value: 'closed', label: 'It’s permanently closed' },
     { value: 'not_a_restaurant', label: 'It isn’t a restaurant' },
+    { value: 'duplicate', label: 'It’s already on the map as another entry' },
     { value: 'other', label: 'Something else' },
   ],
   nomination: [

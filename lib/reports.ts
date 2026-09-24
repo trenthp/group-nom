@@ -9,10 +9,10 @@ import { sql } from './db'
 import { deletePhotoBlob } from '@/lib/photos'
 
 export type ReportTargetType = 'nomination' | 'restaurant'
-export type ReportReason = 'closed' | 'not_a_restaurant' | 'inappropriate' | 'spam' | 'other'
+export type ReportReason = 'closed' | 'not_a_restaurant' | 'duplicate' | 'inappropriate' | 'spam' | 'other'
 export type ReportResolution = 'dismissed' | 'nomination_removed' | 'place_hidden' | 'member_suspended'
 
-export const REPORT_REASONS: ReportReason[] = ['closed', 'not_a_restaurant', 'inappropriate', 'spam', 'other']
+export const REPORT_REASONS: ReportReason[] = ['closed', 'not_a_restaurant', 'duplicate', 'inappropriate', 'spam', 'other']
 
 export interface Report {
   id: string

@@ -1,5 +1,6 @@
 /**
  * GET /api/favorites - Get user's favorites
+ * POST /api/favorites - Save a place to the to-try list  { localId }
  * DELETE /api/favorites - Remove a favorite
  */
 
@@ -9,7 +10,31 @@ import {
   getFavorites,
   removeFavorite,
   getFavoriteCount,
+  addFavoriteByLocalId,
 } from '@/lib/favorites'
+import { ensureProfile } from '@/lib/userProfile'
+
+export async function POST(request: NextRequest) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const localId = typeof body?.localId === 'string' ? body.localId.trim() : ''
+    if (!localId || localId.length > 128) {
+      return NextResponse.json({ error: 'localId is required' }, { status: 400 })
+    }
+
+    await ensureProfile(userId)
+    const favorite = await addFavoriteByLocalId(userId, localId, null, 'discover')
+    return NextResponse.json({ success: true, favorite })
+  } catch (error) {
+    console.error('Error saving favorite:', error)
+    return NextResponse.json({ error: 'Failed to save' }, { status: 500 })
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {

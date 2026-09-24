@@ -14,7 +14,7 @@ export interface UserFavorite {
   clerkUserId: string
   localId: string
   googlePlaceId: string | null
-  source: 'swipe' | 'group_vote' | 'nomination'
+  source: 'swipe' | 'group_vote' | 'nomination' | 'discover'
   createdAt: Date
 }
 
@@ -63,7 +63,7 @@ export async function addFavoriteByLocalId(
   clerkUserId: string,
   localId: string,
   googlePlaceId: string | null = null,
-  source: 'swipe' | 'group_vote' | 'nomination' = 'swipe'
+  source: 'swipe' | 'group_vote' | 'nomination' | 'discover' = 'swipe'
 ): Promise<UserFavorite> {
   const result = await sql`
     INSERT INTO user_favorites (clerk_user_id, local_id, google_place_id, source)

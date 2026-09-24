@@ -29,6 +29,8 @@ const isMemberRoute = createRouteMatcher([
 ])
 const isMemberApiRoute = createRouteMatcher([
   '/api/library(.*)',
+  '/api/discover(.*)',
+  '/api/favorites(.*)',
   '/api/nominations(.*)',
   '/api/enrichment(.*)',
   '/api/restaurants(.*)',

@@ -237,3 +237,17 @@ h6 {
 .cl-internal-vvtys3 {
   gap: 0 !important;
 }
+/* Discover hex labels: a count on lit hexes, no tooltip chrome */
+.hex-label {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+.hex-label::before {
+  display: none;
+}
